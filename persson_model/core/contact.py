@@ -122,47 +122,80 @@ class ContactMechanics:
     def contact_area_fraction(
         self,
         zeta: Optional[float] = None,
-        method: str = 'gaussian'
+        method: str = 'persson'
     ) -> float:
         """
         Calculate real contact area fraction A/A₀.
 
-        The contact area is the fraction where stress > 0.
+        Uses Persson (2001, 2006) formulation by default:
+        P(q) = erf(1 / (2√G(q)))
 
         Parameters
         ----------
         zeta : float, optional
             Magnification factor. If None, uses maximum zeta.
         method : str, optional
-            Method for calculation: 'gaussian' or 'exact'
-            (default: 'gaussian')
+            Method for calculation:
+            - 'persson': P = erf(1/(2√G)) [Persson 2001, 2006]
+            - 'gaussian': Legacy Gaussian-based method
+            - 'exact': Numerical integration
+            (default: 'persson')
 
         Returns
         -------
         float
             Contact area fraction (0 to 1)
+
+        References
+        ----------
+        Persson, B.N.J. (2001). J. Chem. Phys. 115(8), 3840-3861.
+        Persson, B.N.J. (2006). Surf. Sci. Rep. 61(4), 201-227.
         """
         if zeta is None:
             zeta = self.zeta_max
 
-        variance = self.stress_variance(zeta)
-        std_dev = np.sqrt(variance)
+        if method == 'persson':
+            # Persson formulation: P(q) = erf(1 / (2√G))
+            # Get G value at this magnification
+            G_zeta = np.interp(
+                np.log(zeta),
+                np.log(self.q_values / self.q_values[0]),
+                self.G_values
+            )
 
-        if std_dev < 1e-10:
-            # No roughness, full contact
-            return 1.0
+            if G_zeta < 1e-20:
+                # No roughness contribution, full contact
+                return 1.0
 
-        if method == 'gaussian':
+            # P(q) = erf(1 / (2√G))
+            contact_fraction = special.erf(1.0 / (2.0 * np.sqrt(G_zeta)))
+
+            return max(0.0, min(contact_fraction, 1.0))
+
+        elif method == 'gaussian':
+            # Legacy Gaussian distribution method
             # For Gaussian distribution, contact area is:
-            # A/A₀ = (1/2) * erfc(-σ₀ / (√2 * σ_std))
-            # = (1/2) * (1 + erf(σ₀ / (√2 * σ_std)))
+            # A/A₀ = (1/2) * (1 + erf(σ₀ / (√2 * σ_std)))
+
+            variance = self.stress_variance(zeta)
+            std_dev = np.sqrt(variance)
+
+            if std_dev < 1e-10:
+                return 1.0
 
             normalized_pressure = self.sigma_0 / (np.sqrt(2) * std_dev)
             contact_fraction = 0.5 * (1 + special.erf(normalized_pressure))
 
             return contact_fraction
-        else:
+
+        else:  # method == 'exact'
             # Numerical integration
+            variance = self.stress_variance(zeta)
+            std_dev = np.sqrt(variance)
+
+            if std_dev < 1e-10:
+                return 1.0
+
             sigma_max = self.sigma_0 + 5 * std_dev
             sigma_range = np.linspace(0, sigma_max, 1000)
 

@@ -35,6 +35,30 @@ python example_contact.py
 - 다양한 접촉 통계량
 - 종합 결과 시각화 (6개 그래프)
 
+### 3. example_detailed_output.py ⭐ 신규
+상세 출력 예제 (작업 지시서 기반)
+
+**실행 방법:**
+```bash
+cd examples
+python example_detailed_output.py
+```
+
+**내용:**
+- 모든 중간 계산값 추적
+- CSV 출력 (Index, log_q, q, C(q), Avg_Modulus_Term, G_Integrand, Delta_G, G(q), P(q))
+- 요약 텍스트 파일 생성
+- 플롯용 개별 데이터 파일 생성
+- 종합 시각화 (9개 그래프)
+
+**출력 파일:**
+- `persson_detailed_results.csv` - 전체 계산 과정
+- `persson_summary.txt` - 결과 요약
+- `output/persson_G_vs_q.csv` - G 함수 플롯 데이터
+- `output/persson_contact_area.csv` - 접촉 면적 플롯 데이터
+- `output/persson_PSD.csv` - PSD 플롯 데이터
+- `persson_detailed_visualization.png` - 종합 그래프
+
 ## 출력 파일
 
 각 예제는 실행 후 PNG 이미지 파일을 생성합니다:

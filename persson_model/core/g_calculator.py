@@ -119,7 +119,10 @@ class GCalculator:
         """
         Compute integrand for q integration.
 
-        Calculates: (1/√q) * q³ * C(q) * (angle integral)
+        Calculates: q³ * C(q) * (angle integral)
+
+        Based on Persson (2001, 2006) formulation:
+        G(q) = (1/8) ∫ dq' q'³ C(q') ∫ dφ |E(q'v cosφ) / ((1-ν²)σ₀)|²
 
         Parameters
         ----------
@@ -140,9 +143,8 @@ class GCalculator:
         # Compute angle integral
         angle_int = self._angle_integral(q)
 
-        # Combine: (1/√q) * q³ * C(q) * angle_integral
-        # = q^(5/2) * C(q) * angle_integral
-        result = q**2.5 * C_q * angle_int
+        # Combine: q³ * C(q) * angle_integral
+        result = q**3 * C_q * angle_int
 
         return result
 
@@ -312,3 +314,92 @@ class GCalculator:
         if poisson_ratio is not None:
             self.poisson_ratio = poisson_ratio
             self.prefactor = 1.0 / ((1 - self.poisson_ratio**2) * self.sigma_0)
+
+    def calculate_G_with_details(
+        self,
+        q_values: np.ndarray,
+        q_min: Optional[float] = None
+    ) -> dict:
+        """
+        Calculate G(q) with detailed intermediate values for analysis.
+
+        This method returns all intermediate calculation values including
+        PSD, angle integrals, integrands, and cumulative G values.
+
+        Parameters
+        ----------
+        q_values : np.ndarray
+            Array of wavenumbers (1/m) in ascending order
+        q_min : float, optional
+            Lower integration limit (default: first value in q_values)
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'q': wavenumber array
+            - 'log_q': log10(q)
+            - 'C_q': PSD values C(q)
+            - 'avg_modulus_term': angle integral results
+            - 'G_integrand': full integrand q³ C(q) * angle_integral
+            - 'delta_G': incremental G contributions
+            - 'G': cumulative G(q) values
+            - 'contact_area_ratio': P(q) = erf(1/(2√G))
+        """
+        q_values = np.asarray(q_values)
+
+        if q_min is None:
+            q_min = q_values[0]
+
+        n = len(q_values)
+
+        # Initialize output arrays
+        C_q_arr = np.zeros(n)
+        avg_modulus_arr = np.zeros(n)
+        G_integrand_arr = np.zeros(n)
+        delta_G_arr = np.zeros(n)
+        G_arr = np.zeros(n)
+        P_arr = np.zeros(n)
+
+        # Calculate values for each wavenumber
+        for i, q in enumerate(q_values):
+            # Get PSD value
+            C_q_arr[i] = self.psd_func(np.array([q]))[0]
+
+            # Calculate angle integral (Avg_Modulus_Term)
+            avg_modulus_arr[i] = self._angle_integral(q)
+
+            # Calculate full integrand
+            G_integrand_arr[i] = self._integrand_q(q)
+
+        # Calculate cumulative G using trapezoidal integration
+        for i in range(1, n):
+            if q_values[i] <= q_min:
+                continue
+
+            # Trapezoidal rule: (f(i-1) + f(i)) / 2 * Δq
+            delta_G = 0.5 * (G_integrand_arr[i-1] + G_integrand_arr[i]) * \
+                      (q_values[i] - q_values[i-1])
+
+            delta_G_arr[i] = delta_G / 8.0  # Apply 1/8 factor
+            G_arr[i] = G_arr[i-1] + delta_G_arr[i]
+
+        # Calculate contact area ratio P(q) = erf(1 / (2√G))
+        # Handle G = 0 case
+        for i in range(n):
+            if G_arr[i] > 1e-20:
+                from scipy.special import erf
+                P_arr[i] = erf(1.0 / (2.0 * np.sqrt(G_arr[i])))
+            else:
+                P_arr[i] = 0.0
+
+        return {
+            'q': q_values,
+            'log_q': np.log10(q_values),
+            'C_q': C_q_arr,
+            'avg_modulus_term': avg_modulus_arr,
+            'G_integrand': G_integrand_arr,
+            'delta_G': delta_G_arr,
+            'G': G_arr,
+            'contact_area_ratio': P_arr
+        }

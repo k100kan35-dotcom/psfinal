@@ -27,6 +27,12 @@ from core.g_calculator import GCalculator
 from core.psd_models import FractalPSD, MeasuredPSD
 from core.viscoelastic import ViscoelasticMaterial
 from core.contact import ContactMechanics
+from utils.output import (
+    save_calculation_details_csv,
+    save_summary_txt,
+    export_for_plotting,
+    format_parameters_dict
+)
 
 
 class PerssonModelGUI:
@@ -64,7 +70,9 @@ class PerssonModelGUI:
         file_menu.add_command(label="재료 물성 불러오기", command=self._load_material)
         file_menu.add_command(label="PSD 데이터 불러오기", command=self._load_psd_data)
         file_menu.add_separator()
-        file_menu.add_command(label="결과 저장", command=self._save_results)
+        file_menu.add_command(label="결과 요약 저장 (TXT)", command=self._save_results)
+        file_menu.add_command(label="상세 결과 저장 (CSV)", command=self._save_detailed_csv)
+        file_menu.add_command(label="모든 결과 내보내기", command=self._export_all_results)
         file_menu.add_separator()
         file_menu.add_command(label="종료", command=self.root.quit)
 
@@ -389,10 +397,13 @@ class PerssonModelGUI:
                 integration_method=self.integration_method_var.get()
             )
 
-            # Calculate G(q)
-            self.status_var.set("G(q) 계산 중...")
+            # Calculate G(q) with detailed intermediate values
+            self.status_var.set("G(q) 계산 중 (상세 모드)...")
             self.root.update()
-            G_values = self.g_calculator.calculate_G(q_values)
+
+            # Calculate detailed results
+            detailed_results = self.g_calculator.calculate_G_with_details(q_values, q_min=q_min)
+            G_values = detailed_results['G']
 
             # Create contact mechanics calculator
             self.contact_mechanics = ContactMechanics(
@@ -402,13 +413,14 @@ class PerssonModelGUI:
                 G_values=G_values
             )
 
-            # Store results
+            # Store results (including detailed intermediate values)
             self.results = {
                 'q_values': q_values,
                 'G_values': G_values,
                 'sigma_0': sigma_0,
                 'velocity': velocity,
-                'contact_stats': self.contact_mechanics.contact_statistics()
+                'contact_stats': self.contact_mechanics.contact_statistics(),
+                'detailed_results': detailed_results  # Store all intermediate values
             }
 
             # Update displays
@@ -533,7 +545,7 @@ class PerssonModelGUI:
         messagebox.showinfo("정보", "PSD 데이터 로드 기능은 추후 구현 예정입니다.")
 
     def _save_results(self):
-        """Save calculation results."""
+        """Save calculation results summary to text file."""
         if not self.results:
             messagebox.showwarning("경고", "저장할 결과가 없습니다. 먼저 계산을 실행하세요.")
             return
@@ -547,9 +559,105 @@ class PerssonModelGUI:
             try:
                 with open(filename, 'w', encoding='utf-8') as f:
                     f.write(self.results_text.get(1.0, tk.END))
-                messagebox.showinfo("성공", f"결과가 저장되었습니다:\n{filename}")
+                messagebox.showinfo("성공", f"결과 요약이 저장되었습니다:\n{filename}")
             except Exception as e:
                 messagebox.showerror("오류", f"파일 저장 실패:\n{str(e)}")
+
+    def _save_detailed_csv(self):
+        """Save detailed calculation results to CSV file."""
+        if not self.results or 'detailed_results' not in self.results:
+            messagebox.showwarning("경고", "저장할 상세 결과가 없습니다. 먼저 계산을 실행하세요.")
+            return
+
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+
+        if filename:
+            try:
+                # Get parameters
+                params = format_parameters_dict(
+                    sigma_0=self.results['sigma_0'],
+                    velocity=self.results['velocity'],
+                    temperature=float(self.temperature_var.get()),
+                    poisson_ratio=float(self.poisson_var.get()),
+                    q_min=float(self.q_min_var.get()),
+                    q_max=float(self.q_max_var.get()),
+                    material_name=self.material.name if self.material else "Unknown",
+                    hurst_exponent=float(self.hurst_var.get()) if self.psd_type_var.get() == "fractal" else "N/A",
+                    rms_roughness_um=float(self.rms_roughness_var.get()) if self.psd_type_var.get() == "fractal" else "N/A"
+                )
+
+                # Save CSV
+                save_calculation_details_csv(
+                    self.results['detailed_results'],
+                    filename,
+                    params
+                )
+
+                messagebox.showinfo("성공",
+                    f"상세 계산 결과가 CSV로 저장되었습니다:\n{filename}\n\n"
+                    "포함된 열:\n"
+                    "- Index, log_q, q, C(q)\n"
+                    "- Avg_Modulus_Term\n"
+                    "- G_Integrand, Delta_G\n"
+                    "- G(q), Contact_Area_Ratio")
+            except Exception as e:
+                messagebox.showerror("오류", f"CSV 파일 저장 실패:\n{str(e)}")
+                import traceback
+                traceback.print_exc()
+
+    def _export_all_results(self):
+        """Export all results (CSV, TXT, plotting data)."""
+        if not self.results or 'detailed_results' not in self.results:
+            messagebox.showwarning("경고", "내보낼 결과가 없습니다. 먼저 계산을 실행하세요.")
+            return
+
+        # Ask for output directory
+        output_dir = filedialog.askdirectory(title="결과 파일을 저장할 폴더를 선택하세요")
+
+        if output_dir:
+            try:
+                # Get parameters
+                params = format_parameters_dict(
+                    sigma_0=self.results['sigma_0'],
+                    velocity=self.results['velocity'],
+                    temperature=float(self.temperature_var.get()),
+                    poisson_ratio=float(self.poisson_var.get()),
+                    q_min=float(self.q_min_var.get()),
+                    q_max=float(self.q_max_var.get()),
+                    material_name=self.material.name if self.material else "Unknown",
+                    hurst_exponent=float(self.hurst_var.get()) if self.psd_type_var.get() == "fractal" else "N/A",
+                    rms_roughness_um=float(self.rms_roughness_var.get()) if self.psd_type_var.get() == "fractal" else "N/A"
+                )
+
+                detailed_results = self.results['detailed_results']
+
+                # Save detailed CSV
+                csv_file = os.path.join(output_dir, "persson_detailed_results.csv")
+                save_calculation_details_csv(detailed_results, csv_file, params)
+
+                # Save summary TXT
+                txt_file = os.path.join(output_dir, "persson_summary.txt")
+                save_summary_txt(detailed_results, txt_file, params)
+
+                # Export plotting data
+                export_for_plotting(detailed_results, output_dir=output_dir, prefix='persson')
+
+                messagebox.showinfo("성공",
+                    f"모든 결과가 저장되었습니다:\n{output_dir}\n\n"
+                    "생성된 파일:\n"
+                    "- persson_detailed_results.csv (전체 계산 데이터)\n"
+                    "- persson_summary.txt (요약)\n"
+                    "- persson_G_vs_q.csv (G 함수 플롯)\n"
+                    "- persson_contact_area.csv (접촉 면적 플롯)\n"
+                    "- persson_PSD.csv (PSD 플롯)")
+
+            except Exception as e:
+                messagebox.showerror("오류", f"결과 내보내기 실패:\n{str(e)}")
+                import traceback
+                traceback.print_exc()
 
     def _show_help(self):
         """Show help dialog."""
