@@ -1,8 +1,12 @@
 """
-Enhanced Main GUI for Persson Friction Model (v2.1)
+Enhanced Main GUI for Persson Friction Model (v3.0)
 ===================================================
 
-Work Instruction v2.1 Implementation:
+Work Instruction v3.0 Implementation:
+- Log-log cubic spline interpolation for viscoelastic data
+- Inner integral visualization with savgol_filter smoothing
+- G(q,v) heatmap using pcolormesh
+- Korean labels for all graphs and UI elements
 - Velocity range: 0.0001~10 m/s (log scale)
 - G(q,v) 2D matrix calculation
 - Input data verification tab
@@ -18,6 +22,7 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
+from scipy.signal import savgol_filter
 from typing import Optional
 import sys
 import os
@@ -43,11 +48,20 @@ from persson_model.utils.data_loader import (
 )
 
 # Configure matplotlib for better Korean font support
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial', 'Helvetica']
+try:
+    # Try Korean fonts first, then fall back to universal fonts
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['font.sans-serif'] = ['Malgun Gothic', 'NanumGothic', 'AppleGothic',
+                                        'DejaVu Sans', 'Arial', 'Helvetica']
+except:
+    plt.rcParams['font.family'] = 'sans-serif'
+    plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
+
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['axes.labelweight'] = 'bold'
 plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['figure.titleweight'] = 'bold'
+plt.rcParams['figure.titlesize'] = 14
 
 
 class PerssonModelGUI_V2:
@@ -56,7 +70,7 @@ class PerssonModelGUI_V2:
     def __init__(self, root):
         """Initialize enhanced GUI."""
         self.root = root
-        self.root.title("Persson Friction Calculator v2.1")
+        self.root.title("Persson 마찰 계산기 v3.0")
         self.root.geometry("1600x1000")
 
         # Initialize variables
@@ -157,33 +171,33 @@ class PerssonModelGUI_V2:
 
         # Tab 1: Input Data Verification
         self.tab_verification = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_verification, text="1. Input Data Verification")
+        self.notebook.add(self.tab_verification, text="1. 입력 데이터 검증")
         self._create_verification_tab(self.tab_verification)
 
         # Tab 2: Calculation Parameters
         self.tab_parameters = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_parameters, text="2. Calculation Setup")
+        self.notebook.add(self.tab_parameters, text="2. 계산 설정")
         self._create_parameters_tab(self.tab_parameters)
 
         # Tab 3: G(q,v) Results
         self.tab_results = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_results, text="3. G(q,v) Results")
+        self.notebook.add(self.tab_results, text="3. G(q,v) 결과")
         self._create_results_tab(self.tab_results)
 
         # Tab 4: Friction Coefficient
         self.tab_friction = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_friction, text="4. Friction Analysis")
+        self.notebook.add(self.tab_friction, text="4. 마찰 분석")
         self._create_friction_tab(self.tab_friction)
 
     def _create_verification_tab(self, parent):
         """Create input data verification tab."""
         # Instruction label
-        instruction = ttk.LabelFrame(parent, text="Tab Purpose", padding=10)
+        instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
         instruction.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(instruction, text=
-            "This tab verifies that material properties and surface roughness data\n"
-            "are correctly loaded before calculation. Check E', E'', tan(δ) and C(q).",
+            "이 탭에서는 계산 전에 재료 물성과 표면 거칠기 데이터가 올바르게\n"
+            "로드되었는지 확인합니다. E', E'', tan(δ) 및 C(q)를 검토하세요.",
             font=('Arial', 10)
         ).pack()
 
@@ -210,85 +224,85 @@ class PerssonModelGUI_V2:
 
         ttk.Button(
             btn_frame,
-            text="Refresh Plots",
+            text="그래프 새로고침",
             command=self._update_verification_plots
         ).pack(side=tk.LEFT, padx=5)
 
     def _create_parameters_tab(self, parent):
         """Create calculation parameters tab."""
         # Instruction
-        instruction = ttk.LabelFrame(parent, text="Tab Purpose", padding=10)
+        instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
         instruction.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(instruction, text=
-            "Set calculation parameters: pressure, velocity range (log scale), temperature.\n"
-            "Velocity range: 0.0001~10 m/s (log spaced) for frequency sweep.",
+            "계산 매개변수를 설정합니다: 압력, 속도 범위 (로그 스케일), 온도.\n"
+            "속도 범위: 0.0001~10 m/s (로그 간격)로 주파수 스윕을 수행합니다.",
             font=('Arial', 10)
         ).pack()
 
         # Input panel
-        input_frame = ttk.LabelFrame(parent, text="Calculation Parameters", padding=10)
+        input_frame = ttk.LabelFrame(parent, text="계산 매개변수", padding=10)
         input_frame.pack(fill=tk.X, padx=10, pady=5)
 
         # Create input fields
         row = 0
 
         # Nominal pressure
-        ttk.Label(input_frame, text="Nominal Pressure (MPa):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="공칭 압력 (MPa):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.sigma_0_var = tk.StringVar(value="1.0")
         ttk.Entry(input_frame, textvariable=self.sigma_0_var, width=15).grid(row=row, column=1, pady=5)
 
         # Velocity range
         row += 1
-        ttk.Label(input_frame, text="Velocity Range:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        ttk.Label(input_frame, text="Log scale: 0.0001~10 m/s").grid(row=row, column=1, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="속도 범위:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="로그 스케일: 0.0001~10 m/s").grid(row=row, column=1, sticky=tk.W, pady=5)
 
         row += 1
-        ttk.Label(input_frame, text="  v_min (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="  최소 속도 v_min (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.v_min_var = tk.StringVar(value="0.0001")
         ttk.Entry(input_frame, textvariable=self.v_min_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
-        ttk.Label(input_frame, text="  v_max (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="  최대 속도 v_max (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.v_max_var = tk.StringVar(value="10.0")
         ttk.Entry(input_frame, textvariable=self.v_max_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
-        ttk.Label(input_frame, text="  Number of velocities:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="  속도 포인트 수:").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.n_velocity_var = tk.StringVar(value="30")
         ttk.Entry(input_frame, textvariable=self.n_velocity_var, width=15).grid(row=row, column=1, pady=5)
 
         # Temperature
         row += 1
-        ttk.Label(input_frame, text="Temperature (°C):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="온도 (°C):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.temperature_var = tk.StringVar(value="20")
         ttk.Entry(input_frame, textvariable=self.temperature_var, width=15).grid(row=row, column=1, pady=5)
 
         # Poisson ratio
         row += 1
-        ttk.Label(input_frame, text="Poisson Ratio:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="푸아송 비:").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.poisson_var = tk.StringVar(value="0.5")
         ttk.Entry(input_frame, textvariable=self.poisson_var, width=15).grid(row=row, column=1, pady=5)
 
         # Wavenumber range
         row += 1
-        ttk.Label(input_frame, text="q_min (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="최소 파수 q_min (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.q_min_var = tk.StringVar(value="2e1")
         ttk.Entry(input_frame, textvariable=self.q_min_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
-        ttk.Label(input_frame, text="q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.q_max_var = tk.StringVar(value="1e9")
         ttk.Entry(input_frame, textvariable=self.q_max_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
-        ttk.Label(input_frame, text="Number of q points:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="파수 포인트 수:").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.n_q_var = tk.StringVar(value="100")
         ttk.Entry(input_frame, textvariable=self.n_q_var, width=15).grid(row=row, column=1, pady=5)
 
         # PSD type
         row += 1
-        ttk.Label(input_frame, text="PSD Type:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="PSD 유형:").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.psd_type_var = tk.StringVar(value="measured")
         ttk.Combobox(
             input_frame,
@@ -304,7 +318,7 @@ class PerssonModelGUI_V2:
 
         self.calc_button = ttk.Button(
             btn_frame,
-            text="Run G(q,v) Calculation",
+            text="G(q,v) 계산 실행",
             command=self._run_calculation
         )
         self.calc_button.pack(fill=tk.X, pady=5)
@@ -321,12 +335,12 @@ class PerssonModelGUI_V2:
     def _create_results_tab(self, parent):
         """Create G(q,v) results tab."""
         # Instruction
-        instruction = ttk.LabelFrame(parent, text="Tab Purpose", padding=10)
+        instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
         instruction.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(instruction, text=
-            "G(q,v) 2D matrix results: Multi-velocity G(q) curves, heatmap, and contact area.\n"
-            "All velocities are plotted on the same graph with color coding.",
+            "G(q,v) 2D 행렬 계산 결과: 다중 속도 G(q) 곡선, 히트맵, 접촉 면적.\n"
+            "모든 속도가 컬러 코딩되어 하나의 그래프에 표시됩니다.",
             font=('Arial', 10)
         ).pack()
 
@@ -345,12 +359,12 @@ class PerssonModelGUI_V2:
     def _create_friction_tab(self, parent):
         """Create friction coefficient analysis tab."""
         # Instruction
-        instruction = ttk.LabelFrame(parent, text="Tab Purpose", padding=10)
+        instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
         instruction.pack(fill=tk.X, padx=10, pady=5)
 
         ttk.Label(instruction, text=
-            "Friction coefficient μ(v) and contact area analysis.\n"
-            "Results show velocity-dependent friction and real contact area ratio.",
+            "마찰 계수 μ(v) 및 접촉 면적 분석.\n"
+            "속도 의존성 마찰과 실제 접촉 면적 비율을 표시합니다.",
             font=('Arial', 10)
         ).pack()
 
@@ -367,7 +381,7 @@ class PerssonModelGUI_V2:
 
     def _create_status_bar(self):
         """Create status bar."""
-        self.status_var = tk.StringVar(value="Ready")
+        self.status_var = tk.StringVar(value="준비")
         status_bar = ttk.Label(
             self.root,
             textvariable=self.status_var,
@@ -394,16 +408,16 @@ class PerssonModelGUI_V2:
         ax1 = self.ax_master_curve
         ax1_twin = ax1.twinx()
 
-        ax1.loglog(omega, E_storage/1e6, 'g-', linewidth=2, label="E' (Storage)")
-        ax1.loglog(omega, E_loss/1e6, 'orange', linewidth=2, label="E'' (Loss)")
+        ax1.loglog(omega, E_storage/1e6, 'g-', linewidth=2, label="E' (저장 탄성률)")
+        ax1.loglog(omega, E_loss/1e6, 'orange', linewidth=2, label="E'' (손실 탄성률)")
         ax1_twin.semilogx(omega, tan_delta, 'r--', linewidth=2, label="tan(δ)")
 
-        ax1.set_xlabel('Angular Frequency ω (rad/s)', fontweight='bold')
-        ax1.set_ylabel('Modulus (MPa)', fontweight='bold', color='g')
-        ax1_twin.set_ylabel('tan(δ)', fontweight='bold', color='r')
-        ax1.set_title('Viscoelastic Master Curve', fontweight='bold', fontsize=12)
-        ax1.legend(loc='upper left')
-        ax1_twin.legend(loc='upper right')
+        ax1.set_xlabel('각주파수 ω (rad/s)', fontweight='bold', fontsize=11)
+        ax1.set_ylabel('탄성률 (MPa)', fontweight='bold', fontsize=11, color='g')
+        ax1_twin.set_ylabel('tan(δ)', fontweight='bold', fontsize=11, color='r')
+        ax1.set_title('점탄성 마스터 곡선', fontweight='bold', fontsize=12)
+        ax1.legend(loc='upper left', fontsize=9)
+        ax1_twin.legend(loc='upper right', fontsize=9)
         ax1.grid(True, alpha=0.3)
 
         # Plot 2: PSD C(q)
@@ -413,11 +427,11 @@ class PerssonModelGUI_V2:
             q_plot = np.logspace(np.log10(q_min), np.log10(q_max), 200)
             C_q = self.psd_model(q_plot)
 
-            self.ax_psd.loglog(q_plot, C_q, 'b-', linewidth=2, label='Loaded PSD')
-            self.ax_psd.set_xlabel('Wavenumber q (1/m)', fontweight='bold')
-            self.ax_psd.set_ylabel('PSD C(q) (m⁴)', fontweight='bold')
-            self.ax_psd.set_title('Surface Roughness PSD', fontweight='bold', fontsize=12)
-            self.ax_psd.legend()
+            self.ax_psd.loglog(q_plot, C_q, 'b-', linewidth=2, label='로드된 PSD')
+            self.ax_psd.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
+            self.ax_psd.set_ylabel('PSD C(q) (m⁴)', fontweight='bold', fontsize=11)
+            self.ax_psd.set_title('표면 거칠기 PSD', fontweight='bold', fontsize=12)
+            self.ax_psd.legend(fontsize=9)
             self.ax_psd.grid(True, alpha=0.3)
 
         self.fig_verification.tight_layout()
@@ -520,8 +534,17 @@ class PerssonModelGUI_V2:
                 q_array, v_array, q_min=q_min, progress_callback=progress_callback
             )
 
+            # Calculate inner integral details for middle velocity (for visualization)
+            mid_v_idx = len(v_array) // 2
+            self.g_calculator.velocity = v_array[mid_v_idx]
+            detailed_results = self.g_calculator.calculate_G_with_details(
+                q_array, q_min=q_min, store_inner_integral=True
+            )
+
             self.results = {
                 '2d_results': results_2d,
+                'detailed_results': detailed_results,
+                'representative_velocity': v_array[mid_v_idx],
                 'sigma_0': sigma_0,
                 'temperature': temperature,
                 'poisson': poisson
@@ -541,7 +564,7 @@ class PerssonModelGUI_V2:
             traceback.print_exc()
 
     def _plot_g_results(self):
-        """Plot G(q,v) 2D results."""
+        """Plot G(q,v) 2D results with enhanced visualizations."""
         self.fig_results.clear()
 
         results_2d = self.results['2d_results']
@@ -550,13 +573,21 @@ class PerssonModelGUI_V2:
         G_matrix = results_2d['G_matrix']
         P_matrix = results_2d['P_matrix']
 
-        # Create 2x2 subplot layout
-        ax1 = self.fig_results.add_subplot(2, 2, 1)
-        ax2 = self.fig_results.add_subplot(2, 2, 2)
-        ax3 = self.fig_results.add_subplot(2, 2, 3)
-        ax4 = self.fig_results.add_subplot(2, 2, 4)
+        # Get detailed results if available
+        has_detailed = 'detailed_results' in self.results
+        if has_detailed:
+            detailed = self.results['detailed_results']
+            rep_v = self.results['representative_velocity']
 
-        # Plot 1: Multi-velocity G(q) curves
+        # Create 2x3 subplot layout
+        ax1 = self.fig_results.add_subplot(2, 3, 1)
+        ax2 = self.fig_results.add_subplot(2, 3, 2)
+        ax3 = self.fig_results.add_subplot(2, 3, 3)
+        ax4 = self.fig_results.add_subplot(2, 3, 4)
+        ax5 = self.fig_results.add_subplot(2, 3, 5)
+        ax6 = self.fig_results.add_subplot(2, 3, 6)
+
+        # Plot 1: Multi-velocity G(q) curves (다중 속도 G(q) 곡선)
         cmap = plt.get_cmap('viridis')
         colors = [cmap(i / len(v)) for i in range(len(v))]
 
@@ -565,43 +596,90 @@ class PerssonModelGUI_V2:
                 ax1.loglog(q, G_matrix[:, j], color=color, linewidth=1.5,
                           label=f'v={v_val:.4f} m/s')
 
-        ax1.set_xlabel('Wavenumber q (1/m)', fontweight='bold')
-        ax1.set_ylabel('G(q)', fontweight='bold')
-        ax1.set_title('G(q) for Multiple Velocities', fontweight='bold')
-        ax1.legend(fontsize=8, ncol=2)
+        ax1.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
+        ax1.set_ylabel('G(q)', fontweight='bold', fontsize=11)
+        ax1.set_title('(a) 다중 속도에서의 G(q)', fontweight='bold', fontsize=12)
+        ax1.legend(fontsize=7, ncol=2)
         ax1.grid(True, alpha=0.3)
 
-        # Plot 2: G(q,v) Heatmap
-        zeta = q / q[0]
-        im = ax2.pcolormesh(np.log10(v), np.log10(zeta), np.log10(G_matrix + 1e-20),
-                            cmap='hot', shading='auto')
-        ax2.set_xlabel('log₁₀(v) [m/s]', fontweight='bold')
-        ax2.set_ylabel('log₁₀(ζ)', fontweight='bold')
-        ax2.set_title('G(q,v) Heatmap', fontweight='bold')
+        # Plot 2: G(q,v) Heatmap (히트맵)
+        # Create proper meshgrid for pcolormesh
+        V_mesh, Q_mesh = np.meshgrid(v, q)
+        im = ax2.pcolormesh(V_mesh, Q_mesh, G_matrix,
+                            cmap='hot', shading='auto', norm=matplotlib.colors.LogNorm())
+        ax2.set_xscale('log')
+        ax2.set_yscale('log')
+        ax2.set_xlabel('속도 v (m/s)', fontweight='bold', fontsize=11)
+        ax2.set_ylabel('파수 q (1/m)', fontweight='bold', fontsize=11)
+        ax2.set_title('(b) G(q,v) 히트맵', fontweight='bold', fontsize=12)
         cbar = self.fig_results.colorbar(im, ax=ax2)
-        cbar.set_label('log₁₀(G)', fontweight='bold')
+        cbar.set_label('G', fontweight='bold', fontsize=10)
 
-        # Plot 3: Contact Area P(q,v)
+        # Plot 3: Contact Area P(q,v) (접촉 면적)
         for j, (v_val, color) in enumerate(zip(v, colors)):
             if j % max(1, len(v) // 10) == 0:
                 ax3.semilogx(q, P_matrix[:, j], color=color, linewidth=1.5,
                             label=f'v={v_val:.4f} m/s')
 
-        ax3.set_xlabel('Wavenumber q (1/m)', fontweight='bold')
-        ax3.set_ylabel('Contact Area Ratio P(q)', fontweight='bold')
-        ax3.set_title('Contact Area for Multiple Velocities', fontweight='bold')
-        ax3.legend(fontsize=8, ncol=2)
+        ax3.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
+        ax3.set_ylabel('접촉 면적 비율 P(q)', fontweight='bold', fontsize=11)
+        ax3.set_title('(c) 다중 속도에서의 접촉 면적', fontweight='bold', fontsize=12)
+        ax3.legend(fontsize=7, ncol=2)
         ax3.grid(True, alpha=0.3)
 
-        # Plot 4: Final contact area vs velocity
+        # Plot 4: Final contact area vs velocity (속도에 따른 최종 접촉 면적)
         P_final = P_matrix[-1, :]
         ax4.semilogx(v, P_final, 'ro-', linewidth=2, markersize=4)
-        ax4.set_xlabel('Velocity v (m/s)', fontweight='bold')
-        ax4.set_ylabel('Final Contact Area P(q_max)', fontweight='bold')
-        ax4.set_title('Contact Area vs Velocity', fontweight='bold')
+        ax4.set_xlabel('속도 v (m/s)', fontweight='bold', fontsize=11)
+        ax4.set_ylabel('최종 접촉 면적 P(q_max)', fontweight='bold', fontsize=11)
+        ax4.set_title('(d) 속도에 따른 접촉 면적', fontweight='bold', fontsize=12)
         ax4.grid(True, alpha=0.3)
 
-        self.fig_results.suptitle('G(q,v) 2D Matrix Results', fontweight='bold', fontsize=14)
+        # Plot 5: Inner integral visualization (내부 적분 시각화)
+        if has_detailed and 'inner_integral_details' in detailed:
+            # Plot inner integral for several q values with smoothing
+            inner_details = detailed['inner_integral_details']
+            n_samples = min(5, len(inner_details))
+            indices = np.linspace(0, len(inner_details)-1, n_samples, dtype=int)
+
+            for idx in indices:
+                detail = inner_details[idx]
+                phi = detail['phi']
+                integrand = detail['integrand']
+
+                # Apply Savitzky-Golay filter for smoothing
+                if len(integrand) >= 5:
+                    window = min(11, len(integrand) if len(integrand) % 2 == 1 else len(integrand)-1)
+                    integrand_smooth = savgol_filter(integrand, window, 3)
+                else:
+                    integrand_smooth = integrand
+
+                ax5.plot(phi, integrand_smooth, linewidth=1.5,
+                        label=f'q={q[idx]:.2e} 1/m')
+
+            ax5.set_xlabel('각도 φ (rad)', fontweight='bold', fontsize=11)
+            ax5.set_ylabel('내부 적분 피적분함수', fontweight='bold', fontsize=11)
+            ax5.set_title(f'(e) 내부 적분 (v={rep_v:.4f} m/s)', fontweight='bold', fontsize=12)
+            ax5.legend(fontsize=7)
+            ax5.grid(True, alpha=0.3)
+        else:
+            ax5.text(0.5, 0.5, '내부 적분 데이터 없음',
+                    ha='center', va='center', transform=ax5.transAxes, fontsize=10)
+            ax5.set_title('(e) 내부 적분', fontweight='bold', fontsize=12)
+
+        # Plot 6: G integrand distribution (G 피적분함수 분포)
+        if has_detailed:
+            ax6.loglog(detailed['q'], detailed['G_integrand'], 'purple', linewidth=2)
+            ax6.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
+            ax6.set_ylabel('G 피적분함수', fontweight='bold', fontsize=11)
+            ax6.set_title(f'(f) G 피적분함수 (v={rep_v:.4f} m/s)', fontweight='bold', fontsize=12)
+            ax6.grid(True, alpha=0.3)
+        else:
+            ax6.text(0.5, 0.5, '상세 데이터 없음',
+                    ha='center', va='center', transform=ax6.transAxes, fontsize=10)
+            ax6.set_title('(f) G 피적분함수', fontweight='bold', fontsize=12)
+
+        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=14)
         self.fig_results.tight_layout()
         self.canvas_results.draw()
 

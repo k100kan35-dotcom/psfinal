@@ -107,7 +107,7 @@ class ViscoelasticMaterial:
         self._E_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_prime,
-            kind='linear',
+            kind='cubic',
             fill_value='extrapolate',
             bounds_error=False
         )
@@ -115,7 +115,7 @@ class ViscoelasticMaterial:
         self._E_double_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_double_prime,
-            kind='linear',
+            kind='cubic',
             fill_value='extrapolate',
             bounds_error=False
         )
@@ -127,7 +127,7 @@ class ViscoelasticMaterial:
         self._E_abs_interp = interpolate.interp1d(
             log_freq,
             log_E_abs,
-            kind='linear',
+            kind='cubic',
             fill_value='extrapolate',
             bounds_error=False
         )

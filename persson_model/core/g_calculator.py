@@ -115,6 +115,57 @@ class GCalculator:
 
         return result
 
+    def _angle_integral_with_details(self, q: float) -> Tuple[float, dict]:
+        """
+        Compute inner integral over angle φ with detailed intermediate values.
+
+        This method returns both the integral result and the detailed
+        integrand values at each angle for visualization purposes.
+
+        Parameters
+        ----------
+        q : float
+            Wavenumber (1/m)
+
+        Returns
+        -------
+        result : float
+            Result of angle integration
+        details : dict
+            Dictionary containing:
+            - 'phi': angle array (radians)
+            - 'omega': frequency array (rad/s)
+            - 'integrand': integrand values at each angle
+        """
+        # Create angle array
+        phi = np.linspace(0, 2 * np.pi, self.n_angle_points)
+
+        # Calculate frequencies for each angle
+        # ω = q * v * cos(φ)
+        omega = q * self.velocity * np.cos(phi)
+
+        # Handle zero and negative frequencies
+        omega_eval = np.abs(omega)
+        omega_eval[omega_eval < 1e-10] = 1e-10
+
+        # Get complex modulus values
+        E_values = np.array([self.modulus_func(w) for w in omega_eval])
+
+        # Calculate integrand: |E(ω) / ((1-ν²)σ₀)|²
+        integrand = np.abs(E_values * self.prefactor)**2
+
+        # Numerical integration using trapezoidal rule
+        result = np.trapz(integrand, phi)
+
+        # Store details
+        details = {
+            'phi': phi,
+            'omega': omega,
+            'integrand': integrand
+        }
+
+        return result, details
+
     def _integrand_q(self, q: float) -> float:
         """
         Compute integrand for q integration.
@@ -318,7 +369,8 @@ class GCalculator:
     def calculate_G_with_details(
         self,
         q_values: np.ndarray,
-        q_min: Optional[float] = None
+        q_min: Optional[float] = None,
+        store_inner_integral: bool = False
     ) -> dict:
         """
         Calculate G(q) with detailed intermediate values for analysis.
@@ -332,6 +384,9 @@ class GCalculator:
             Array of wavenumbers (1/m) in ascending order
         q_min : float, optional
             Lower integration limit (default: first value in q_values)
+        store_inner_integral : bool, optional
+            If True, stores detailed inner integral values for visualization
+            (default: False)
 
         Returns
         -------
@@ -345,6 +400,8 @@ class GCalculator:
             - 'delta_G': incremental G contributions
             - 'G': cumulative G(q) values
             - 'contact_area_ratio': P(q) = erf(1/(2√G))
+            - 'inner_integral_details': (if store_inner_integral=True)
+                List of dicts with 'phi', 'omega', 'integrand' for each q
         """
         q_values = np.asarray(q_values)
 
@@ -361,13 +418,20 @@ class GCalculator:
         G_arr = np.zeros(n)
         P_arr = np.zeros(n)
 
+        # Store inner integral details if requested
+        inner_integral_details = [] if store_inner_integral else None
+
         # Calculate values for each wavenumber
         for i, q in enumerate(q_values):
             # Get PSD value
             C_q_arr[i] = self.psd_func(np.array([q]))[0]
 
             # Calculate angle integral (Avg_Modulus_Term)
-            avg_modulus_arr[i] = self._angle_integral(q)
+            if store_inner_integral:
+                avg_modulus_arr[i], details = self._angle_integral_with_details(q)
+                inner_integral_details.append(details)
+            else:
+                avg_modulus_arr[i] = self._angle_integral(q)
 
             # Calculate full integrand
             G_integrand_arr[i] = self._integrand_q(q)
@@ -393,7 +457,7 @@ class GCalculator:
             else:
                 P_arr[i] = 0.0
 
-        return {
+        result = {
             'q': q_values,
             'log_q': np.log10(q_values),
             'C_q': C_q_arr,
@@ -403,6 +467,12 @@ class GCalculator:
             'G': G_arr,
             'contact_area_ratio': P_arr
         }
+
+        # Add inner integral details if stored
+        if store_inner_integral:
+            result['inner_integral_details'] = inner_integral_details
+
+        return result
 
     def calculate_G_multi_velocity(
         self,
