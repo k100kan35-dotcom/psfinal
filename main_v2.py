@@ -1081,7 +1081,21 @@ class PerssonModelGUI_V2:
 
         # Plot 4: Final contact area vs velocity (속도에 따른 최종 접촉 면적)
         P_final = P_matrix[-1, :]
-        ax4.semilogx(v, P_final, 'ro-', linewidth=2, markersize=4)
+
+        # Create gradient color for all velocity points
+        scatter = ax4.scatter(v, P_final, c=np.arange(len(v)), cmap='viridis',
+                             s=50, zorder=3, edgecolors='black', linewidth=0.5)
+
+        # Add connecting line with gradient using line segments
+        from matplotlib.collections import LineCollection
+        points = np.array([v, P_final]).T.reshape(-1, 1, 2)
+        segments = np.concatenate([points[:-1], points[1:]], axis=1)
+        norm = plt.Normalize(0, len(v)-1)
+        lc = LineCollection(segments, cmap='viridis', norm=norm, linewidth=2, alpha=0.6)
+        lc.set_array(np.arange(len(v)))
+        ax4.add_collection(lc)
+
+        ax4.set_xscale('log')
         ax4.set_xlabel('속도 v (m/s)', fontweight='bold', fontsize=11, labelpad=5)
         ax4.set_ylabel('최종 접촉 면적 P(q_max)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
         ax4.set_title('(d) 속도에 따른 접촉 면적', fontweight='bold', fontsize=11, pad=8)
