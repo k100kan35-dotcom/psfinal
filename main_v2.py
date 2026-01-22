@@ -1000,63 +1000,64 @@ class PerssonModelGUI_V2:
         ax1.xaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
         ax1.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
 
-        # Plot 2: Gaussian stress distribution p(σ) for multiple velocities
-        # Based on Persson theory: p(σ) = (1/√(2πσ0²G)) * exp(-(σ-σ0)²/(2σ0²G))
-        # Get nominal pressure from calculation settings
-        sigma_0_MPa = self.results['sigma_0'] / 1e6  # Convert Pa to MPa
+        # Plot 2: Local stress probability distribution P(σ,ζ) for multiple velocities
+        # Persson theory: P(σ,ζ) = 1/√(4πG) [exp(-(σ-σ0)²/4G) - exp(-(σ+σ0)²/4G)]
+        # where G = σ0² * G_dimensionless (variance has dimension of stress²)
+        sigma_0_Pa = self.results['sigma_0']  # Pa
+        sigma_0_MPa = sigma_0_Pa / 1e6  # Convert Pa to MPa
 
-        # First pass: find maximum G value to set appropriate x-axis range
-        G_max = 0
-        plotted_indices = []
-        for j, v_val in enumerate(v):
-            if j % max(1, len(v) // 10) == 0:
-                G_val = G_matrix[-1, j]
-                if G_val > G_max:
-                    G_max = G_val
-                plotted_indices.append(j)
-
-        # Calculate appropriate x-axis range based on maximum std
-        # For Gaussian, 99.7% of data is within μ ± 3σ
+        # Find maximum G value to set appropriate x-axis range
+        G_max = np.max(G_matrix)
         if G_max > 0:
-            std_max = sigma_0_MPa * np.sqrt(G_max)
-            sigma_min = max(0, sigma_0_MPa - 3 * std_max)
-            sigma_max = sigma_0_MPa + 3 * std_max
+            # Variance in MPa²: variance = σ0² * G (dimensionless)
+            variance_max_MPa2 = (sigma_0_MPa**2) * G_max
+            std_max = np.sqrt(variance_max_MPa2)
+            sigma_max = sigma_0_MPa + 4 * std_max
         else:
-            sigma_min = 0
             sigma_max = 3 * sigma_0_MPa
 
-        # Create stress array with dynamic range
-        sigma_array = np.linspace(sigma_min, sigma_max, 500)
+        # Create stress array (in MPa)
+        sigma_array = np.linspace(0, sigma_max, 500)
 
-        # Second pass: plot Gaussian distributions
-        for j in plotted_indices:
-            v_val = v[j]
-            color = colors[j]  # Use same color as other plots
+        # Plot stress distributions for selected velocities
+        for j, v_val in enumerate(v):
+            if j % max(1, len(v) // 10) == 0:
+                color = colors[j]
 
-            # Get G value at the last wavenumber (most relevant for overall contact)
-            G_val = G_matrix[-1, j]
+                # Get G values at q_min (first) and q_max (last)
+                G_q0 = G_matrix[0, j]      # G at minimum wavenumber
+                G_qmax = G_matrix[-1, j]   # G at maximum wavenumber
 
-            # Gaussian stress distribution
-            # p(σ) = (1/√(2πσ0²G)) * exp(-(σ-σ0)²/(2σ0²G))
-            if G_val > 1e-10:
-                variance = (sigma_0_MPa**2) * G_val
-                p_sigma = (1 / np.sqrt(2 * np.pi * variance)) * \
-                          np.exp(-(sigma_array - sigma_0_MPa)**2 / (2 * variance))
+                # Calculate stress distribution at q0 (dotted line)
+                if G_q0 > 1e-10:
+                    # Variance in MPa²
+                    variance_q0 = (sigma_0_MPa**2) * G_q0
+                    P_sigma_q0 = (1 / np.sqrt(4 * np.pi * variance_q0)) * \
+                                 (np.exp(-(sigma_array - sigma_0_MPa)**2 / (4 * variance_q0)) - \
+                                  np.exp(-(sigma_array + sigma_0_MPa)**2 / (4 * variance_q0)))
+                    ax2.plot(sigma_array, P_sigma_q0, color=color, linestyle='--', linewidth=1.5,
+                            alpha=0.6)
 
-                # Plot line only (no fill to avoid stacking effect)
-                ax2.plot(sigma_array, p_sigma, color=color, linewidth=2,
-                        label=f'v={v_val:.4f} m/s (G={G_val:.1f})', alpha=0.8)
+                # Calculate stress distribution at q_max (solid line)
+                if G_qmax > 1e-10:
+                    # Variance in MPa²
+                    variance_qmax = (sigma_0_MPa**2) * G_qmax
+                    P_sigma_qmax = (1 / np.sqrt(4 * np.pi * variance_qmax)) * \
+                                   (np.exp(-(sigma_array - sigma_0_MPa)**2 / (4 * variance_qmax)) - \
+                                    np.exp(-(sigma_array + sigma_0_MPa)**2 / (4 * variance_qmax)))
+                    ax2.plot(sigma_array, P_sigma_qmax, color=color, linestyle='-', linewidth=2,
+                            label=f'v={v_val:.4f} m/s', alpha=0.8)
 
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
                    label=f'σ0 = {sigma_0_MPa:.2f} MPa', alpha=0.7)
 
         ax2.set_xlabel('응력 σ (MPa)', fontweight='bold', fontsize=11, labelpad=5)
-        ax2.set_ylabel('응력 분포 p(σ) (1/MPa)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax2.set_title('(b) 속도별 가우시안 응력 분포', fontweight='bold', fontsize=11, pad=8)
-        ax2.legend(fontsize=7, ncol=2, loc='upper right')
+        ax2.set_ylabel('응력 분포 P(σ)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
+        ax2.set_title('(b) 속도별 국소 응력 확률 분포 (점선: q0, 실선: qmax)', fontweight='bold', fontsize=11, pad=8)
+        ax2.legend(fontsize=6, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(sigma_min, sigma_max)  # Dynamic range to show full distribution
+        ax2.set_xlim(0, sigma_max)
 
         # Plot 3: Contact Area P(q,v) (접촉 면적)
         for j, (v_val, color) in enumerate(zip(v, colors)):
