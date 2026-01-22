@@ -1005,24 +1005,47 @@ class PerssonModelGUI_V2:
         # Get nominal pressure from calculation settings
         sigma_0_MPa = self.results['sigma_0'] / 1e6  # Convert Pa to MPa
 
-        # Create stress array (in MPa)
-        sigma_array = np.linspace(0, 3 * sigma_0_MPa, 500)
-
-        for j, (v_val, color) in enumerate(zip(v, colors)):
+        # First pass: find maximum G value to set appropriate x-axis range
+        G_max = 0
+        plotted_indices = []
+        for j, v_val in enumerate(v):
             if j % max(1, len(v) // 10) == 0:
-                # Get G value at the last wavenumber (most relevant for overall contact)
                 G_val = G_matrix[-1, j]
+                if G_val > G_max:
+                    G_max = G_val
+                plotted_indices.append(j)
 
-                # Gaussian stress distribution
-                # p(σ) = (1/√(2πσ0²G)) * exp(-(σ-σ0)²/(2σ0²G))
-                if G_val > 1e-10:
-                    variance = (sigma_0_MPa**2) * G_val
-                    p_sigma = (1 / np.sqrt(2 * np.pi * variance)) * \
-                              np.exp(-(sigma_array - sigma_0_MPa)**2 / (2 * variance))
+        # Calculate appropriate x-axis range based on maximum std
+        # For Gaussian, 99.7% of data is within μ ± 3σ
+        if G_max > 0:
+            std_max = sigma_0_MPa * np.sqrt(G_max)
+            sigma_min = max(0, sigma_0_MPa - 3 * std_max)
+            sigma_max = sigma_0_MPa + 3 * std_max
+        else:
+            sigma_min = 0
+            sigma_max = 3 * sigma_0_MPa
 
-                    # Plot line only (no fill to avoid stacking effect)
-                    ax2.plot(sigma_array, p_sigma, color=color, linewidth=2,
-                            label=f'v={v_val:.4f} m/s (G={G_val:.3f})', alpha=0.8)
+        # Create stress array with dynamic range
+        sigma_array = np.linspace(sigma_min, sigma_max, 500)
+
+        # Second pass: plot Gaussian distributions
+        for j in plotted_indices:
+            v_val = v[j]
+            color = colors[plotted_indices.index(j) % len(colors)]
+
+            # Get G value at the last wavenumber (most relevant for overall contact)
+            G_val = G_matrix[-1, j]
+
+            # Gaussian stress distribution
+            # p(σ) = (1/√(2πσ0²G)) * exp(-(σ-σ0)²/(2σ0²G))
+            if G_val > 1e-10:
+                variance = (sigma_0_MPa**2) * G_val
+                p_sigma = (1 / np.sqrt(2 * np.pi * variance)) * \
+                          np.exp(-(sigma_array - sigma_0_MPa)**2 / (2 * variance))
+
+                # Plot line only (no fill to avoid stacking effect)
+                ax2.plot(sigma_array, p_sigma, color=color, linewidth=2,
+                        label=f'v={v_val:.4f} m/s (G={G_val:.1f})', alpha=0.8)
 
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
@@ -1033,7 +1056,7 @@ class PerssonModelGUI_V2:
         ax2.set_title('(b) 속도별 가우시안 응력 분포', fontweight='bold', fontsize=11, pad=8)
         ax2.legend(fontsize=7, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(-0.1 * sigma_0_MPa, 3.5 * sigma_0_MPa)  # Extended range to show full distribution
+        ax2.set_xlim(sigma_min, sigma_max)  # Dynamic range to show full distribution
 
         # Plot 3: Contact Area P(q,v) (접촉 면적)
         for j, (v_val, color) in enumerate(zip(v, colors)):
@@ -1078,17 +1101,18 @@ class PerssonModelGUI_V2:
                           color=color, linewidth=1.5, label=f'v={v_val:.4f} m/s', alpha=0.8)
 
             ax5.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
-            ax5.set_ylabel('각도 적분 ∫dφ|E(qvcosφ)|²', fontweight='bold', fontsize=10, rotation=90, labelpad=12)
-            ax5.set_title('(e) 내부 적분: 슬립 방향 점탄성 응답', fontweight='bold', fontsize=11, pad=8)
+            ax5.set_ylabel('각도 적분 ∫dφ|E/(1-ν²)σ0|²', fontweight='bold', fontsize=10, rotation=90, labelpad=12)
+            ax5.set_title('(e) 내부 적분: 상대적 강성비', fontweight='bold', fontsize=11, pad=8)
             ax5.legend(fontsize=7, ncol=2)
             ax5.grid(True, alpha=0.3)
 
             # Add physical interpretation text box
-            textstr = ('물리적 의미: 모든 슬립 방향(φ=0~2π)에 대해\n'
-                      '복소 탄성률 |E*|² = (E\')² + (E")² 적분\n'
-                      'E" (손실 탄성률) 성분이 에너지 소산 기여\n'
-                      '높은 값 = 더 큰 점탄성 응답 = 높은 마찰\n'
-                      '각 파수(거칠기 스케일)의 마찰 기여도')
+            textstr = ('물리적 의미: ∫dφ|E*/(1-ν²)σ0|²\n'
+                      '= 외부 압력 대비 고무의 단단함을 나타내는 척도\n'
+                      'E*: 복소 탄성률 (주파수 ω=qv cosφ)\n'
+                      '(1-ν²)σ0: 평면 변형률 보정 + 명목 압력\n'
+                      '높을수록 → 고무가 단단 → 응력 불균일 증가\n'
+                      '낮을수록 → 고무가 말랑 → 완전 접촉에 가까움')
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.3)
             ax5.text(0.98, 0.02, textstr, transform=ax5.transAxes, fontsize=7,
                     verticalalignment='bottom', horizontalalignment='right', bbox=props)
