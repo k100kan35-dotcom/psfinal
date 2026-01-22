@@ -48,20 +48,38 @@ from persson_model.utils.data_loader import (
 )
 
 # Configure matplotlib for better Korean font support
-try:
-    # Try Korean fonts first, then fall back to universal fonts
-    plt.rcParams['font.family'] = 'sans-serif'
-    plt.rcParams['font.sans-serif'] = ['Malgun Gothic', 'NanumGothic', 'AppleGothic',
-                                        'DejaVu Sans', 'Arial', 'Helvetica']
-except:
-    plt.rcParams['font.family'] = 'sans-serif'
-    plt.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
+# IMPORTANT: Set unicode_minus FIRST to avoid minus sign warnings
+matplotlib.rcParams['axes.unicode_minus'] = False
 
-plt.rcParams['axes.unicode_minus'] = False
-plt.rcParams['axes.labelweight'] = 'bold'
-plt.rcParams['axes.labelsize'] = 12
-plt.rcParams['figure.titleweight'] = 'bold'
-plt.rcParams['figure.titlesize'] = 14
+# Configure fonts
+try:
+    import matplotlib.font_manager as fm
+
+    # Try to find Korean fonts on the system
+    korean_fonts = []
+    for font in fm.fontManager.ttflist:
+        font_name = font.name
+        # Check for common Korean font names
+        if any(name in font_name for name in ['Malgun', 'NanumGothic', 'NanumBarun',
+                                                'AppleGothic', 'Gulim', 'Dotum']):
+            if font_name not in korean_fonts:
+                korean_fonts.append(font_name)
+
+    if korean_fonts:
+        matplotlib.rcParams['font.family'] = 'sans-serif'
+        matplotlib.rcParams['font.sans-serif'] = korean_fonts + ['DejaVu Sans', 'Arial', 'Helvetica']
+    else:
+        # Fallback to common fonts
+        matplotlib.rcParams['font.family'] = 'sans-serif'
+        matplotlib.rcParams['font.sans-serif'] = ['Malgun Gothic', 'DejaVu Sans', 'Arial']
+except:
+    matplotlib.rcParams['font.family'] = 'sans-serif'
+    matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
+
+matplotlib.rcParams['axes.labelweight'] = 'bold'
+matplotlib.rcParams['axes.labelsize'] = 12
+matplotlib.rcParams['figure.titleweight'] = 'bold'
+matplotlib.rcParams['figure.titlesize'] = 14
 
 
 class PerssonModelGUI_V2:

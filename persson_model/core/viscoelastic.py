@@ -104,10 +104,21 @@ class ViscoelasticMaterial:
             np.maximum(self._loss_modulus[self._frequencies > 0], 1.0)
         )
 
+        # Choose interpolation method based on number of data points
+        # Cubic spline requires at least 4 points and can be unstable with extrapolation
+        # Use quadratic for moderate data, linear for sparse data
+        n_points = len(log_freq)
+        if n_points >= 20:
+            interp_kind = 'quadratic'  # Safer than cubic for extrapolation
+        elif n_points >= 4:
+            interp_kind = 'quadratic'
+        else:
+            interp_kind = 'linear'
+
         self._E_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_prime,
-            kind='cubic',
+            kind=interp_kind,
             fill_value='extrapolate',
             bounds_error=False
         )
@@ -115,7 +126,7 @@ class ViscoelasticMaterial:
         self._E_double_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_double_prime,
-            kind='cubic',
+            kind=interp_kind,
             fill_value='extrapolate',
             bounds_error=False
         )
@@ -127,7 +138,7 @@ class ViscoelasticMaterial:
         self._E_abs_interp = interpolate.interp1d(
             log_freq,
             log_E_abs,
-            kind='cubic',
+            kind=interp_kind,
             fill_value='extrapolate',
             bounds_error=False
         )
