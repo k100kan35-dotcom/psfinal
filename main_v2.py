@@ -22,19 +22,20 @@ from typing import Optional
 import sys
 import os
 
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Add current directory to path
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from core.g_calculator import GCalculator
-from core.psd_models import FractalPSD, MeasuredPSD
-from core.viscoelastic import ViscoelasticMaterial
-from core.contact import ContactMechanics
-from utils.output import (
+from persson_model.core.g_calculator import GCalculator
+from persson_model.core.psd_models import FractalPSD, MeasuredPSD
+from persson_model.core.viscoelastic import ViscoelasticMaterial
+from persson_model.core.contact import ContactMechanics
+from persson_model.utils.output import (
     save_calculation_details_csv,
     save_summary_txt,
     export_for_plotting,
     format_parameters_dict
 )
-from utils.data_loader import (
+from persson_model.utils.data_loader import (
     load_psd_from_file,
     load_dma_from_file,
     create_material_from_dma,
@@ -76,8 +77,8 @@ class PerssonModelGUI_V2:
         """Load default measured data on startup."""
         try:
             # Get data directory
-            base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-            data_dir = os.path.join(base_dir, '..', 'examples', 'data')
+            base_dir = os.path.dirname(os.path.abspath(__file__))
+            data_dir = os.path.join(base_dir, 'examples', 'data')
 
             psd_file = os.path.join(data_dir, 'measured_psd.txt')
             dma_file = os.path.join(data_dir, 'measured_dma.txt')
