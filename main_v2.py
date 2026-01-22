@@ -19,7 +19,10 @@ from tkinter import ttk, filedialog, messagebox
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
+# Configure matplotlib to handle mathematical symbols properly
 import matplotlib.pyplot as plt
+matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+matplotlib.rcParams['axes.unicode_minus'] = False  # Fix minus sign issue
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from scipy.signal import savgol_filter
@@ -220,16 +223,6 @@ class PerssonModelGUI_V2:
         self.notebook.add(self.tab_friction, text="4. 마찰 분석")
         self._create_friction_tab(self.tab_friction)
 
-        # Tab 5: RMS Analysis (Parseval theorem)
-        self.tab_rms = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_rms, text="5. RMS 분석")
-        self._create_rms_tab(self.tab_rms)
-
-        # Tab 6: Concept Visualization (Spatial domain slope variance)
-        self.tab_concept = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_concept, text="6. 개념 이해")
-        self._create_concept_tab(self.tab_concept)
-
     def _create_verification_tab(self, parent):
         """Create input data verification tab."""
         # Instruction label
@@ -315,6 +308,12 @@ class PerssonModelGUI_V2:
             command=self._update_verification_plots
         ).pack(side=tk.LEFT, padx=5)
 
+        ttk.Button(
+            btn_frame,
+            text="그래프 저장",
+            command=lambda: self._save_plot(self.fig_verification, "verification_plot")
+        ).pack(side=tk.LEFT, padx=5)
+
     def _create_parameters_tab(self, parent):
         """Create calculation parameters tab."""
         # Instruction
@@ -387,6 +386,12 @@ class PerssonModelGUI_V2:
         self.n_q_var = tk.StringVar(value="100")
         ttk.Entry(input_frame, textvariable=self.n_q_var, width=15).grid(row=row, column=1, pady=5)
 
+        # Target RMS Slope (for q1 determination)
+        row += 1
+        ttk.Label(input_frame, text="목표 RMS Slope (q₁ 결정):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.target_rms_slope_var = tk.StringVar(value="1.3")
+        ttk.Entry(input_frame, textvariable=self.target_rms_slope_var, width=15).grid(row=row, column=1, pady=5)
+
         # PSD type
         row += 1
         ttk.Label(input_frame, text="PSD 유형:").grid(row=row, column=0, sticky=tk.W, pady=5)
@@ -453,6 +458,16 @@ class PerssonModelGUI_V2:
 
         self.fig_calc_progress.tight_layout()
 
+        # Save button for calculation progress plot
+        save_btn_frame = ttk.Frame(parent)
+        save_btn_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Button(
+            save_btn_frame,
+            text="계산 과정 그래프 저장",
+            command=lambda: self._save_plot(self.fig_calc_progress, "calculation_progress")
+        ).pack(side=tk.LEFT, padx=5)
+
     def _create_results_tab(self, parent):
         """Create G(q,v) results tab."""
         # Instruction
@@ -477,6 +492,16 @@ class PerssonModelGUI_V2:
         toolbar = NavigationToolbar2Tk(self.canvas_results, plot_frame)
         toolbar.update()
 
+        # Save button
+        save_btn_frame = ttk.Frame(parent)
+        save_btn_frame.pack(fill=tk.X, padx=10, pady=5)
+
+        ttk.Button(
+            save_btn_frame,
+            text="결과 그래프 저장",
+            command=lambda: self._save_plot(self.fig_results, "results_plot")
+        ).pack(side=tk.LEFT, padx=5)
+
     def _create_friction_tab(self, parent):
         """Create friction coefficient analysis tab."""
         # Instruction
@@ -499,207 +524,6 @@ class PerssonModelGUI_V2:
         scrollbar = ttk.Scrollbar(text_frame, command=self.results_text.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.results_text.config(yscrollcommand=scrollbar.set)
-
-    def _create_rms_tab(self, parent):
-        """Create RMS analysis tab based on Parseval theorem."""
-        # Instruction
-        instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
-        instruction.pack(fill=tk.X, padx=10, pady=5)
-
-        ttk.Label(instruction, text=
-            "Parseval 정리를 이용한 RMS 높이 및 기울기 분석.\n"
-            "PSD로부터 표면 거칠기 특성을 정량화합니다.",
-            font=('Arial', 10)
-        ).pack()
-
-        # Plot area
-        plot_frame = ttk.Frame(parent)
-        plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-
-        # Create figure with 3 subplots
-        self.fig_rms = Figure(figsize=(14, 10), dpi=100)
-
-        self.ax_rms_cumulative = self.fig_rms.add_subplot(311)
-        self.ax_rms_contribution = self.fig_rms.add_subplot(312)
-        self.ax_rms_spectrum = self.fig_rms.add_subplot(313)
-
-        self.canvas_rms = FigureCanvasTkAgg(self.fig_rms, plot_frame)
-        self.canvas_rms.draw()
-        self.canvas_rms.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        toolbar = NavigationToolbar2Tk(self.canvas_rms, plot_frame)
-        toolbar.update()
-
-        # Calculate button
-        btn_frame = ttk.Frame(parent)
-        btn_frame.pack(fill=tk.X, padx=10, pady=5)
-
-        ttk.Button(
-            btn_frame,
-            text="RMS 분석 실행",
-            command=self._calculate_rms_analysis
-        ).pack(side=tk.LEFT, padx=5)
-
-        # Results summary
-        self.rms_summary_var = tk.StringVar(value="분석 전")
-        summary_label = ttk.Label(
-            btn_frame,
-            textvariable=self.rms_summary_var,
-            font=('Arial', 10, 'bold'),
-            foreground='blue'
-        )
-        summary_label.pack(side=tk.LEFT, padx=20)
-
-    def _create_concept_tab(self, parent):
-        """Create spatial domain slope variance concept visualization tab."""
-        # Explanation text at top
-        instruction = ttk.LabelFrame(parent, text="파서벌 정리와 q₁의 관계", padding=10)
-        instruction.pack(fill=tk.X, padx=10, pady=5)
-
-        explanation_text = """1. 기울기의 분산이란?
-   왼쪽 그래프의 표면이 거칠어질수록(빨간선), 오른쪽 그래프인 '기울기 분포'가 옆으로 넓게 퍼집니다.
-   이 퍼진 정도(분산)가 바로 ⟨(∇h)²⟩입니다.
-
-2. PSD와 무슨 상관인가요?
-   파서벌 정리에 의해, PSD 그래프의 면적(정확히는 q³C(q)의 적분)은
-   이 '기울기 분포의 너비'와 정확히 같습니다.
-
-3. 왜 1.3인가요?
-   고무가 도로 표면을 꽉 물었을 때, 고무가 감당할 수 있는 기울기의 한계(분산의 제곱근)가
-   경험적으로 약 1.3입니다. 우리는 적분값을 1.3에 맞춤으로써,
-   고무가 실제로 느끼는 유효한 미세 거칠기 한계(q₁)를 역으로 찾아내는 것입니다.
-        """
-
-        ttk.Label(instruction, text=explanation_text,
-                 font=('Arial', 9), justify=tk.LEFT).pack()
-
-        # Plot area
-        plot_frame = ttk.Frame(parent)
-        plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-
-        # Create figure with 2 subplots (side by side)
-        self.fig_concept = Figure(figsize=(14, 6), dpi=100)
-        self.ax_profile = self.fig_concept.add_subplot(121)
-        self.ax_histogram = self.fig_concept.add_subplot(122)
-
-        self.canvas_concept = FigureCanvasTkAgg(self.fig_concept, plot_frame)
-        self.canvas_concept.draw()
-        self.canvas_concept.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        toolbar = NavigationToolbar2Tk(self.canvas_concept, plot_frame)
-        toolbar.update()
-
-        # Generate button
-        btn_frame = ttk.Frame(parent)
-        btn_frame.pack(fill=tk.X, padx=10, pady=5)
-
-        ttk.Button(
-            btn_frame,
-            text="개념 시각화 생성",
-            command=self._generate_concept_visualization
-        ).pack(side=tk.LEFT, padx=5)
-
-        # Generate initial visualization
-        self._generate_concept_visualization()
-
-    def _generate_concept_visualization(self):
-        """Generate spatial domain slope variance visualization."""
-        try:
-            # Clear previous plots
-            self.ax_profile.clear()
-            self.ax_histogram.clear()
-
-            # Create x array
-            x = np.linspace(0, 10, 500)
-
-            # Create two surfaces with different roughness
-            # Smooth surface (low RMS slope ~ 0.1)
-            h_smooth = np.sin(x)
-
-            # Rough surface (high RMS slope ~ 1.3)
-            h_rough = np.sin(x) + 0.5*np.sin(10*x) + 0.2*np.sin(30*x)
-
-            # Plot surface profiles
-            self.ax_profile.plot(x, h_smooth, 'b-', linewidth=2.5, label='부드러운 표면 (RMS Slope ≈ 0.3)', alpha=0.8)
-            self.ax_profile.plot(x, h_rough, 'r-', linewidth=2.5, label='거친 표면 (RMS Slope ≈ 1.3)', alpha=0.8)
-
-            # Add annotation arrow pointing to steep slope
-            steep_idx = 150  # Find a steep section
-            self.ax_profile.annotate('기울기 ∇h\n(Slope)',
-                                    xy=(x[steep_idx], h_rough[steep_idx]),
-                                    xytext=(x[steep_idx]+1, h_rough[steep_idx]+1),
-                                    arrowprops=dict(arrowstyle='->', color='red', lw=2),
-                                    fontsize=11, fontweight='bold', color='red')
-
-            self.ax_profile.set_xlabel('위치 x (mm)', fontweight='bold', fontsize=11)
-            self.ax_profile.set_ylabel('높이 h (μm)', fontweight='bold', fontsize=11)
-            self.ax_profile.set_title('그래프 A: 표면 단면 프로파일', fontweight='bold', fontsize=12)
-            self.ax_profile.legend(loc='upper right', fontsize=10)
-            self.ax_profile.grid(True, alpha=0.3)
-
-            # Calculate slopes using gradient
-            slope_smooth = np.gradient(h_smooth, x)
-            slope_rough = np.gradient(h_rough, x)
-
-            # Calculate RMS slopes
-            rms_slope_smooth = np.sqrt(np.mean(slope_smooth**2))
-            rms_slope_rough = np.sqrt(np.mean(slope_rough**2))
-
-            # Plot histograms of slopes
-            from scipy import stats
-
-            # Create KDE for smooth distribution
-            kde_smooth = stats.gaussian_kde(slope_smooth)
-            slope_range = np.linspace(-5, 5, 200)
-            pdf_smooth = kde_smooth(slope_range)
-
-            # Create KDE for rough distribution
-            kde_rough = stats.gaussian_kde(slope_rough)
-            pdf_rough = kde_rough(slope_range)
-
-            # Plot distributions
-            self.ax_histogram.plot(slope_range, pdf_smooth, 'b-', linewidth=2.5,
-                                  label=f'부드러운 (σ={rms_slope_smooth:.2f})', alpha=0.8)
-            self.ax_histogram.fill_between(slope_range, 0, pdf_smooth, color='b', alpha=0.2)
-
-            self.ax_histogram.plot(slope_range, pdf_rough, 'r-', linewidth=2.5,
-                                  label=f'거친 (σ={rms_slope_rough:.2f})', alpha=0.8)
-            self.ax_histogram.fill_between(slope_range, 0, pdf_rough, color='r', alpha=0.2)
-
-            # Add width annotations
-            # For rough distribution
-            std_rough = np.std(slope_rough)
-            self.ax_histogram.annotate('',
-                                      xy=(-std_rough, pdf_rough[len(pdf_rough)//2]),
-                                      xytext=(std_rough, pdf_rough[len(pdf_rough)//2]),
-                                      arrowprops=dict(arrowstyle='<->', color='red', lw=2))
-            self.ax_histogram.text(0, pdf_rough[len(pdf_rough)//2] * 1.3,
-                                  f'폭(분산) = ⟨(∇h)²⟩ = {rms_slope_rough**2:.2f}',
-                                  ha='center', fontsize=10, fontweight='bold', color='red',
-                                  bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
-
-            self.ax_histogram.set_xlabel('기울기 ∇h (Slope)', fontweight='bold', fontsize=11)
-            self.ax_histogram.set_ylabel('확률 밀도 (Probability Density)', fontweight='bold', fontsize=11)
-            self.ax_histogram.set_title('그래프 B: 기울기 분포 히스토그램', fontweight='bold', fontsize=12)
-            self.ax_histogram.legend(loc='upper right', fontsize=10)
-            self.ax_histogram.grid(True, alpha=0.3)
-
-            # Add connection text
-            textstr = (f'공간 영역: ⟨(∇h)²⟩ = {rms_slope_rough**2:.2f}\n'
-                      f'↕\n'
-                      f'주파수 영역: 2π∫q³C(q)dq = ⟨(∇h)²⟩')
-            props = dict(boxstyle='round', facecolor='lightyellow', alpha=0.9, edgecolor='black', linewidth=2)
-            self.ax_histogram.text(0.98, 0.02, textstr, transform=self.ax_histogram.transAxes,
-                                  fontsize=9, verticalalignment='bottom', horizontalalignment='right',
-                                  bbox=props, fontweight='bold')
-
-            self.fig_concept.tight_layout()
-            self.canvas_concept.draw()
-
-        except Exception as e:
-            messagebox.showerror("Error", f"개념 시각화 생성 실패:\n{str(e)}")
-            import traceback
-            traceback.print_exc()
 
     def _create_status_bar(self):
         """Create status bar."""
@@ -928,6 +752,28 @@ class PerssonModelGUI_V2:
             messagebox.showerror("Error", f"스무딩 적용 실패:\n{str(e)}")
             import traceback
             traceback.print_exc()
+
+    def _save_plot(self, fig, default_name):
+        """Save matplotlib figure to file."""
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".png",
+            initialfile=f"{default_name}.png",
+            filetypes=[
+                ("PNG files", "*.png"),
+                ("PDF files", "*.pdf"),
+                ("SVG files", "*.svg"),
+                ("JPEG files", "*.jpg"),
+                ("All files", "*.*")
+            ]
+        )
+
+        if filename:
+            try:
+                fig.savefig(filename, dpi=300, bbox_inches='tight')
+                messagebox.showinfo("Success", f"그래프가 저장되었습니다:\n{filename}")
+                self.status_var.set(f"그래프 저장 완료: {filename}")
+            except Exception as e:
+                messagebox.showerror("Error", f"그래프 저장 실패:\n{str(e)}")
 
     def _run_calculation(self):
         """Run G(q,v) 2D calculation."""
@@ -1268,12 +1114,12 @@ class PerssonModelGUI_V2:
                 q_int = q_parse[:i+1]
                 C_int = C_q_parse[:i+1]
                 # Integrate q³C(q) with 2π factor
-                slope_squared_cumulative[i] = 2 * np.pi * np.trapz(q_int**3 * C_int, q_int)
+                slope_squared_cumulative[i] = 2 * np.pi * np.trapezoid(q_int**3 * C_int, q_int)
 
             slope_rms_cumulative = np.sqrt(slope_squared_cumulative)
 
-            # Find q1 where slope_rms = target (1.3)
-            target_slope_rms = 1.3
+            # Find q1 where slope_rms = target (from parameter settings)
+            target_slope_rms = float(self.target_rms_slope_var.get())
             q1_idx = np.argmax(slope_rms_cumulative >= target_slope_rms)
 
             if q1_idx > 0:
@@ -1400,171 +1246,6 @@ Persson Friction Calculator v2.1 - User Guide
    - Contact area ratio analysis
         """
         messagebox.showinfo("User Guide", help_text)
-
-    def _calculate_rms_analysis(self):
-        """Calculate and plot RMS analysis based on Parseval theorem."""
-        if self.psd_model is None:
-            messagebox.showwarning("Warning", "No PSD data loaded!")
-            return
-
-        try:
-            # Get q range from settings
-            q_min = float(self.q_min_var.get())
-            q_max = float(self.q_max_var.get())
-
-            # Create fine q array for integration
-            q_array = np.logspace(np.log10(q_min), np.log10(q_max), 1000)
-            C_q = self.psd_model(q_array)
-
-            # Calculate cumulative RMS height and slope using correct Parseval formulas
-            h_rms_cumulative = np.zeros_like(q_array)
-            slope_rms_cumulative = np.zeros_like(q_array)
-
-            for i in range(len(q_array)):
-                q_int = q_array[:i+1]
-                C_int = C_q[:i+1]
-
-                # Parseval theorem: h_rms² = ∫ C(q) dq
-                h_rms_cumulative[i] = np.sqrt(np.trapz(C_int, q_int))
-                # RMS slope (correct): Slope² = 2π∫ q³C(q) dq
-                slope_squared = 2 * np.pi * np.trapz(q_int**3 * C_int, q_int)
-                slope_rms_cumulative[i] = np.sqrt(slope_squared)
-
-            # Find q1 where slope_rms reaches target (default 1.3)
-            target_slope_rms = 1.3
-            q1_idx = np.argmax(slope_rms_cumulative >= target_slope_rms)
-
-            if q1_idx > 0 and q1_idx < len(q_array) - 1:
-                # Use interpolation for accurate q1
-                from scipy.interpolate import interp1d
-                idx_start = max(0, q1_idx - 10)
-                idx_end = min(len(q_array), q1_idx + 10)
-                f_interp = interp1d(slope_rms_cumulative[idx_start:idx_end],
-                                   q_array[idx_start:idx_end],
-                                   kind='linear', fill_value='extrapolate')
-                q1_determined = float(f_interp(target_slope_rms))
-            else:
-                q1_determined = None
-
-            # Calculate incremental contribution per decade
-            log_q = np.log10(q_array)
-            dh_rms_dlogq = np.gradient(h_rms_cumulative**2, log_q)
-            dslope_rms_dlogq = np.gradient(slope_rms_cumulative**2, log_q)
-
-            # Clear previous plots
-            self.ax_rms_cumulative.clear()
-            self.ax_rms_contribution.clear()
-            self.ax_rms_spectrum.clear()
-
-            # Plot 1: Cumulative RMS values
-            ax1 = self.ax_rms_cumulative
-            ax1_twin = ax1.twinx()
-
-            line1 = ax1.semilogx(q_array, h_rms_cumulative * 1e6, 'b-', linewidth=2.5, label='누적 h_rms')
-            line2 = ax1_twin.semilogx(q_array, slope_rms_cumulative, 'r-', linewidth=2.5, label='누적 slope_rms')
-
-            # Add target line and q1 determination
-            if q1_determined is not None:
-                # Horizontal line at target slope
-                line3 = ax1_twin.axhline(target_slope_rms, color='orange', linestyle='--',
-                                        linewidth=2, label=f'목표 Slope={target_slope_rms}', alpha=0.7)
-                # Vertical line at q1
-                line4 = ax1_twin.axvline(q1_determined, color='green', linestyle='--',
-                                        linewidth=2, label=f'q₁={q1_determined:.2e}', alpha=0.7)
-                # Intersection marker
-                ax1_twin.plot(q1_determined, target_slope_rms, 'ro', markersize=12,
-                             markeredgecolor='black', markeredgewidth=2, zorder=10,
-                             label='교차점 (q₁ 결정)')
-
-            ax1.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
-            ax1.set_ylabel('누적 h_rms (μm)', fontweight='bold', fontsize=11, color='b')
-            ax1_twin.set_ylabel('누적 RMS 기울기', fontweight='bold', fontsize=11, color='r')
-            ax1.set_title('(a) Parseval 정리: 누적 RMS 값 및 q₁ 자동 결정', fontweight='bold', fontsize=12)
-            ax1.grid(True, alpha=0.3)
-            ax1.tick_params(axis='y', labelcolor='b')
-            ax1_twin.tick_params(axis='y', labelcolor='r')
-
-            # Combined legend
-            if q1_determined is not None:
-                lines = line1 + line2 + [line3, line4]
-                labels = [l.get_label() for l in line1 + line2] + [line3.get_label(), line4.get_label()]
-                ax1.legend(lines, labels, loc='upper left', fontsize=9, framealpha=0.9)
-            else:
-                lines = line1 + line2
-                labels = [l.get_label() for l in lines]
-                ax1.legend(lines, labels, loc='upper left', fontsize=10)
-
-            # Plot 2: Incremental contribution per decade
-            ax2 = self.ax_rms_contribution
-            ax2_twin = ax2.twinx()
-
-            line3 = ax2.semilogx(q_array, dh_rms_dlogq * 1e12, 'b-', linewidth=2, label='dh²/d(log q)')
-            line4 = ax2_twin.semilogx(q_array, dslope_rms_dlogq, 'r-', linewidth=2, label='d(slope²)/d(log q)')
-
-            ax2.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
-            ax2.set_ylabel('h² 기여도 (μm²/decade)', fontweight='bold', fontsize=11, color='b')
-            ax2_twin.set_ylabel('slope² 기여도 (1/decade)', fontweight='bold', fontsize=11, color='r')
-            ax2.set_title('(b) 파수별 기여도 (각 decade의 기여량)', fontweight='bold', fontsize=12)
-            ax2.grid(True, alpha=0.3)
-            ax2.tick_params(axis='y', labelcolor='b')
-            ax2_twin.tick_params(axis='y', labelcolor='r')
-
-            lines2 = line3 + line4
-            labels2 = [l.get_label() for l in lines2]
-            ax2.legend(lines2, labels2, loc='upper left', fontsize=10)
-
-            # Plot 3: PSD spectrum with annotations
-            ax3 = self.ax_rms_spectrum
-            ax3.loglog(q_array, C_q, 'g-', linewidth=2.5, label='C(q)')
-
-            # Calculate and show Hurst exponent
-            mid_idx_start = len(q_array) // 3
-            mid_idx_end = 2 * len(q_array) // 3
-            log_q_fit = np.log10(q_array[mid_idx_start:mid_idx_end])
-            log_C_fit = np.log10(C_q[mid_idx_start:mid_idx_end])
-            slope_fit = np.polyfit(log_q_fit, log_C_fit, 1)[0]
-            H = -slope_fit / 2 - 1
-
-            ax3.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11)
-            ax3.set_ylabel('PSD C(q) (m⁴)', fontweight='bold', fontsize=11)
-            ax3.set_title(f'(c) PSD 스펙트럼 (Hurst 지수 H ≈ {H:.3f})', fontweight='bold', fontsize=12)
-            ax3.grid(True, alpha=0.3)
-            ax3.legend(loc='upper right', fontsize=10)
-
-            # Add wavelength scale annotations
-            wavelengths = [1e-3, 1e-4, 1e-5, 1e-6]  # 1mm, 100μm, 10μm, 1μm
-            for lam in wavelengths:
-                q_lam = 2 * np.pi / lam
-                if q_min < q_lam < q_max:
-                    ax3.axvline(q_lam, color='gray', linestyle='--', alpha=0.5)
-                    if lam >= 1e-3:
-                        ax3.text(q_lam, ax3.get_ylim()[0] * 1.5, f'{lam*1e3:.0f}mm',
-                                rotation=90, fontsize=8, alpha=0.7)
-                    else:
-                        ax3.text(q_lam, ax3.get_ylim()[0] * 1.5, f'{lam*1e6:.0f}μm',
-                                rotation=90, fontsize=8, alpha=0.7)
-
-            self.fig_rms.tight_layout()
-            self.canvas_rms.draw()
-
-            # Update summary
-            final_h_rms = h_rms_cumulative[-1] * 1e6  # μm
-            final_slope_rms = slope_rms_cumulative[-1]
-            if q1_determined is not None:
-                self.rms_summary_var.set(
-                    f"h_rms = {final_h_rms:.3f} μm | slope_rms = {final_slope_rms:.4f} | "
-                    f"q₁ = {q1_determined:.2e} (1/m) | Hurst H = {H:.3f}"
-                )
-            else:
-                self.rms_summary_var.set(
-                    f"h_rms = {final_h_rms:.3f} μm | slope_rms = {final_slope_rms:.4f} | Hurst H = {H:.3f}"
-                )
-            self.status_var.set(f"RMS 분석 완료: h_rms={final_h_rms:.3f}μm, slope={final_slope_rms:.4f}")
-
-        except Exception as e:
-            messagebox.showerror("Error", f"RMS 분석 실패:\n{str(e)}")
-            import traceback
-            traceback.print_exc()
 
     def _show_about(self):
         """Show about dialog."""
