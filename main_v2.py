@@ -21,8 +21,11 @@ import matplotlib
 matplotlib.use('TkAgg')
 # Configure matplotlib to handle mathematical symbols properly
 import matplotlib.pyplot as plt
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 matplotlib.rcParams['axes.unicode_minus'] = False  # Fix minus sign issue
+matplotlib.rcParams['text.usetex'] = False  # Disable LaTeX to avoid font issues
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from scipy.signal import savgol_filter
@@ -388,7 +391,7 @@ class PerssonModelGUI_V2:
 
         # Target RMS Slope (for q1 determination)
         row += 1
-        ttk.Label(input_frame, text="목표 RMS Slope (q₁ 결정):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="목표 RMS Slope (q1 결정):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.target_rms_slope_var = tk.StringVar(value="1.3")
         ttk.Entry(input_frame, textvariable=self.target_rms_slope_var, width=15).grid(row=row, column=1, pady=5)
 
@@ -434,7 +437,7 @@ class PerssonModelGUI_V2:
 
         self.calc_status_label = ttk.Label(
             status_display_frame,
-            text="대기 중 | v = - m/s | q 범위 = - ~ - (1/m) | ω 범위 = - ~ - (rad/s)",
+            text="대기 중 | v = - m/s | q 범위 = - ~ - (1/m) | f 범위 = - ~ - (Hz)",
             font=('Arial', 10, 'bold'),
             foreground='blue'
         )
@@ -819,13 +822,14 @@ class PerssonModelGUI_V2:
                 # Plot DMA master curve
                 if self.material is not None:
                     omega_plot = np.logspace(-2, 8, 200)
+                    f_plot = omega_plot / (2 * np.pi)  # Convert to Hz
                     E_prime = self.material.get_storage_modulus(omega_plot)
                     E_double_prime = self.material.get_loss_modulus(omega_plot)
 
-                    self.ax_calc_progress.plot(omega_plot, E_prime, 'b-', linewidth=2, label="E' (저장 탄성률)")
-                    self.ax_calc_progress.plot(omega_plot, E_double_prime, 'r--', linewidth=2, label="E'' (손실 탄성률)")
+                    self.ax_calc_progress.plot(f_plot, E_prime, 'b-', linewidth=2, label="E' (저장 탄성률)")
+                    self.ax_calc_progress.plot(f_plot, E_double_prime, 'r--', linewidth=2, label="E'' (손실 탄성률)")
 
-                    self.ax_calc_progress.set_xlabel('각주파수 ω (rad/s)', fontsize=11, fontweight='bold')
+                    self.ax_calc_progress.set_xlabel('주파수 f (Hz)', fontsize=11, fontweight='bold')
                     self.ax_calc_progress.set_ylabel('탄성률 (Pa)', fontsize=11, fontweight='bold')
                     self.ax_calc_progress.set_xscale('log')
                     self.ax_calc_progress.set_yscale('log')
@@ -848,17 +852,19 @@ class PerssonModelGUI_V2:
                     # Calculate frequency and wavenumber ranges
                     omega_min = q_array[0] * current_v
                     omega_max = q_array[-1] * current_v
+                    f_min = omega_min / (2 * np.pi)  # Convert to Hz
+                    f_max = omega_max / (2 * np.pi)  # Convert to Hz
                     q_min_used = q_array[0]
                     q_max_used = q_array[-1]
 
                     # Update main status bar
-                    self.status_var.set(f"계산 중... v={current_v:.4f} m/s (ω: {omega_min:.2e} ~ {omega_max:.2e} rad/s)")
+                    self.status_var.set(f"계산 중... v={current_v:.4f} m/s (f: {f_min:.2e} ~ {f_max:.2e} Hz)")
 
                     # Update calculation status label
                     self.calc_status_label.config(
                         text=f"계산 중 ({percent:.0f}%) | v = {current_v:.4f} m/s | "
                              f"q 범위 = {q_min_used:.2e} ~ {q_max_used:.2e} (1/m) | "
-                             f"ω 범위 = {omega_min:.2e} ~ {omega_max:.2e} (rad/s)",
+                             f"f 범위 = {f_min:.2e} ~ {f_max:.2e} (Hz)",
                         foreground='red'
                     )
 
@@ -871,10 +877,10 @@ class PerssonModelGUI_V2:
 
                         # Add vertical band to show current frequency range being used
                         # Use yellow color with edge for better visibility
-                        band = self.ax_calc_progress.axvspan(omega_min, omega_max,
-                                                            alpha=0.3, color='yellow',
+                        band = self.ax_calc_progress.axvspan(f_min, f_max,
+                                                            alpha=0.3, facecolor='yellow',
                                                             edgecolor='orange', linewidth=2,
-                                                            zorder=10)
+                                                            zorder=0)  # Behind curves
                         band._is_highlight = True
 
                         self.canvas_calc_progress.draw()
@@ -995,7 +1001,7 @@ class PerssonModelGUI_V2:
         ax1.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
 
         # Plot 2: Gaussian stress distribution p(σ) for multiple velocities
-        # Based on Persson theory: p(σ) = (1/√(2πσ₀²G)) * exp(-(σ-σ₀)²/(2σ₀²G))
+        # Based on Persson theory: p(σ) = (1/√(2πσ0²G)) * exp(-(σ-σ0)²/(2σ0²G))
         # Get nominal pressure from calculation settings
         sigma_0_MPa = self.results['sigma_0'] / 1e6  # Convert Pa to MPa
 
@@ -1008,7 +1014,7 @@ class PerssonModelGUI_V2:
                 G_val = G_matrix[-1, j]
 
                 # Gaussian stress distribution
-                # p(σ) = (1/√(2πσ₀²G)) * exp(-(σ-σ₀)²/(2σ₀²G))
+                # p(σ) = (1/√(2πσ0²G)) * exp(-(σ-σ0)²/(2σ0²G))
                 if G_val > 1e-10:
                     variance = (sigma_0_MPa**2) * G_val
                     p_sigma = (1 / np.sqrt(2 * np.pi * variance)) * \
@@ -1025,14 +1031,14 @@ class PerssonModelGUI_V2:
 
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
-                   label=f'σ₀ = {sigma_0_MPa:.2f} MPa', alpha=0.7)
+                   label=f'σ0 = {sigma_0_MPa:.2f} MPa', alpha=0.7)
 
         ax2.set_xlabel('응력 σ (MPa)', fontweight='bold', fontsize=11, labelpad=5)
         ax2.set_ylabel('응력 분포 p(σ) (1/MPa)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
         ax2.set_title('(b) 속도별 가우시안 응력 분포', fontweight='bold', fontsize=11, pad=8)
         ax2.legend(fontsize=7, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(0, 3 * sigma_0_MPa)
+        ax2.set_xlim(-0.1 * sigma_0_MPa, 3.5 * sigma_0_MPa)  # Extended range to show full distribution
 
         # Plot 3: Contact Area P(q,v) (접촉 면적)
         for j, (v_val, color) in enumerate(zip(v, colors)):
@@ -1084,8 +1090,9 @@ class PerssonModelGUI_V2:
 
             # Add physical interpretation text box
             textstr = ('물리적 의미: 모든 슬립 방향(φ=0~2π)에 대해\n'
-                      '탄성률의 제곱을 적분 → 에너지 손실량 측정\n'
-                      '높은 값 = 더 많은 변형 에너지 소산 = 높은 마찰\n'
+                      '복소 탄성률 |E*|² = (E\')² + (E")² 적분\n'
+                      'E" (손실 탄성률) 성분이 에너지 소산 기여\n'
+                      '높은 값 = 더 큰 점탄성 응답 = 높은 마찰\n'
                       '각 파수(거칠기 스케일)의 마찰 기여도')
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.3)
             ax5.text(0.98, 0.02, textstr, transform=ax5.transAxes, fontsize=7,
@@ -1156,7 +1163,7 @@ class PerssonModelGUI_V2:
             # Add vertical line at q1
             if q1_idx > 0:
                 ax6.axvline(q1_determined, color='green', linestyle='--', linewidth=2,
-                           label=f'결정된 q₁ = {q1_determined:.2e} (1/m)', alpha=0.7, zorder=5)
+                           label=f'결정된 q1 = {q1_determined:.2e} (1/m)', alpha=0.7, zorder=5)
 
                 # Mark intersection point
                 ax6.plot(q1_determined, target_slope_rms, 'ro', markersize=12,
@@ -1165,7 +1172,7 @@ class PerssonModelGUI_V2:
 
             ax6.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
             ax6.set_ylabel('누적 RMS 기울기 √(Slope²)', fontweight='bold', fontsize=10, rotation=90, labelpad=12)
-            ax6.set_title('(f) Parseval 정리: q₁ 자동 결정 (Target Slope=1.3)', fontweight='bold', fontsize=11, pad=8)
+            ax6.set_title('(f) Parseval 정리: q1 자동 결정 (Target Slope=1.3)', fontweight='bold', fontsize=11, pad=8)
 
             # Legend with better positioning
             ax6.legend(fontsize=8, loc='lower right', framealpha=0.9)
@@ -1175,7 +1182,7 @@ class PerssonModelGUI_V2:
             # Add annotation box
             if q1_idx > 0:
                 textstr = (f'파서벌 정리:\nSlope²(q) = 2π∫k³C(k)dk\n\n'
-                          f'결정된 q₁ = {q1_determined:.2e} 1/m\n'
+                          f'결정된 q1 = {q1_determined:.2e} 1/m\n'
                           f'해당 RMS Slope = {target_slope_rms:.2f}')
             else:
                 textstr = (f'파서벌 정리:\nSlope²(q) = 2π∫k³C(k)dk\n\n'
