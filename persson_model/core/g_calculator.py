@@ -403,3 +403,113 @@ class GCalculator:
             'G': G_arr,
             'contact_area_ratio': P_arr
         }
+
+    def calculate_G_multi_velocity(
+        self,
+        q_values: np.ndarray,
+        v_values: np.ndarray,
+        q_min: Optional[float] = None,
+        progress_callback: Optional[Callable] = None
+    ) -> dict:
+        """
+        Calculate G(q,v) for multiple velocities - 2D matrix calculation.
+
+        This creates a 2D matrix G(q,v) where G depends on both
+        wavenumber and sliding velocity, as required by work instruction v2.1.
+
+        Parameters
+        ----------
+        q_values : np.ndarray
+            Array of wavenumbers (1/m) in ascending order
+        v_values : np.ndarray
+            Array of sliding velocities (m/s)
+            Recommended: np.logspace(-4, 1, 30) for 0.0001~10 m/s
+        q_min : float, optional
+            Lower integration limit (default: first value in q_values)
+        progress_callback : callable, optional
+            Function to call with progress updates (0-100)
+
+        Returns
+        -------
+        dict
+            Dictionary containing:
+            - 'q': wavenumber array
+            - 'v': velocity array
+            - 'G_matrix': 2D array G(q,v) with shape (len(q), len(v))
+            - 'P_matrix': 2D array P(q,v) contact area ratio
+            - 'log_q': log10(q)
+            - 'log_v': log10(v)
+        """
+        q_values = np.asarray(q_values)
+        v_values = np.asarray(v_values)
+
+        if q_min is None:
+            q_min = q_values[0]
+
+        n_q = len(q_values)
+        n_v = len(v_values)
+
+        # Initialize output matrices
+        G_matrix = np.zeros((n_q, n_v))
+        P_matrix = np.zeros((n_q, n_v))
+
+        # Store original velocity
+        original_velocity = self.velocity
+
+        # Calculate for each velocity
+        for j, v in enumerate(v_values):
+            # Update velocity
+            self.velocity = v
+
+            # Calculate G(q) for this velocity
+            results = self.calculate_G_with_details(q_values, q_min=q_min)
+
+            # Store results
+            G_matrix[:, j] = results['G']
+            P_matrix[:, j] = results['contact_area_ratio']
+
+            # Progress callback
+            if progress_callback:
+                progress = int((j + 1) / n_v * 100)
+                progress_callback(progress)
+
+        # Restore original velocity
+        self.velocity = original_velocity
+
+        return {
+            'q': q_values,
+            'v': v_values,
+            'G_matrix': G_matrix,
+            'P_matrix': P_matrix,
+            'log_q': np.log10(q_values),
+            'log_v': np.log10(v_values)
+        }
+
+    def update_parameters(
+        self,
+        sigma_0: Optional[float] = None,
+        velocity: Optional[float] = None,
+        poisson_ratio: Optional[float] = None
+    ):
+        """
+        Update calculation parameters.
+
+        Parameters
+        ----------
+        sigma_0 : float, optional
+            New nominal contact pressure (Pa)
+        velocity : float, optional
+            New sliding velocity (m/s)
+        poisson_ratio : float, optional
+            New Poisson's ratio
+        """
+        if sigma_0 is not None:
+            self.sigma_0 = sigma_0
+            self.prefactor = 1.0 / ((1 - self.poisson_ratio**2) * sigma_0)
+
+        if velocity is not None:
+            self.velocity = velocity
+
+        if poisson_ratio is not None:
+            self.poisson_ratio = poisson_ratio
+            self.prefactor = 1.0 / ((1 - self.poisson_ratio**2) * self.sigma_0)
