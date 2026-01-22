@@ -1031,7 +1031,7 @@ class PerssonModelGUI_V2:
         # Second pass: plot Gaussian distributions
         for j in plotted_indices:
             v_val = v[j]
-            color = colors[plotted_indices.index(j) % len(colors)]
+            color = colors[j]  # Use same color as other plots
 
             # Get G value at the last wavenumber (most relevant for overall contact)
             G_val = G_matrix[-1, j]
@@ -1093,10 +1093,11 @@ class PerssonModelGUI_V2:
         # Plot 5: Inner integral vs q for multiple velocities (다중 속도에서의 내부 적분)
         # Physical meaning: ∫dφ |E(qvcosφ)|² - 슬립 방향 성분의 점탄성 응답
         if has_detailed:
-            cmap_detail = plt.get_cmap('plasma')
             for i, detail_result in enumerate(detailed_multi_v):
                 v_val = detail_result['velocity']
-                color = cmap_detail(i / len(detailed_multi_v))
+                # Find matching velocity index in v array to use consistent color
+                v_idx = np.argmin(np.abs(v - v_val))
+                color = colors[v_idx]  # Use same color scheme as other plots
                 ax5.loglog(detail_result['q'], detail_result['avg_modulus_term'],
                           color=color, linewidth=1.5, label=f'v={v_val:.4f} m/s', alpha=0.8)
 
