@@ -1378,6 +1378,19 @@ Rubber friction theory
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
+        # Enable mouse wheel scrolling
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+
+        def _bind_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+
+        def _unbind_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+
+        canvas.bind('<Enter>', _bind_mousewheel)
+        canvas.bind('<Leave>', _unbind_mousewheel)
+
         # Create matplotlib figure for equations
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
@@ -1393,7 +1406,7 @@ Rubber friction theory
             korean_font = 'NanumGothic'
 
         fig = Figure(figsize=(12, 20), facecolor='white')
-        fig.suptitle('Persson 마찰 이론 - 계산 수식 정리', fontsize=18, fontweight='bold', y=0.99,
+        fig.suptitle('Persson 마찰 이론 - 계산 수식 정리', fontsize=18, fontweight='bold', y=0.985,
                     fontproperties={'family': korean_font})
 
         # Single axis for all equations
@@ -1541,7 +1554,7 @@ $\begin{array}{lcc}
 """
 
         ax.text(0.02, 0.98, equations_text, transform=ax.transAxes,
-                fontsize=9, verticalalignment='top', horizontalalignment='left',
+                fontsize=12, verticalalignment='top', horizontalalignment='left',
                 family=korean_font, wrap=True, linespacing=1.6)
 
         # Embed in tkinter
