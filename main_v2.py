@@ -1123,6 +1123,11 @@ class PerssonModelGUI_V2:
                 G_stress_q0 = G_stress_array_MPa2[0]      # G_stress at minimum wavenumber
                 G_stress_qmax = G_stress_array_MPa2[-1]   # G_stress at maximum wavenumber
 
+                # CRITICAL FIX: Normalize G_stress by σ₀² before using in P(σ) formula
+                # This ensures peak stays at σ₀ regardless of G magnitude
+                G_norm_q0 = G_stress_q0 / (sigma_0_MPa**2)  # Dimensionless
+                G_norm_qmax = G_stress_qmax / (sigma_0_MPa**2)  # Dimensionless
+
                 # Debug for first velocity
                 if j == 0:
                     q_mid = np.sqrt(q_min * q_max)
@@ -1136,20 +1141,29 @@ class PerssonModelGUI_V2:
                     print(f"  G_stress(q0) = {G_stress_q0:.4e} MPa²")
                     print(f"  G_stress(qmax) = {G_stress_qmax:.4e} MPa²")
                     print(f"  std(qmax) = {np.sqrt(G_stress_qmax):.4f} MPa")
+                    print(f"\n>>> P(σ) Calculation Fix Applied:")
+                    print(f"  G_norm(qmax) = G/σ₀² = {G_stress_qmax:.4f}/{sigma_0_MPa**2:.4f} = {G_norm_qmax:.2f}")
+                    print(f"  Using normalized formula: peak at σ_norm = 1 (σ = {sigma_0_MPa:.2f} MPa)")
+                    print(f"  Now peak ALWAYS at σ₀, regardless of G magnitude!")
 
                 # Calculate stress distribution at q0 (dotted line)
+                # Using normalized formula: all in units of σ₀
                 if G_stress_q0 > 1e-10:
-                    P_sigma_q0 = (1 / np.sqrt(4 * np.pi * G_stress_q0)) * \
-                                 (np.exp(-(sigma_array - sigma_0_MPa)**2 / (4 * G_stress_q0)) - \
-                                  np.exp(-(sigma_array + sigma_0_MPa)**2 / (4 * G_stress_q0)))
+                    # Normalize σ by σ₀ for calculation
+                    sigma_norm = sigma_array / sigma_0_MPa
+                    # P in normalized form (peak at σ_norm = 1)
+                    P_sigma_q0 = (1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q0))) * \
+                                 (np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q0)) - \
+                                  np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q0)))
                     ax2.plot(sigma_array, P_sigma_q0, color=color, linestyle=':', linewidth=2.5,
                             alpha=0.6)  # No label for q0 lines to reduce legend clutter
 
                 # Calculate stress distribution at q_max (solid line)
                 if G_stress_qmax > 1e-10:
-                    P_sigma_qmax = (1 / np.sqrt(4 * np.pi * G_stress_qmax)) * \
-                                   (np.exp(-(sigma_array - sigma_0_MPa)**2 / (4 * G_stress_qmax)) - \
-                                    np.exp(-(sigma_array + sigma_0_MPa)**2 / (4 * G_stress_qmax)))
+                    sigma_norm = sigma_array / sigma_0_MPa
+                    P_sigma_qmax = (1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_qmax))) * \
+                                   (np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_qmax)) - \
+                                    np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_qmax)))
                     ax2.plot(sigma_array, P_sigma_qmax, color=color, linestyle='-', linewidth=2,
                             label=f'v={v_val:.4f} m/s', alpha=0.9)
 
