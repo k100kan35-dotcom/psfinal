@@ -1005,168 +1005,115 @@ class PerssonModelGUI_V2:
         ax1.xaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
         ax1.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
 
-        # Plot 2: Local stress probability distribution P(σ,ζ) for multiple velocities
-        # Persson theory: P(σ,ζ) = 1/√(4πG_stress) [exp(-(σ-σ0)²/4G_stress) - exp(-(σ+σ0)²/4G_stress)]
-        # where G_stress(q) = (π/4) * (E*)² * ∫[q0→q] k³C(k)dk  [Pa²]
+        # Plot 2: Local stress probability distribution P(σ,q) for multiple wavenumbers
+        # CHANGED: Plot vs wavenumber (q) instead of velocity, with v fixed at 1 m/s
+        # Persson theory: P(σ,q) = 1/√(4πG_stress(q)) [exp(-(σ-σ0)²/4G_stress) - exp(-(σ+σ0)²/4G_stress)]
+        # where G_stress(q) = (π/4) * (E*/σ₀)² * ∫[q0→q] k³C(k)dk  [dimensionless]
         sigma_0_Pa = self.results['sigma_0']  # Pa
         sigma_0_MPa = sigma_0_Pa / 1e6  # Convert Pa to MPa
 
-        # Calculate G_stress(q,v) - stress distribution variance parameter
-        # G_stress depends on velocity through E*(ω) where ω = q*v
+        # Calculate G_stress(q) at FIXED velocity v = 1 m/s
         poisson = float(self.poisson_var.get())
         temperature = float(self.temperature_var.get())
         q_min = float(self.q_min_var.get())
         q_max = float(self.q_max_var.get())
 
-        # PSD values (same for all velocities)
+        # PSD values
         C_q_vals = self.psd_model(q)
 
-        # Find maximum G_stress across all velocities for x-axis range
-        G_stress_max_global = 0
-        G_stress_dict = {}  # Store G_stress for each velocity
+        # Fixed velocity for wavenumber analysis
+        v_fixed = 1.0  # m/s
 
-        # Pre-calculate G_stress for each velocity
-        # DEBUG: Print actual values to diagnose peak shift problem
+        # Calculate G_stress(q) at fixed velocity
+        # Calculate G_stress(q) at fixed velocity
         print("\n" + "="*80)
-        print("DEBUG: G_stress Calculation Analysis")
+        print("DEBUG: G_stress Calculation at FIXED velocity v = 1 m/s")
         print("="*80)
         print(f"σ₀ = {sigma_0_MPa:.4f} MPa = {sigma_0_Pa:.2e} Pa")
         print(f"q range: {q_min:.2e} ~ {q_max:.2e} (1/m)")
+        print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
         print(f"Poisson ratio: {poisson:.3f}")
 
-        for j, v_val in enumerate(v):
-            if j % max(1, len(v) // 10) == 0:
-                # Check what E value we're using
-                omega_low = q_min * v_val
-                omega_high = q_max * v_val
-                E_low = self.material.get_storage_modulus(np.array([omega_low]))[0]
-                E_high = self.material.get_storage_modulus(np.array([omega_high]))[0]
-                E_star_low = E_low / (1 - poisson**2)
-                E_star_high = E_high / (1 - poisson**2)
+        # Check E values at this velocity
+        omega_low = q_min * v_fixed
+        omega_high = q_max * v_fixed
+        E_low = self.material.get_storage_modulus(np.array([omega_low]))[0]
+        E_high = self.material.get_storage_modulus(np.array([omega_high]))[0]
+        E_star_low = E_low / (1 - poisson**2)
+        E_star_high = E_high / (1 - poisson**2)
 
-                # Calculate integral of q³C(q)
-                integrand = q**3 * C_q_vals
-                integral_full = np.trapezoid(integrand, q)
+        print(f"\nω_low = {omega_low:.2e} rad/s  →  E = {E_low:.2e} Pa  →  E* = {E_star_low:.2e} Pa")
+        print(f"ω_high = {omega_high:.2e} rad/s  →  E = {E_high:.2e} Pa  →  E* = {E_star_high:.2e} Pa")
 
-                # Original formula WITHOUT σ₀: G = (π/4) × E*² × ∫q³C(q)dq
-                G_original_Pa2 = (np.pi / 4) * E_star_low**2 * integral_full
-                G_original_MPa2 = G_original_Pa2 / 1e12
+        # Calculate integral of q³C(q)
+        integrand = q**3 * C_q_vals
+        integral_full = np.trapezoid(integrand, q)
+        print(f"∫ q³C(q)dq = {integral_full:.4e} m⁴")
 
-                if j == 0:
-                    print(f"\n--- First velocity: v = {v_val:.4e} m/s ---")
-                    print(f"ω_low = {omega_low:.2e} rad/s  →  E = {E_low:.2e} Pa  →  E* = {E_star_low:.2e} Pa")
-                    print(f"ω_high = {omega_high:.2e} rad/s  →  E = {E_high:.2e} Pa  →  E* = {E_star_high:.2e} Pa")
-                    print(f"∫ q³C(q)dq = {integral_full:.4e} m⁴")
-                    print(f"E*² = {E_star_low**2:.4e} Pa²")
-                    print(f"G_stress (original formula) = {G_original_MPa2:.4e} MPa²")
-                    print(f"√G_stress = {np.sqrt(G_original_MPa2):.4f} MPa")
-                    print(f"Expected peak location ≈ √(2G) = {np.sqrt(2*G_original_MPa2):.2f} MPa")
-                    print(f"But σ₀ = {sigma_0_MPa:.2f} MPa << √G, so peak shifts away from σ₀!")
+        # CRITICAL FIX: Normalize by σ₀ to make G_stress dimensionless
+        E_normalized = E_star_low / sigma_0_Pa  # Normalize E by σ₀
+        print(f"E_normalized = E*/σ₀ = {E_normalized:.2e}")
 
-                # CRITICAL FIX: Normalize by σ₀² to make G_stress dimensionless-like
-                # This ensures √G ≈ σ₀, so peak stays at σ₀ in P(σ) distribution
-                # Formula: G_dimensionless = (π/4) × (E*/σ₀)² × ∫q³C(q)dq
-                E_normalized = E_star_low / sigma_0_Pa  # Normalize E by σ₀
+        # Calculate G_stress(q) array
+        G_stress_array = np.zeros_like(q)
+        for i in range(1, len(q)):
+            integrand_partial = q[:i+1]**3 * C_q_vals[:i+1]
+            G_stress_array[i] = (np.pi / 4) * E_normalized**2 * np.trapezoid(integrand_partial, q[:i+1])
 
-                G_stress_array = np.zeros_like(q)
-                for i in range(1, len(q)):
-                    integrand_partial = q[:i+1]**3 * C_q_vals[:i+1]
-                    # Use normalized E to get dimensionless G
-                    G_stress_array[i] = (np.pi / 4) * E_normalized**2 * np.trapezoid(integrand_partial, q[:i+1])
-
-                # G_stress_array is now dimensionless (like G_area)
-                # DO NOT scale back by σ₀² - keep it dimensionless!
-                # This ensures √G ≈ 1, and peak stays at σ₀
-                G_stress_array_dimensionless = G_stress_array  # Keep dimensionless
-                G_stress_dict[j] = G_stress_array_dimensionless
-
-                if j == 0:
-                    print(f"\n>>> APPLYING FIX: Normalize by σ₀")
-                    print(f"E_normalized = E*/σ₀ = {E_normalized:.2e}")
-                    print(f"G_dimensionless(qmax) = {G_stress_array_dimensionless[-1]:.4e}")
-                    print(f"√G_dimensionless = {np.sqrt(G_stress_array_dimensionless[-1]):.4f}")
-                    print(f"Expected peak ≈ √G × σ₀ = {np.sqrt(G_stress_array_dimensionless[-1]) * sigma_0_MPa:.4f} MPa")
-                    print(f">>> Target: peak at σ₀ = {sigma_0_MPa:.2f} MPa")
-
-                # Update global maximum (dimensionless)
-                if G_stress_array_dimensionless[-1] > G_stress_max_global:
-                    G_stress_max_global = G_stress_array_dimensionless[-1]
-
-        print(f"\nG_dimensionless_max (across all velocities) = {G_stress_max_global:.4e}")
-        print(f"√G_dimensionless_max = {np.sqrt(G_stress_max_global):.2f}")
-        print(f"Expected peak location ≈ {np.sqrt(G_stress_max_global) * sigma_0_MPa:.2f} MPa")
-        print(f"Target peak location = σ₀ = {sigma_0_MPa:.2f} MPa")
-        print("\n>>> If √G_dimensionless ≈ 1, peak will be at σ₀!")
+        print(f"G_dimensionless(qmax) = {G_stress_array[-1]:.4e}")
+        print(f"√G_dimensionless(qmax) = {np.sqrt(G_stress_array[-1]):.4f}")
+        print(f"Expected peak at qmax ≈ √G × σ₀ = {np.sqrt(G_stress_array[-1]) * sigma_0_MPa:.4f} MPa")
+        print(f"Target: peak at σ₀ = {sigma_0_MPa:.2f} MPa")
         print("="*80 + "\n")
 
         # Set x-axis range based on maximum G_stress
-        # Since G is dimensionless, multiply by σ₀ to get MPa
-        std_max = np.sqrt(G_stress_max_global) * sigma_0_MPa
+        G_max = G_stress_array[-1]
+        std_max = np.sqrt(G_max) * sigma_0_MPa
         sigma_max = sigma_0_MPa + 4 * std_max
 
         # Create stress array (in MPa)
         sigma_array = np.linspace(0, sigma_max, 500)
 
         # Debug: Print some values to verify calculations
-        print(f"\n=== Debug: Stress Distribution ===")
+        print(f"\n=== Debug: Stress Distribution at Fixed Velocity ===")
         print(f"σ0 = {sigma_0_MPa:.4f} MPa")
-        print(f"G_dimensionless_max (across all v) = {G_stress_max_global:.4e}")
+        print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
+        print(f"G_dimensionless_max (at qmax) = {G_max:.4e}")
         print(f"std_max = √G × σ₀ = {std_max:.4f} MPa")
         print(f"sigma_max = {sigma_max:.2f} MPa")
 
-        # Plot stress distributions for selected velocities
-        for j, v_val in enumerate(v):
-            if j % max(1, len(v) // 10) == 0:
-                color = colors[j]
+        # Select multiple wavenumbers to plot (logarithmic spacing)
+        n_q_selected = 8
+        q_indices = np.linspace(0, len(q)-1, n_q_selected, dtype=int)
 
-                # Get G_stress values for this velocity (already dimensionless!)
-                G_stress_array_dimensionless = G_stress_dict[j]
-                G_norm_q0 = G_stress_array_dimensionless[0]      # Already dimensionless
-                G_norm_qmax = G_stress_array_dimensionless[-1]   # Already dimensionless
+        # Create color map for wavenumbers
+        cmap_q = plt.get_cmap('plasma')
+        colors_q = [cmap_q(i / (n_q_selected-1)) for i in range(n_q_selected)]
 
-                # Convert back to "MPa²" for display in debug output
-                G_stress_q0_display = G_norm_q0 * (sigma_0_MPa**2)
-                G_stress_qmax_display = G_norm_qmax * (sigma_0_MPa**2)
+        print(f"\nPlotting P(σ) for {n_q_selected} wavenumbers:")
 
-                # Debug for first velocity
-                if j == 0:
-                    q_mid = np.sqrt(q_min * q_max)
-                    omega_rep = q_mid * v_val
-                    E_rep = self.material.get_storage_modulus(np.array([omega_rep]))[0]
-                    E_star = E_rep / (1 - poisson**2)
-                    print(f"\nFor v = {v_val:.4e} m/s:")
-                    print(f"  ω_rep = {omega_rep:.2e} rad/s")
-                    print(f"  E(ω_rep) = {E_rep:.2e} Pa")
-                    print(f"  E* = {E_star:.2e} Pa")
-                    print(f"  G_dimensionless(q0) = {G_norm_q0:.4e}")
-                    print(f"  G_dimensionless(qmax) = {G_norm_qmax:.4e}")
-                    print(f"  √G_dimensionless(qmax) = {np.sqrt(G_norm_qmax):.4f}")
-                    print(f"\n>>> P(σ) Calculation Fix Applied:")
-                    print(f"  G is already dimensionless (normalized by σ₀²)")
-                    print(f"  √G ≈ {np.sqrt(G_norm_qmax):.2f}, so peak at σ ≈ {np.sqrt(G_norm_qmax)*sigma_0_MPa:.2f} MPa")
-                    print(f"  Target: peak at σ₀ = {sigma_0_MPa:.2f} MPa")
-                    print(f"  If √G ≈ 1, peak will be at σ₀!")
+        # Plot stress distributions for selected wavenumbers
+        for i, q_idx in enumerate(q_indices):
+            color = colors_q[i]
+            q_val = q[q_idx]
+            G_norm_q = G_stress_array[q_idx]
 
-                # Calculate stress distribution at q0 (dotted line)
-                # Using normalized formula: all in units of σ₀
-                if G_norm_q0 > 1e-10:
-                    # Normalize σ by σ₀ for calculation
-                    sigma_norm = sigma_array / sigma_0_MPa
-                    # P in normalized form (peak at σ_norm = 1)
-                    P_sigma_q0 = (1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q0))) * \
-                                 (np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q0)) - \
-                                  np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q0)))
-                    ax2.plot(sigma_array, P_sigma_q0, color=color, linestyle=':', linewidth=2.5,
-                            alpha=0.6)  # No label for q0 lines to reduce legend clutter
+            # Debug output
+            if i == 0 or i == len(q_indices)-1:
+                print(f"  q = {q_val:.2e} (1/m):  G = {G_norm_q:.4e},  √G = {np.sqrt(G_norm_q):.4f}")
 
-                # Calculate stress distribution at q_max (solid line)
-                if G_norm_qmax > 1e-10:
-                    sigma_norm = sigma_array / sigma_0_MPa
-                    P_sigma_qmax = (1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_qmax))) * \
-                                   (np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_qmax)) - \
-                                    np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_qmax)))
-                    ax2.plot(sigma_array, P_sigma_qmax, color=color, linestyle='-', linewidth=2,
-                            label=f'v={v_val:.4f} m/s', alpha=0.9)
+            # Calculate stress distribution at this wavenumber
+            if G_norm_q > 1e-10:
+                # Normalize σ by σ₀ for calculation
+                sigma_norm = sigma_array / sigma_0_MPa
+                # P in normalized form (peak at σ_norm = 1)
+                P_sigma = (1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q))) * \
+                          (np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q)) - \
+                           np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q)))
+
+                # Label format: show wavenumber
+                ax2.plot(sigma_array, P_sigma, color=color, linewidth=2,
+                        label=f'q={q_val:.1e} 1/m', alpha=0.8)
 
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
@@ -1174,7 +1121,7 @@ class PerssonModelGUI_V2:
 
         ax2.set_xlabel('응력 σ (MPa)', fontweight='bold', fontsize=11, labelpad=5)
         ax2.set_ylabel('응력 분포 P(σ)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax2.set_title('(b) 속도별 국소 응력 확률 분포 (점선: q0, 실선: qmax)', fontweight='bold', fontsize=11, pad=8)
+        ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.1f} m/s 고정)', fontweight='bold', fontsize=11, pad=8)
         ax2.legend(fontsize=6, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
         ax2.set_xlim(0, sigma_max)
