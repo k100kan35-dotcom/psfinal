@@ -1020,15 +1020,13 @@ class PerssonModelGUI_V2:
         q_min = float(self.q_min_var.get())
         q_max = float(self.q_max_var.get())
 
-        # PSD values
-        C_q_vals = self.psd_model(q)
-
-        # Filter q array to user-specified range (q_min to q_max)
+        # Filter q array to user-specified range for stress distribution calculation
+        # Use separate variable to avoid affecting other plots
         q_mask = (q >= q_min) & (q <= q_max)
-        q = q[q_mask]
-        C_q_vals = C_q_vals[q_mask]
+        q_stress = q[q_mask]
+        C_q_stress = self.psd_model(q_stress)
 
-        print(f"Filtered q range: {q[0]:.2e} ~ {q[-1]:.2e} (1/m), {len(q)} points")
+        print(f"Filtered q range for stress dist: {q_stress[0]:.2e} ~ {q_stress[-1]:.2e} (1/m), {len(q_stress)} points")
 
         # Fixed velocity for wavenumber analysis
         v_fixed = 0.01  # m/s (lower velocity to see clearer peak at σ₀)
@@ -1055,8 +1053,8 @@ class PerssonModelGUI_V2:
         print(f"ω_high = {omega_high:.2e} rad/s  →  E = {E_high:.2e} Pa  →  E* = {E_star_high:.2e} Pa")
 
         # Calculate integral of q³C(q)
-        integrand = q**3 * C_q_vals
-        integral_full = np.trapezoid(integrand, q)
+        integrand = q_stress**3 * C_q_stress
+        integral_full = np.trapezoid(integrand, q_stress)
         print(f"∫ q³C(q)dq = {integral_full:.4e} m⁴")
 
         # CRITICAL FIX: Normalize by σ₀ to make G_stress dimensionless
@@ -1064,10 +1062,10 @@ class PerssonModelGUI_V2:
         print(f"E_normalized = E*/σ₀ = {E_normalized:.2e}")
 
         # Calculate G_stress(q) array
-        G_stress_array = np.zeros_like(q)
-        for i in range(1, len(q)):
-            integrand_partial = q[:i+1]**3 * C_q_vals[:i+1]
-            G_stress_array[i] = (np.pi / 4) * E_normalized**2 * np.trapezoid(integrand_partial, q[:i+1])
+        G_stress_array = np.zeros_like(q_stress)
+        for i in range(1, len(q_stress)):
+            integrand_partial = q_stress[:i+1]**3 * C_q_stress[:i+1]
+            G_stress_array[i] = (np.pi / 4) * E_normalized**2 * np.trapezoid(integrand_partial, q_stress[:i+1])
 
         print(f"G_dimensionless(qmax) = {G_stress_array[-1]:.4e}")
         print(f"√G_dimensionless(qmax) = {np.sqrt(G_stress_array[-1]):.4f}")
@@ -1077,7 +1075,7 @@ class PerssonModelGUI_V2:
 
         # Set x-axis range based on INITIAL wavenumbers (not max!)
         # Use G at ~10% of q range to avoid too large x-axis
-        q_10percent_idx = len(q) // 10
+        q_10percent_idx = len(q_stress) // 10
         G_initial = G_stress_array[q_10percent_idx] if q_10percent_idx > 0 else G_stress_array[-1]
         std_initial = np.sqrt(G_initial) * sigma_0_MPa
         sigma_max = sigma_0_MPa + 3 * std_initial  # Reduced from 4 to 3
@@ -1100,7 +1098,7 @@ class PerssonModelGUI_V2:
 
         # Select 3 wavenumbers to plot (first, middle, last)
         n_q_selected = 3
-        q_indices = np.linspace(0, len(q)-1, n_q_selected, dtype=int)
+        q_indices = np.linspace(0, len(q_stress)-1, n_q_selected, dtype=int)
 
         # Create color map for wavenumbers
         cmap_q = plt.get_cmap('plasma')
@@ -1112,7 +1110,7 @@ class PerssonModelGUI_V2:
         # Plot stress distributions for selected wavenumbers
         for i, q_idx in enumerate(q_indices):
             color = colors_q[i]
-            q_val = q[q_idx]
+            q_val = q_stress[q_idx]
             G_norm_q = G_stress_array[q_idx]
 
             # Calculate stress distribution at this wavenumber
