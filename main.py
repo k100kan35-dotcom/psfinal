@@ -26,6 +26,13 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 matplotlib.rcParams['font.family'] = 'DejaVu Sans'
 matplotlib.rcParams['axes.unicode_minus'] = False  # Fix minus sign issue
 matplotlib.rcParams['text.usetex'] = False  # Disable LaTeX to avoid font issues
+# Standardize font sizes across all plots
+matplotlib.rcParams['font.size'] = 9
+matplotlib.rcParams['axes.titlesize'] = 9
+matplotlib.rcParams['axes.labelsize'] = 9
+matplotlib.rcParams['xtick.labelsize'] = 8
+matplotlib.rcParams['ytick.labelsize'] = 8
+matplotlib.rcParams['legend.fontsize'] = 7
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from scipy.signal import savgol_filter
@@ -1108,6 +1115,12 @@ class PerssonModelGUI_V2:
         ax5 = self.fig_results.add_subplot(2, 3, 5)
         ax6 = self.fig_results.add_subplot(2, 3, 6)
 
+        # Standard font settings for all plots
+        TITLE_FONT = 9
+        LABEL_FONT = 9
+        LEGEND_FONT = 7
+        TITLE_PAD = 5
+
         # Plot 1: Multi-velocity G(q) curves (다중 속도 G(q) 곡선)
         cmap = plt.get_cmap('viridis')
         colors = [cmap(i / len(v)) for i in range(len(v))]
@@ -1117,10 +1130,10 @@ class PerssonModelGUI_V2:
                 ax1.loglog(q, G_matrix[:, j], color=color, linewidth=1.5,
                           label=f'v={v_val:.4f} m/s')
 
-        ax1.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
-        ax1.set_ylabel('G(q)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax1.set_title('(a) 다중 속도에서의 G(q)', fontweight='bold', fontsize=11, pad=8)
-        ax1.legend(fontsize=7, ncol=2)
+        ax1.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
+        ax1.set_ylabel('G(q)', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+        ax1.set_title('(a) 다중 속도에서의 G(q)', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
+        ax1.legend(fontsize=LEGEND_FONT, ncol=2)
         ax1.grid(True, alpha=0.3)
 
         # Fix axis formatter to use superscript notation
@@ -1299,12 +1312,15 @@ class PerssonModelGUI_V2:
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
                    label=f'σ0 = {sigma_0_MPa:.2f} MPa', alpha=0.7)
 
-        ax2.set_xlabel('응력 σ (MPa)', fontweight='bold', fontsize=11, labelpad=5)
-        ax2.set_ylabel('응력 분포 P(σ)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.2f} m/s 고정)', fontweight='bold', fontsize=11, pad=8)
-        ax2.legend(fontsize=6.5, ncol=2, loc='upper right')
+        ax2.set_xlabel('응력 σ (MPa)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
+        ax2.set_ylabel('응력 분포 P(σ)', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+        ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.2f} m/s 고정)', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
+        ax2.legend(fontsize=LEGEND_FONT, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(-sigma_0_MPa, sigma_max)  # Include negative region to show mirror image
+        # Auto-adjust x-axis to show full distribution
+        ax2.set_xlim(left=-sigma_0_MPa * 0.5)
+        ax2.autoscale(enable=True, axis='x', tight=False)
+        ax2.autoscale(enable=True, axis='y', tight=False)
 
         print("="*80)
 
@@ -1319,10 +1335,10 @@ class PerssonModelGUI_V2:
                 ax3.semilogx(q, P_curve, color=color, linewidth=1.5,
                             label=f'v={v_val:.4f} m/s')
 
-        ax3.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
-        ax3.set_ylabel('접촉 면적 비율 P(q)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax3.set_title('(c) 다중 속도에서의 접촉 면적', fontweight='bold', fontsize=11, pad=8)
-        ax3.legend(fontsize=7, ncol=2)
+        ax3.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
+        ax3.set_ylabel('접촉 면적 비율 P(q)', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+        ax3.set_title('(c) 다중 속도에서의 접촉 면적', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
+        ax3.legend(fontsize=LEGEND_FONT, ncol=2)
         ax3.grid(True, alpha=0.3)
         ax3.set_ylim(0, 1.0)  # Set y-axis limit for better visualization
 
@@ -1346,9 +1362,9 @@ class PerssonModelGUI_V2:
         ax4.add_collection(lc)
 
         ax4.set_xscale('log')
-        ax4.set_xlabel('속도 v (m/s)', fontweight='bold', fontsize=11, labelpad=5)
-        ax4.set_ylabel('최종 접촉 면적 P(q_max)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax4.set_title('(d) 속도에 따른 접촉 면적', fontweight='bold', fontsize=11, pad=8)
+        ax4.set_xlabel('속도 v (m/s)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
+        ax4.set_ylabel('최종 접촉 면적 P(q_max)', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+        ax4.set_title('(d) 속도에 따른 접촉 면적', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
         ax4.grid(True, alpha=0.3)
 
         # Fix axis formatter
@@ -1365,10 +1381,10 @@ class PerssonModelGUI_V2:
                 ax5.loglog(detail_result['q'], detail_result['avg_modulus_term'],
                           color=color, linewidth=1.5, label=f'v={v_val:.4f} m/s', alpha=0.8)
 
-            ax5.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
-            ax5.set_ylabel('각도 적분 ∫dφ|E/(1-ν²)σ0|²', fontweight='bold', fontsize=10, rotation=90, labelpad=12)
-            ax5.set_title('(e) 내부 적분: 상대적 강성비', fontweight='bold', fontsize=11, pad=8)
-            ax5.legend(fontsize=7, ncol=2)
+            ax5.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
+            ax5.set_ylabel('각도 적분 ∫dφ|E/(1-ν²)σ0|²', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+            ax5.set_title('(e) 내부 적분: 상대적 강성비', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
+            ax5.legend(fontsize=LEGEND_FONT, ncol=2)
             ax5.grid(True, alpha=0.3)
 
             # Add physical interpretation text box
@@ -1387,8 +1403,8 @@ class PerssonModelGUI_V2:
             ax5.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
         else:
             ax5.text(0.5, 0.5, '내부 적분 데이터 없음',
-                    ha='center', va='center', transform=ax5.transAxes, fontsize=10)
-            ax5.set_title('(e) 내부 적분', fontweight='bold', fontsize=11, pad=8)
+                    ha='center', va='center', transform=ax5.transAxes, fontsize=LABEL_FONT)
+            ax5.set_title('(e) 내부 적분', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
 
         # Plot 6: Parseval theorem - Cumulative RMS slope with q1 determination
         # Slope²(q) = 2π∫[0 to q] k³C(k)dk
@@ -1454,12 +1470,12 @@ class PerssonModelGUI_V2:
                         markeredgecolor='black', markeredgewidth=2, zorder=10,
                         label='교차점')
 
-            ax6.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
-            ax6.set_ylabel('누적 RMS 기울기 √(Slope²)', fontweight='bold', fontsize=10, rotation=90, labelpad=12)
-            ax6.set_title('(f) Parseval 정리: q1 자동 결정 (Target Slope=1.3)', fontweight='bold', fontsize=11, pad=8)
+            ax6.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
+            ax6.set_ylabel('누적 RMS 기울기 √(Slope²)', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+            ax6.set_title('(f) Parseval 정리: q1 자동 결정 (Target Slope=1.3)', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
 
             # Legend with better positioning
-            ax6.legend(fontsize=8, loc='lower right', framealpha=0.9)
+            ax6.legend(fontsize=LEGEND_FONT, loc='lower right', framealpha=0.9)
 
             ax6.grid(True, alpha=0.3)
 
@@ -1481,11 +1497,11 @@ class PerssonModelGUI_V2:
             ax6.xaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
         else:
             ax6.text(0.5, 0.5, 'PSD 데이터 없음',
-                    ha='center', va='center', transform=ax6.transAxes, fontsize=10)
-            ax6.set_title('(f) Parseval 정리', fontweight='bold', fontsize=11, pad=8)
+                    ha='center', va='center', transform=ax6.transAxes, fontsize=LABEL_FONT)
+            ax6.set_title('(f) Parseval 정리', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
 
-        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=13, y=0.995)
-        self.fig_results.tight_layout(rect=[0, 0, 1, 0.99])
+        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=11, y=0.98)
+        self.fig_results.tight_layout(rect=[0, 0.01, 1, 0.97], pad=1.5, h_pad=2.0, w_pad=1.5)
         self.canvas_results.draw()
 
     def _save_detailed_csv(self):
