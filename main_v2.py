@@ -1113,14 +1113,35 @@ class PerssonModelGUI_V2:
             if G_norm_q > 1e-10:
                 # Normalize σ by σ₀ for calculation
                 sigma_norm = sigma_array / sigma_0_MPa
-                # P in normalized form (peak at σ_norm = 1)
-                P_sigma = (1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q))) * \
-                          (np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q)) - \
-                           np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q)))
 
-                # Label format: show wavenumber
+                # Calculate individual terms to show mirror image
+                normalization = 1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q))
+                term1 = normalization * np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q))  # Main peak at σ₀
+                term2 = normalization * np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q))  # Mirror at -σ₀
+
+                # Final P(σ) is difference
+                P_sigma = term1 - term2
+
+                # Plot the final distribution (solid line)
                 ax2.plot(sigma_array, P_sigma, color=color, linewidth=2,
                         label=f'q={q_val:.1e} 1/m', alpha=0.8)
+
+                # For first wavenumber, also plot individual terms to show mirror effect
+                if i == 0:
+                    ax2.plot(sigma_array, term1, color=color, linewidth=1,
+                            linestyle='--', alpha=0.5, label=f'exp[-(σ-σ₀)²] (q={q_val:.1e})')
+                    ax2.plot(sigma_array, term2, color=color, linewidth=1,
+                            linestyle=':', alpha=0.5, label=f'exp[-(σ+σ₀)²] (거울상)')
+
+                    # Debug: print integral to check normalization
+                    integral = np.trapezoid(P_sigma, sigma_array)
+                    print(f"\n>>> 첫 번째 곡선 (q={q_val:.2e}):")
+                    print(f"    G = {G_norm_q:.4e}")
+                    print(f"    √G = {np.sqrt(G_norm_q):.4f}")
+                    print(f"    정규화 계수 = {normalization:.4e}")
+                    print(f"    ∫P(σ)dσ = {integral:.4f} (should be ≈ 1)")
+                    print(f"    Max P(σ) = {np.max(P_sigma):.4f}")
+                    print(f"    P(σ₀={sigma_0_MPa}) = {P_sigma[np.argmin(np.abs(sigma_array - sigma_0_MPa))]:.4f}")
 
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
