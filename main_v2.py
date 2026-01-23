@@ -386,7 +386,7 @@ class PerssonModelGUI_V2:
 
         row += 1
         ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.q_max_var = tk.StringVar(value="6.0e+5")
+        self.q_max_var = tk.StringVar(value="6.0e+4")
         ttk.Entry(input_frame, textvariable=self.q_max_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
@@ -1066,10 +1066,16 @@ class PerssonModelGUI_V2:
         print(f"Target: peak at σ₀ = {sigma_0_MPa:.2f} MPa")
         print("="*80 + "\n")
 
-        # Set x-axis range based on maximum G_stress
-        G_max = G_stress_array[-1]
-        std_max = np.sqrt(G_max) * sigma_0_MPa
-        sigma_max = sigma_0_MPa + 4 * std_max
+        # Set x-axis range based on INITIAL wavenumbers (not max!)
+        # Use G at ~10% of q range to avoid too large x-axis
+        q_10percent_idx = len(q) // 10
+        G_initial = G_stress_array[q_10percent_idx] if q_10percent_idx > 0 else G_stress_array[-1]
+        std_initial = np.sqrt(G_initial) * sigma_0_MPa
+        sigma_max = sigma_0_MPa + 3 * std_initial  # Reduced from 4 to 3
+
+        # Ensure minimum x-axis range
+        if sigma_max < 2 * sigma_0_MPa:
+            sigma_max = 2 * sigma_0_MPa
 
         # Create stress array (in MPa)
         sigma_array = np.linspace(0, sigma_max, 500)
@@ -1078,9 +1084,10 @@ class PerssonModelGUI_V2:
         print(f"\n=== Debug: Stress Distribution at Fixed Velocity ===")
         print(f"σ0 = {sigma_0_MPa:.4f} MPa")
         print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
-        print(f"G_dimensionless_max (at qmax) = {G_max:.4e}")
-        print(f"std_max = √G × σ₀ = {std_max:.4f} MPa")
-        print(f"sigma_max = {sigma_max:.2f} MPa")
+        print(f"G_dimensionless(q_initial) = {G_initial:.4e}")
+        print(f"G_dimensionless(qmax) = {G_stress_array[-1]:.4e}")
+        print(f"std_initial = √G_initial × σ₀ = {std_initial:.4f} MPa")
+        print(f"sigma_max (for x-axis) = {sigma_max:.2f} MPa")
 
         # Select multiple wavenumbers to plot (logarithmic spacing)
         n_q_selected = 8
