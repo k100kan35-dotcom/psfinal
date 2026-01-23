@@ -1439,7 +1439,7 @@ Rubber friction theory
 
 A. 면적 계산용 파워 스펙트럼 적분함수 $G_{area}(q)$:
 
-$G_{area}(q) = \frac{1}{8} \int_{q_0}^{q} dq' (q')^3 C(q') \int_{0}^{2\pi} d\phi \left| \frac{E(q'v\cos\phi)}{(1-\nu^2)\sigma_0} \right|^2$
+$G_{area}(q) = \frac{1}{8} \int_{q_0}^{q} dq' (q')^3 C(q') \int_{0}^{2\pi} d\phi | \frac{E(q'v\cos\phi)}{(1-\nu^2)\sigma_0} |^2$
 
   변수: $E$는 $\cos\phi$에 따라 주파수가 변하므로 각도 적분 내부에서 업데이트
   단위: 무차원 (dimensionless)
@@ -1448,7 +1448,7 @@ $G_{area}(q) = \frac{1}{8} \int_{q_0}^{q} dq' (q')^3 C(q') \int_{0}^{2\pi} d\phi
 
 B. 실접촉 면적 비율 $P(q)$:
 
-$\frac{A(q)}{A_0} = P(q) \approx \text{erf}\left( \frac{1}{2\sqrt{G_{area}(q)}} \right)$
+$\frac{A(q)}{A_0} = P(q) \approx \mathrm{erf}( \frac{1}{2\sqrt{G_{area}(q)}} )$
 
   물리적 의미: 배율 q에서 고무가 바닥과 닿아있는 면적 비율
   범위: 0 <= P <= 1
@@ -1456,7 +1456,7 @@ $\frac{A(q)}{A_0} = P(q) \approx \text{erf}\left( \frac{1}{2\sqrt{G_{area}(q)}} 
 
 C. 점탄성 마찰 계수 $\mu_{visc}$:
 
-$\mu_{visc} \approx \frac{1}{2} \int_{q_0}^{q_1} dq \, q^3 C(q) S(q) P(q) \int_{0}^{2\pi} d\phi \cos\phi \, \text{Im}\left( \frac{E(qv\cos\phi)}{(1-\nu^2)\sigma_0} \right)$
+$\mu_{visc} \approx \frac{1}{2} \int_{q_0}^{q_1} dq \, q^3 C(q) S(q) P(q) \int_{0}^{2\pi} d\phi \, \cos\phi \, \mathrm{Im}( \frac{E(qv\cos\phi)}{(1-\nu^2)\sigma_0} )$
 
   물리적 의미: 에너지 손실에 의한 마찰 계수 (접촉 면적 $P(q)$가 가중치)
   영향 요인: 접촉 면적 $P(q)$, 에너지 소산, 재료 물성 ($E'$, $E''$)
@@ -1471,7 +1471,7 @@ $\mu_{visc} \approx \frac{1}{2} \int_{q_0}^{q_1} dq \, q^3 C(q) S(q) P(q) \int_{
 
 A. 응력 분산 함수 $G_{stress}(q)$:
 
-$G_{stress}(q) = \frac{\pi}{4} \int_{q_0}^{q} dq' (q')^3 C(q') \left| \frac{E(q'v)}{1-\nu^2} \right|^2$
+$G_{stress}(q) = \frac{\pi}{4} \int_{q_0}^{q} dq' (q')^3 C(q') | \frac{E(q'v)}{1-\nu^2} |^2$
 
   주의: 각도 적분 없음! $\sigma_0$ 분모에 없음!
   단위: Pa² (압력의 제곱)
@@ -1487,7 +1487,7 @@ $G_{stress}(q) = \frac{\pi}{4} \int_{q_0}^{q} dq' (q')^3 C(q') \left| \frac{E(q'
 
 B. 국소 응력 확률 분포 $P(\sigma, q)$:
 
-$P(\sigma, q) = \frac{1}{\sqrt{4\pi G_{stress}(q)}} \left[ \exp\left( -\frac{(\sigma - \sigma_0)^2}{4 G_{stress}(q)} \right) - \exp\left( -\frac{(\sigma + \sigma_0)^2}{4 G_{stress}(q)} \right) \right]$
+$P(\sigma, q) = \frac{1}{\sqrt{4\pi G_{stress}(q)}} [ \exp( -\frac{(\sigma - \sigma_0)^2}{4 G_{stress}(q)} ) - \exp( -\frac{(\sigma + \sigma_0)^2}{4 G_{stress}(q)} ) ]$
 
   변수:
     - $\sigma$: 국소 접촉 응력 (특정 지점에서 실제 받는 압력)
@@ -1528,9 +1528,37 @@ $\begin{array}{lcc}
   $G_{stress}$: "압력이 얼마나 들쭉날쭉한가" (응력의 분산)
 """
 
-        ax.text(0.02, 0.98, equations_text, transform=ax.transAxes,
-                fontsize=12, verticalalignment='top', horizontalalignment='left',
-                family=korean_font, wrap=True, linespacing=1.6)
+        # Render text with proper LaTeX support
+        # matplotlib's text() requires each $...$ to be recognized as math mode
+        lines = equations_text.strip().split('\n')
+        y_position = 0.98
+        line_spacing = 0.018  # Spacing between lines
+
+        import re
+
+        for line in lines:
+            line_stripped = line.strip()
+            if line_stripped:
+                # Check if line contains LaTeX (starts with $ or contains inline $...$)
+                if line_stripped.startswith('$') and line_stripped.endswith('$'):
+                    # Full LaTeX line - render as math
+                    ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
+                           fontsize=12, verticalalignment='top', horizontalalignment='left',
+                           usetex=False)
+                elif '$' in line_stripped:
+                    # Mixed content - split and render parts separately
+                    # For simplicity, render whole line and let matplotlib handle it
+                    ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
+                           fontsize=12, verticalalignment='top', horizontalalignment='left',
+                           family=korean_font, usetex=False)
+                else:
+                    # Plain text - use Korean font
+                    ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
+                           fontsize=12, verticalalignment='top', horizontalalignment='left',
+                           family=korean_font, usetex=False)
+                y_position -= line_spacing
+            else:
+                y_position -= line_spacing * 0.5  # Half spacing for empty lines
 
         # Embed in tkinter
         canvas_eq = FigureCanvasTkAgg(fig, master=scrollable_frame)
