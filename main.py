@@ -1077,8 +1077,8 @@ class PerssonModelGUI_V2:
         if sigma_max < 2 * sigma_0_MPa:
             sigma_max = 2 * sigma_0_MPa
 
-        # Create stress array (in MPa)
-        sigma_array = np.linspace(0, sigma_max, 500)
+        # Create stress array (in MPa) - include negative region to show mirror image
+        sigma_array = np.linspace(-sigma_0_MPa, sigma_max, 500)
 
         # Debug: Print some values to verify calculations
         print(f"\n=== Debug: Stress Distribution at Fixed Velocity ===")
@@ -1152,7 +1152,7 @@ class PerssonModelGUI_V2:
         ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.1f} m/s 고정)', fontweight='bold', fontsize=11, pad=8)
         ax2.legend(fontsize=6, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(0, sigma_max)
+        ax2.set_xlim(-sigma_0_MPa, sigma_max)  # Include negative region to show mirror image
 
         # Plot 3: Contact Area P(q,v) (접촉 면적)
         for j, (v_val, color) in enumerate(zip(v, colors)):
