@@ -1253,6 +1253,10 @@ class PerssonModelGUI_V2:
         print(f"\nPlotting P(σ) for {n_q_selected} wavenumbers:")
         print("="*80)
 
+        # Track maximum values for axis scaling
+        max_P_sigma = 0
+        max_term = 0
+
         # Plot stress distributions for selected wavenumbers
         for i, q_idx in enumerate(q_indices):
             color = colors_q[i]
@@ -1271,6 +1275,10 @@ class PerssonModelGUI_V2:
 
                 # Final P(σ) is difference - clip to ensure non-negative (probability cannot be negative)
                 P_sigma = np.maximum(0, term1 - term2)
+
+                # Track maximum values for axis scaling
+                max_P_sigma = max(max_P_sigma, np.max(P_sigma))
+                max_term = max(max_term, np.max(term1), np.max(term2))
 
                 # Calculate P(σ > 0): probability of positive stress
                 positive_indices = sigma_array > 0
@@ -1317,10 +1325,11 @@ class PerssonModelGUI_V2:
         ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.2f} m/s 고정)', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
         ax2.legend(fontsize=LEGEND_FONT, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        # Auto-adjust x-axis to show full distribution
-        ax2.set_xlim(left=-sigma_0_MPa * 0.5)
-        ax2.autoscale(enable=True, axis='x', tight=False)
-        ax2.autoscale(enable=True, axis='y', tight=False)
+        # Set axis limits to show full distribution shape clearly
+        # X-axis: use calculated sigma_max but reduce by 20% for tighter view
+        ax2.set_xlim(-sigma_0_MPa * 0.4, sigma_max * 0.75)
+        # Y-axis: use maximum value from all curves with some headroom
+        ax2.set_ylim(0, max(max_P_sigma, max_term) * 1.15)
 
         print("="*80)
 
