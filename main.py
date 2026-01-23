@@ -336,9 +336,21 @@ class PerssonModelGUI_V2:
             font=('Arial', 10)
         ).pack()
 
-        # Input panel
-        input_frame = ttk.LabelFrame(parent, text="계산 매개변수", padding=10)
-        input_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Create main container with 2 columns
+        main_container = ttk.Frame(parent)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # Left panel for inputs
+        left_panel = ttk.Frame(main_container)
+        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5))
+
+        # Right panel for visualization
+        right_panel = ttk.Frame(main_container)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
+
+        # Input panel in left column
+        input_frame = ttk.LabelFrame(left_panel, text="계산 매개변수", padding=10)
+        input_frame.pack(fill=tk.X, pady=(0, 5))
 
         # Create input fields
         row = 0
@@ -414,9 +426,9 @@ class PerssonModelGUI_V2:
             width=12
         ).grid(row=row, column=1, pady=5)
 
-        # Calculate button
-        btn_frame = ttk.Frame(parent)
-        btn_frame.pack(fill=tk.X, padx=10, pady=10)
+        # Calculate button in left panel
+        btn_frame = ttk.Frame(left_panel)
+        btn_frame.pack(fill=tk.X, pady=(0, 5))
 
         self.calc_button = ttk.Button(
             btn_frame,
@@ -434,9 +446,9 @@ class PerssonModelGUI_V2:
         )
         self.progress_bar.pack(fill=tk.X, pady=5)
 
-        # Calculation visualization area
-        viz_frame = ttk.LabelFrame(parent, text="계산 과정 시각화", padding=10)
-        viz_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        # Calculation visualization area in right panel
+        viz_frame = ttk.LabelFrame(right_panel, text="계산 과정 시각화", padding=10)
+        viz_frame.pack(fill=tk.BOTH, expand=True)
 
         # Status display for current calculation state
         status_display_frame = ttk.Frame(viz_frame)
@@ -450,57 +462,57 @@ class PerssonModelGUI_V2:
         )
         self.calc_status_label.pack()
 
-        # Create figure for calculation progress with three subplots
-        self.fig_calc_progress = Figure(figsize=(18, 5), dpi=100)
+        # Create figure for calculation progress with three vertical subplots
+        self.fig_calc_progress = Figure(figsize=(8, 15), dpi=100)
 
-        # Left: PSD(q) - wavenumber based (static)
-        self.ax_psd_q = self.fig_calc_progress.add_subplot(131)
+        # Top: PSD(q) - wavenumber based (static)
+        self.ax_psd_q = self.fig_calc_progress.add_subplot(311)
 
         # Middle: DMA master curve (animated with frequency range)
-        self.ax_dma_progress = self.fig_calc_progress.add_subplot(132)
+        self.ax_dma_progress = self.fig_calc_progress.add_subplot(312)
 
-        # Right: PSD(f) - frequency based (animated)
-        self.ax_psd_f = self.fig_calc_progress.add_subplot(133)
+        # Bottom: PSD(f) - frequency based (animated)
+        self.ax_psd_f = self.fig_calc_progress.add_subplot(313)
 
         self.canvas_calc_progress = FigureCanvasTkAgg(self.fig_calc_progress, viz_frame)
         self.canvas_calc_progress.draw()
         self.canvas_calc_progress.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Initialize PSD(q) plot - left
-        self.ax_psd_q.set_xlabel('파수 q (1/m)', fontsize=10, fontweight='bold')
-        self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontsize=10, fontweight='bold')
+        # Initialize PSD(q) plot - top
+        self.ax_psd_q.set_xlabel('파수 q (1/m)', fontsize=9, fontweight='bold')
+        self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontsize=9, fontweight='bold')
         self.ax_psd_q.set_xscale('log')
         self.ax_psd_q.set_yscale('log')
         self.ax_psd_q.grid(True, alpha=0.3)
-        self.ax_psd_q.set_title('PSD (파수 기준)', fontsize=11, fontweight='bold')
+        self.ax_psd_q.set_title('PSD (파수 기준)', fontsize=10, fontweight='bold')
 
         # Initialize DMA plot - middle
-        self.ax_dma_progress.set_xlabel('주파수 f (Hz)', fontsize=10, fontweight='bold')
-        self.ax_dma_progress.set_ylabel('탄성률 (Pa)', fontsize=10, fontweight='bold')
+        self.ax_dma_progress.set_xlabel('주파수 f (Hz)', fontsize=9, fontweight='bold')
+        self.ax_dma_progress.set_ylabel('탄성률 (Pa)', fontsize=9, fontweight='bold')
         self.ax_dma_progress.set_xscale('log')
         self.ax_dma_progress.set_yscale('log')
         self.ax_dma_progress.grid(True, alpha=0.3)
-        self.ax_dma_progress.set_title('DMA 마스터 곡선', fontsize=11, fontweight='bold')
+        self.ax_dma_progress.set_title('DMA 마스터 곡선', fontsize=10, fontweight='bold')
 
-        # Initialize PSD(f) plot - right
-        self.ax_psd_f.set_xlabel('주파수 f (Hz)', fontsize=10, fontweight='bold')
-        self.ax_psd_f.set_ylabel('PSD C(f) (변환)', fontsize=10, fontweight='bold')
+        # Initialize PSD(f) plot - bottom
+        self.ax_psd_f.set_xlabel('주파수 f (Hz)', fontsize=9, fontweight='bold')
+        self.ax_psd_f.set_ylabel('PSD C(f) (변환)', fontsize=9, fontweight='bold')
         self.ax_psd_f.set_xscale('log')
         self.ax_psd_f.set_yscale('log')
         self.ax_psd_f.grid(True, alpha=0.3)
-        self.ax_psd_f.set_title('PSD (주파수 기준)', fontsize=11, fontweight='bold')
+        self.ax_psd_f.set_title('PSD (주파수 기준)', fontsize=10, fontweight='bold')
 
         self.fig_calc_progress.tight_layout()
 
-        # Save button for calculation progress plot
-        save_btn_frame = ttk.Frame(parent)
-        save_btn_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Save button for calculation progress plot in left panel
+        save_btn_frame = ttk.Frame(left_panel)
+        save_btn_frame.pack(fill=tk.X, pady=(5, 0))
 
         ttk.Button(
             save_btn_frame,
             text="계산 과정 그래프 저장",
             command=lambda: self._save_plot(self.fig_calc_progress, "calculation_progress")
-        ).pack(side=tk.LEFT, padx=5)
+        ).pack(fill=tk.X)
 
     def _create_results_tab(self, parent):
         """Create G(q,v) results tab."""
@@ -853,7 +865,7 @@ class PerssonModelGUI_V2:
                 self.ax_dma_progress.clear()
                 self.ax_psd_f.clear()
 
-                # LEFT SUBPLOT: Plot PSD(q) - wavenumber based (static)
+                # TOP SUBPLOT: Plot PSD(q) - wavenumber based (static)
                 if self.psd_model is not None:
                     q_plot = np.logspace(np.log10(q_min), np.log10(q_max), 200)
                     C_q = self.psd_model(q_plot)
@@ -890,7 +902,7 @@ class PerssonModelGUI_V2:
                     self.ax_dma_progress.legend(loc='best', fontsize=8)
                     self.ax_dma_progress.set_title('DMA 마스터 곡선', fontsize=11, fontweight='bold')
 
-                # RIGHT SUBPLOT: Initialize PSD(f) plot - will be updated during animation
+                # BOTTOM SUBPLOT: Initialize PSD(f) plot - will be updated during animation
                 if self.psd_model is not None:
                     # Plot a placeholder that will be updated during calculation
                     # Use initial velocity to show what PSD(f) looks like
@@ -966,7 +978,7 @@ class PerssonModelGUI_V2:
                     except Exception as e:
                         print(f"Error updating DMA highlight: {e}")
 
-                    # Update PSD(f) plot with current velocity (right subplot)
+                    # Update PSD(f) plot with current velocity (bottom subplot)
                     try:
                         # Remove previous PSD(f) lines and highlights
                         for line in self.ax_psd_f.lines[:]:
