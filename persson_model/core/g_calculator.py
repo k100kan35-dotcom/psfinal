@@ -30,6 +30,10 @@ class GCalculator:
     This class handles the double integral calculation:
     - Inner integral: integration over angle φ from 0 to 2π
     - Outer integral: integration over wavenumber q from q₀ to q
+
+    Supports nonlinear correction via f(ε) and g(ε) functions:
+    - E'_eff = E' × f(ε)
+    - E''_eff = E'' × g(ε)
     """
 
     def __init__(
@@ -40,7 +44,9 @@ class GCalculator:
         velocity: float,
         poisson_ratio: float = 0.5,
         n_angle_points: int = 36,
-        integration_method: str = 'trapz'
+        integration_method: str = 'trapz',
+        storage_modulus_func: Callable[[float], float] = None,
+        loss_modulus_func: Callable[[float], float] = None
     ):
         """
         Initialize G(q) calculator.
@@ -62,6 +68,10 @@ class GCalculator:
         integration_method : str, optional
             Method for numerical integration: 'trapz', 'simpson', or 'quad'
             (default: 'trapz')
+        storage_modulus_func : callable, optional
+            Function that returns E'(ω) separately (for nonlinear correction)
+        loss_modulus_func : callable, optional
+            Function that returns E''(ω) separately (for nonlinear correction)
         """
         self.psd_func = psd_func
         self.modulus_func = modulus_func
@@ -70,15 +80,74 @@ class GCalculator:
         self.poisson_ratio = poisson_ratio
         self.n_angle_points = n_angle_points
         self.integration_method = integration_method
+        self.storage_modulus_func = storage_modulus_func
+        self.loss_modulus_func = loss_modulus_func
 
         # Precompute constant factor
         self.prefactor = 1.0 / ((1 - poisson_ratio**2) * sigma_0)
+
+        # Nonlinear correction (default: none)
+        self.f_interpolator = None  # f(ε) for E'
+        self.g_interpolator = None  # g(ε) for E''
+        self.strain_array = None    # ε(q) array
+        self.strain_q_array = None  # q values for strain interpolation
+
+    def set_nonlinear_correction(
+        self,
+        f_interpolator: Callable[[float], float],
+        g_interpolator: Callable[[float], float],
+        strain_array: np.ndarray,
+        strain_q_array: np.ndarray
+    ):
+        """
+        Set nonlinear correction functions f(ε) and g(ε).
+
+        Parameters
+        ----------
+        f_interpolator : callable
+            f(ε) function for storage modulus correction: E'_eff = E' × f(ε)
+        g_interpolator : callable
+            g(ε) function for loss modulus correction: E''_eff = E'' × g(ε)
+        strain_array : np.ndarray
+            Local strain values ε(q)
+        strain_q_array : np.ndarray
+            Wavenumber values corresponding to strain_array
+        """
+        self.f_interpolator = f_interpolator
+        self.g_interpolator = g_interpolator
+        self.strain_array = strain_array
+        self.strain_q_array = strain_q_array
+
+    def clear_nonlinear_correction(self):
+        """Clear nonlinear correction (use linear modulus)."""
+        self.f_interpolator = None
+        self.g_interpolator = None
+        self.strain_array = None
+        self.strain_q_array = None
+
+    def _get_strain_at_q(self, q: float) -> float:
+        """Get interpolated strain value at wavenumber q."""
+        if self.strain_array is None or self.strain_q_array is None:
+            return 0.0
+
+        # Log interpolation for better accuracy
+        from scipy.interpolate import interp1d
+        log_q = np.log10(self.strain_q_array)
+        log_strain = np.log10(np.maximum(self.strain_array, 1e-10))
+        interp_func = interp1d(log_q, log_strain, kind='linear',
+                               bounds_error=False, fill_value='extrapolate')
+        strain = 10 ** interp_func(np.log10(q))
+        return np.clip(strain, 0.0, 1.0)
 
     def _angle_integral(self, q: float) -> float:
         """
         Compute inner integral over angle φ.
 
-        Integrates: ∫₀^(2π) dφ |E(qv cosφ) / ((1-ν²)σ₀)|²
+        Integrates: ∫₀^(2π) dφ |E_eff(qv cosφ) / ((1-ν²)σ₀)|²
+
+        When nonlinear correction is enabled:
+        E_eff = E'×f(ε) + i×E''×g(ε)
+        |E_eff|² = (E'×f)² + (E''×g)²
 
         Parameters
         ----------
@@ -99,16 +168,36 @@ class GCalculator:
         omega = q * self.velocity * np.cos(phi)
 
         # Handle zero and negative frequencies
-        # For negative frequencies, use E(-ω) = E*(ω)
-        # For zero frequency, use a small offset
         omega_eval = np.abs(omega)
         omega_eval[omega_eval < 1e-10] = 1e-10
 
-        # Get complex modulus values
-        E_values = np.array([self.modulus_func(w) for w in omega_eval])
+        # Check if nonlinear correction should be applied
+        use_nonlinear = (self.f_interpolator is not None and
+                         self.g_interpolator is not None and
+                         self.storage_modulus_func is not None and
+                         self.loss_modulus_func is not None)
 
-        # Calculate integrand: |E(ω) / ((1-ν²)σ₀)|²
-        integrand = np.abs(E_values * self.prefactor)**2
+        if use_nonlinear:
+            # Get strain at this q
+            strain_q = self._get_strain_at_q(q)
+            f_val = np.clip(self.f_interpolator(strain_q), 0.0, 1.0)
+            g_val = np.clip(self.g_interpolator(strain_q), 0.0, 1.0)
+
+            # Calculate |E_eff|² = (E'×f)² + (E''×g)² for each angle
+            integrand = np.zeros_like(phi)
+            for i, w in enumerate(omega_eval):
+                E_prime = self.storage_modulus_func(w)
+                E_loss = self.loss_modulus_func(w)
+                # Apply nonlinear correction
+                E_prime_eff = E_prime * f_val
+                E_loss_eff = E_loss * g_val
+                # |E_eff|² = E'_eff² + E''_eff²
+                E_star_eff_sq = E_prime_eff**2 + E_loss_eff**2
+                integrand[i] = E_star_eff_sq * self.prefactor**2
+        else:
+            # Linear calculation (original)
+            E_values = np.array([self.modulus_func(w) for w in omega_eval])
+            integrand = np.abs(E_values * self.prefactor)**2
 
         # Numerical integration using trapezoidal rule
         result = np.trapz(integrand, phi)
@@ -121,6 +210,9 @@ class GCalculator:
 
         This method returns both the integral result and the detailed
         integrand values at each angle for visualization purposes.
+
+        When nonlinear correction is enabled:
+        E_eff = E'×f(ε) + i×E''×g(ε)
 
         Parameters
         ----------
@@ -148,11 +240,31 @@ class GCalculator:
         omega_eval = np.abs(omega)
         omega_eval[omega_eval < 1e-10] = 1e-10
 
-        # Get complex modulus values
-        E_values = np.array([self.modulus_func(w) for w in omega_eval])
+        # Check if nonlinear correction should be applied
+        use_nonlinear = (self.f_interpolator is not None and
+                         self.g_interpolator is not None and
+                         self.storage_modulus_func is not None and
+                         self.loss_modulus_func is not None)
 
-        # Calculate integrand: |E(ω) / ((1-ν²)σ₀)|²
-        integrand = np.abs(E_values * self.prefactor)**2
+        if use_nonlinear:
+            # Get strain at this q
+            strain_q = self._get_strain_at_q(q)
+            f_val = np.clip(self.f_interpolator(strain_q), 0.0, 1.0)
+            g_val = np.clip(self.g_interpolator(strain_q), 0.0, 1.0)
+
+            # Calculate |E_eff|² for each angle
+            integrand = np.zeros_like(phi)
+            for i, w in enumerate(omega_eval):
+                E_prime = self.storage_modulus_func(w)
+                E_loss = self.loss_modulus_func(w)
+                E_prime_eff = E_prime * f_val
+                E_loss_eff = E_loss * g_val
+                E_star_eff_sq = E_prime_eff**2 + E_loss_eff**2
+                integrand[i] = E_star_eff_sq * self.prefactor**2
+        else:
+            # Linear calculation
+            E_values = np.array([self.modulus_func(w) for w in omega_eval])
+            integrand = np.abs(E_values * self.prefactor)**2
 
         # Numerical integration using trapezoidal rule
         result = np.trapz(integrand, phi)

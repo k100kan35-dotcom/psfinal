@@ -3178,12 +3178,13 @@ $\begin{array}{lcc}
                     return np.full(n, fixed_strain)
 
             # Apply nonlinear correction to G(q) if enabled
-            # G(q) ∝ |E*|² = E'² + E''²
-            # G_nonlinear = G_linear × [(E'×f(ε))² + (E''×g(ε))²] / [E'² + E''²]
+            # Recalculate G with f(ε), g(ε) applied INSIDE the integral:
+            # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)σ₀)² dφ dq'
+            # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
             G_matrix_corrected = G_matrix.copy()
 
             if use_fg and self.f_interpolator is not None and self.g_interpolator is not None:
-                self.status_var.set("비선형 G(q) 보정 적용 중...")
+                self.status_var.set("비선형 G(q) 재계산 중 (적분 내 보정)...")
                 self.root.update()
 
                 # Get strain array for nonlinear correction
@@ -3198,34 +3199,34 @@ $\begin{array}{lcc}
                 else:
                     strain_for_G = np.full(len(q), fixed_strain)
 
-                # For each velocity, calculate modulus correction ratio
+                # Set nonlinear correction on g_calculator
+                # This applies f(ε), g(ε) INSIDE the angle integral
+                self.g_calculator.storage_modulus_func = lambda w: self.material.get_storage_modulus(w, temperature=temperature)
+                self.g_calculator.loss_modulus_func = lambda w: self.material.get_loss_modulus(w, temperature=temperature)
+                self.g_calculator.set_nonlinear_correction(
+                    f_interpolator=self.f_interpolator,
+                    g_interpolator=self.g_interpolator,
+                    strain_array=strain_for_G,
+                    strain_q_array=q
+                )
+
+                # Recalculate G(q,v) with nonlinear correction inside integral
+                q_min = float(self.q_min_var.get())
                 for j, v_j in enumerate(v):
-                    for i, q_i in enumerate(q):
-                        omega_i = q_i * v_j  # Representative frequency
-                        omega_i = max(omega_i, 1e-10)
+                    self.g_calculator.velocity = v_j
+                    results_nl = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
+                    G_matrix_corrected[:, j] = results_nl['G']
 
-                        # Get linear modulus
-                        E_prime_lin = self.material.get_storage_modulus(omega_i, temperature=temperature)
-                        E_loss_lin = self.material.get_loss_modulus(omega_i, temperature=temperature)
-                        E_star_lin_sq = E_prime_lin**2 + E_loss_lin**2
+                    # Progress update
+                    if j % max(1, len(v) // 10) == 0:
+                        progress = int((j + 1) / len(v) * 50)
+                        self.mu_progress_var.set(progress)
+                        self.root.update()
 
-                        # Get nonlinear correction factors
-                        eps_i = strain_for_G[i]
-                        f_val = np.clip(self.f_interpolator(eps_i), 0.0, 1.0)
-                        g_val = np.clip(self.g_interpolator(eps_i), 0.0, 1.0)
+                # Clear nonlinear correction after calculation
+                self.g_calculator.clear_nonlinear_correction()
 
-                        # Calculate corrected modulus
-                        E_prime_eff = E_prime_lin * f_val
-                        E_loss_eff = E_loss_lin * g_val
-                        E_star_eff_sq = E_prime_eff**2 + E_loss_eff**2
-
-                        # Apply correction ratio to G
-                        # G ∝ |E*|² so G_eff/G_lin = |E*_eff|²/|E*_lin|²
-                        if E_star_lin_sq > 0:
-                            correction_ratio = E_star_eff_sq / E_star_lin_sq
-                            G_matrix_corrected[i, j] = G_matrix[i, j] * correction_ratio
-
-                self.status_var.set("비선형 G(q) 보정 완료 - μ_visc 계산 중...")
+                self.status_var.set("비선형 G(q) 재계산 완료 - μ_visc 계산 중...")
                 self.root.update()
 
             # Create friction calculator with g_interpolator
