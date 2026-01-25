@@ -3437,36 +3437,39 @@ $\begin{array}{lcc}
                          label=f'최대값: μ={smart_format(peak_mu)} @ v={peak_v:.4f} m/s')
         self.ax_mu_v.legend(loc='upper left', fontsize=7)
 
-        # Plot 2: Real Contact Area Ratio vs velocity
-        # Calculate average P (contact area ratio) for each velocity
-        P_avg_array = np.zeros(len(v))
+        # Plot 2: Real Contact Area Ratio A/A₀ = P(q_max) vs velocity
+        # P(q_max) is the true contact area ratio at the finest resolution
+        # G(q_max) is the full cumulative integral, so P(q_max) = erf(1/(2√G_total))
+        # This should match Tab 3's contact area plot
+        P_qmax_array = np.zeros(len(v))
+
         for i, det in enumerate(details['details']):
             P = det.get('P', np.zeros(1))
-            # Weighted average by integrand contribution
-            integrand = det.get('integrand', np.ones_like(P))
-            if np.sum(np.abs(integrand)) > 0:
-                weights = np.abs(integrand) / np.sum(np.abs(integrand))
-                P_avg_array[i] = np.sum(P * weights)
-            else:
-                P_avg_array[i] = np.mean(P)
+            # P at q_max = A/A₀ (true real contact area ratio)
+            P_qmax_array[i] = P[-1] if len(P) > 0 else 0
 
-        # P(q) is from nonlinear G(q) when nonlinear correction is applied
+        # Color based on nonlinear correction
         if use_nonlinear:
-            label_str = 'P(q) from 비선형 G(q)'
+            label_str = 'A/A₀ - 비선형 G(q)'
             color = 'r'
             title_suffix = ' (f,g 보정 적용)'
         else:
-            label_str = 'P(q) from 선형 G(q)'
+            label_str = 'A/A₀ - 선형 G(q)'
             color = 'b'
             title_suffix = ''
-        self.ax_mu_cumulative.semilogx(v, P_avg_array, f'{color}-', linewidth=2,
+
+        # Plot A/A₀ = P(q_max)
+        self.ax_mu_cumulative.semilogx(v, P_qmax_array, f'{color}-', linewidth=2,
                                         marker='s', markersize=4, label=label_str)
-        self.ax_mu_cumulative.set_title(f'실접촉 면적비율 P(v){title_suffix}', fontweight='bold', fontsize=8)
+
+        self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A₀{title_suffix}', fontweight='bold', fontsize=8)
         self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
-        self.ax_mu_cumulative.set_ylabel('평균 P(q)')
-        self.ax_mu_cumulative.legend(loc='best', fontsize=8)
+        self.ax_mu_cumulative.set_ylabel('A/A₀ = P(q_max)')
+        self.ax_mu_cumulative.legend(loc='best', fontsize=7)
         self.ax_mu_cumulative.grid(True, alpha=0.3)
-        self.ax_mu_cumulative.set_ylim(0, 1.05)
+        # Set y-axis to show data with padding
+        y_max = max(np.max(P_qmax_array) * 1.2, 0.05)
+        self.ax_mu_cumulative.set_ylim(0, y_max)
 
         # Plot 3: P(q), S(q) for middle velocity
         mid_idx = len(details['details']) // 2
