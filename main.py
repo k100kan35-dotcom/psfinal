@@ -69,7 +69,11 @@ from persson_model.utils.data_loader import (
 from persson_model.core.friction import (
     FrictionCalculator,
     calculate_mu_visc_simple,
-    apply_nonlinear_strain_correction
+    apply_nonlinear_strain_correction,
+    calculate_rms_slope_profile,
+    calculate_strain_profile,
+    calculate_hrms_profile,
+    RMSSlopeCalculator
 )
 
 # Configure matplotlib for better Korean font support
@@ -130,6 +134,11 @@ class PerssonModelGUI_V2:
         self.f_interpolator = None  # f(strain) function
         self.g_interpolator = None  # g(strain) function
         self.mu_visc_results = None  # mu_visc calculation results
+
+        # RMS Slope / Local Strain related variables
+        self.rms_slope_calculator = None  # RMSSlopeCalculator instance
+        self.rms_slope_profiles = None  # Calculated profiles (q, xi, strain, hrms)
+        self.local_strain_array = None  # Local strain for mu_visc calculation
 
         # Create UI
         self._create_menu()
@@ -259,9 +268,14 @@ class PerssonModelGUI_V2:
         self.notebook.add(self.tab_equations, text="5. 수식 정리")
         self._create_equations_tab(self.tab_equations)
 
-        # Tab 6: Strain/mu_visc Calculation
+        # Tab 6: RMS Slope / Local Strain
+        self.tab_rms_slope = ttk.Frame(self.notebook)
+        self.notebook.add(self.tab_rms_slope, text="6. RMS Slope/Local Strain")
+        self._create_rms_slope_tab(self.tab_rms_slope)
+
+        # Tab 7: Strain/mu_visc Calculation
         self.tab_mu_visc = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_mu_visc, text="6. Strain/μ_visc 계산")
+        self.notebook.add(self.tab_mu_visc, text="7. μ_visc 계산")
         self._create_mu_visc_tab(self.tab_mu_visc)
 
     def _create_verification_tab(self, parent):
@@ -1807,6 +1821,432 @@ $\begin{array}{lcc}
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
+    def _create_rms_slope_tab(self, parent):
+        """Create RMS Slope / Local Strain calculation tab."""
+        # Main container
+        main_container = ttk.Frame(parent)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # Left panel for controls (fixed width)
+        left_frame = ttk.Frame(main_container, width=320)
+        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        left_frame.pack_propagate(False)
+
+        # ============== Left Panel: Controls ==============
+
+        # 1. Description
+        desc_frame = ttk.LabelFrame(left_frame, text="설명", padding=5)
+        desc_frame.pack(fill=tk.X, pady=2, padx=3)
+
+        desc_text = (
+            "PSD 데이터로부터 RMS Slope(ξ)와\n"
+            "Local Strain(ε)을 계산합니다.\n\n"
+            "수식:\n"
+            "  ξ²(q) = 2π ∫[q₀→q] k³C(k)dk\n"
+            "  ε(q) = factor × ξ(q)"
+        )
+        ttk.Label(desc_frame, text=desc_text, font=('Arial', 9), justify=tk.LEFT).pack(anchor=tk.W)
+
+        # 2. Calculation Settings
+        settings_frame = ttk.LabelFrame(left_frame, text="계산 설정", padding=5)
+        settings_frame.pack(fill=tk.X, pady=2, padx=3)
+
+        # Strain factor
+        row1 = ttk.Frame(settings_frame)
+        row1.pack(fill=tk.X, pady=2)
+        ttk.Label(row1, text="Strain Factor:", font=('Arial', 9)).pack(side=tk.LEFT)
+        self.strain_factor_var = tk.StringVar(value="0.5")
+        ttk.Entry(row1, textvariable=self.strain_factor_var, width=8).pack(side=tk.RIGHT)
+
+        ttk.Label(settings_frame, text="(ε = factor × ξ, Persson 권장: 0.5)",
+                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+
+        # q range
+        q_frame = ttk.LabelFrame(settings_frame, text="q 범위", padding=3)
+        q_frame.pack(fill=tk.X, pady=3)
+
+        row_q1 = ttk.Frame(q_frame)
+        row_q1.pack(fill=tk.X, pady=1)
+        ttk.Label(row_q1, text="q_min (1/m):", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.rms_q_min_var = tk.StringVar(value="auto")
+        ttk.Entry(row_q1, textvariable=self.rms_q_min_var, width=10).pack(side=tk.RIGHT)
+
+        row_q2 = ttk.Frame(q_frame)
+        row_q2.pack(fill=tk.X, pady=1)
+        ttk.Label(row_q2, text="q_max (1/m):", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.rms_q_max_var = tk.StringVar(value="auto")
+        ttk.Entry(row_q2, textvariable=self.rms_q_max_var, width=10).pack(side=tk.RIGHT)
+
+        ttk.Label(q_frame, text="'auto' = PSD 데이터 범위 사용",
+                  font=('Arial', 7), foreground='gray').pack(anchor=tk.W)
+
+        # Calculate button
+        calc_frame = ttk.Frame(settings_frame)
+        calc_frame.pack(fill=tk.X, pady=5)
+
+        self.rms_calc_btn = ttk.Button(
+            calc_frame,
+            text="RMS Slope / Local Strain 계산",
+            command=self._calculate_rms_slope
+        )
+        self.rms_calc_btn.pack(fill=tk.X)
+
+        # Progress bar
+        self.rms_progress_var = tk.IntVar()
+        self.rms_progress_bar = ttk.Progressbar(
+            calc_frame,
+            variable=self.rms_progress_var,
+            maximum=100
+        )
+        self.rms_progress_bar.pack(fill=tk.X, pady=2)
+
+        # 3. Results Summary
+        results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
+        results_frame.pack(fill=tk.X, pady=2, padx=3)
+
+        self.rms_result_text = tk.Text(results_frame, height=12, font=("Courier", 8), wrap=tk.WORD)
+        self.rms_result_text.pack(fill=tk.X)
+
+        # 4. Export / Apply buttons
+        action_frame = ttk.LabelFrame(left_frame, text="작업", padding=5)
+        action_frame.pack(fill=tk.X, pady=2, padx=3)
+
+        self.apply_strain_btn = ttk.Button(
+            action_frame,
+            text="μ_visc 탭에 Local Strain 적용",
+            command=self._apply_local_strain_to_mu_visc
+        )
+        self.apply_strain_btn.pack(fill=tk.X, pady=2)
+
+        ttk.Button(
+            action_frame,
+            text="CSV 내보내기",
+            command=self._export_rms_slope_data
+        ).pack(fill=tk.X, pady=2)
+
+        # ============== Right Panel: Plots ==============
+
+        right_panel = ttk.Frame(main_container)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+
+        plot_frame = ttk.LabelFrame(right_panel, text="그래프", padding=5)
+        plot_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Create figure with 2x2 subplots
+        self.fig_rms = Figure(figsize=(9, 7), dpi=100)
+
+        # Top-left: RMS Slope vs q
+        self.ax_rms_slope = self.fig_rms.add_subplot(221)
+        self.ax_rms_slope.set_title('RMS Slope ξ(q)', fontweight='bold')
+        self.ax_rms_slope.set_xlabel('파수 q (1/m)')
+        self.ax_rms_slope.set_ylabel('ξ (RMS Slope)')
+        self.ax_rms_slope.set_xscale('log')
+        self.ax_rms_slope.set_yscale('log')
+        self.ax_rms_slope.grid(True, alpha=0.3)
+
+        # Top-right: Local Strain vs q
+        self.ax_local_strain = self.fig_rms.add_subplot(222)
+        self.ax_local_strain.set_title('Local Strain ε(q)', fontweight='bold')
+        self.ax_local_strain.set_xlabel('파수 q (1/m)')
+        self.ax_local_strain.set_ylabel('ε (fraction)')
+        self.ax_local_strain.set_xscale('log')
+        self.ax_local_strain.set_yscale('log')
+        self.ax_local_strain.grid(True, alpha=0.3)
+
+        # Bottom-left: RMS Height vs q
+        self.ax_rms_height = self.fig_rms.add_subplot(223)
+        self.ax_rms_height.set_title('RMS Height h_rms(q)', fontweight='bold')
+        self.ax_rms_height.set_xlabel('파수 q (1/m)')
+        self.ax_rms_height.set_ylabel('h_rms (m)')
+        self.ax_rms_height.set_xscale('log')
+        self.ax_rms_height.set_yscale('log')
+        self.ax_rms_height.grid(True, alpha=0.3)
+
+        # Bottom-right: PSD (for reference)
+        self.ax_psd_ref = self.fig_rms.add_subplot(224)
+        self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold')
+        self.ax_psd_ref.set_xlabel('파수 q (1/m)')
+        self.ax_psd_ref.set_ylabel('C(q) (m⁴)')
+        self.ax_psd_ref.set_xscale('log')
+        self.ax_psd_ref.set_yscale('log')
+        self.ax_psd_ref.grid(True, alpha=0.3)
+
+        self.fig_rms.tight_layout()
+
+        self.canvas_rms = FigureCanvasTkAgg(self.fig_rms, plot_frame)
+        self.canvas_rms.draw()
+        self.canvas_rms.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        toolbar = NavigationToolbar2Tk(self.canvas_rms, plot_frame)
+        toolbar.update()
+
+    def _calculate_rms_slope(self):
+        """Calculate RMS Slope and Local Strain from PSD data."""
+        # Check if PSD data is available
+        if self.psd_model is None:
+            messagebox.showwarning("경고", "먼저 PSD 데이터를 로드하세요.")
+            return
+
+        try:
+            self.rms_calc_btn.config(state='disabled')
+            self.rms_progress_var.set(10)
+            self.update_idletasks()
+
+            # Get PSD data
+            q_array = self.psd_model.q
+            C_q_array = self.psd_model.C_iso
+
+            # Get strain factor
+            strain_factor = float(self.strain_factor_var.get())
+
+            # Get q range
+            q_min_str = self.rms_q_min_var.get().strip().lower()
+            q_max_str = self.rms_q_max_var.get().strip().lower()
+
+            if q_min_str == 'auto':
+                q_min = q_array[0]
+            else:
+                q_min = float(q_min_str)
+
+            if q_max_str == 'auto':
+                q_max = q_array[-1]
+            else:
+                q_max = float(q_max_str)
+
+            # Filter q range
+            mask = (q_array >= q_min) & (q_array <= q_max)
+            q_filtered = q_array[mask]
+            C_filtered = C_q_array[mask]
+
+            if len(q_filtered) < 3:
+                messagebox.showerror("오류", "q 범위에 데이터 포인트가 부족합니다.")
+                self.rms_calc_btn.config(state='normal')
+                return
+
+            self.rms_progress_var.set(30)
+            self.update_idletasks()
+
+            # Create RMS slope calculator
+            self.rms_slope_calculator = RMSSlopeCalculator(
+                q_filtered, C_filtered, strain_factor=strain_factor
+            )
+
+            self.rms_progress_var.set(60)
+            self.update_idletasks()
+
+            # Store profiles
+            self.rms_slope_profiles = self.rms_slope_calculator.get_profiles()
+            self.local_strain_array = self.rms_slope_profiles['strain'].copy()
+
+            # Update plots
+            self._update_rms_slope_plots()
+
+            self.rms_progress_var.set(80)
+            self.update_idletasks()
+
+            # Update result text
+            self._update_rms_result_text()
+
+            self.rms_progress_var.set(100)
+            self.status_var.set("RMS Slope / Local Strain 계산 완료")
+
+            messagebox.showinfo("완료",
+                f"RMS Slope / Local Strain 계산 완료!\n\n"
+                f"ξ_max = {self.rms_slope_profiles['xi'][-1]:.4f}\n"
+                f"ε_max = {self.rms_slope_profiles['strain'][-1]*100:.2f}%\n"
+                f"h_rms = {self.rms_slope_profiles['hrms'][-1]*1e6:.2f} μm"
+            )
+
+        except Exception as e:
+            messagebox.showerror("오류", f"계산 실패:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
+        finally:
+            self.rms_calc_btn.config(state='normal')
+
+    def _update_rms_slope_plots(self):
+        """Update RMS slope plots."""
+        if self.rms_slope_profiles is None:
+            return
+
+        profiles = self.rms_slope_profiles
+        q = profiles['q']
+        xi = profiles['xi']
+        strain = profiles['strain']
+        hrms = profiles['hrms']
+        C_q = profiles['C_q']
+
+        # Clear all subplots
+        self.ax_rms_slope.clear()
+        self.ax_local_strain.clear()
+        self.ax_rms_height.clear()
+        self.ax_psd_ref.clear()
+
+        # Plot 1: RMS Slope
+        valid_xi = xi > 0
+        if np.any(valid_xi):
+            self.ax_rms_slope.loglog(q[valid_xi], xi[valid_xi], 'b-', linewidth=2)
+        self.ax_rms_slope.set_title('RMS Slope ξ(q)', fontweight='bold')
+        self.ax_rms_slope.set_xlabel('파수 q (1/m)')
+        self.ax_rms_slope.set_ylabel('ξ (RMS Slope)')
+        self.ax_rms_slope.grid(True, alpha=0.3)
+
+        # Add final value annotation
+        if len(xi) > 0 and xi[-1] > 0:
+            self.ax_rms_slope.axhline(y=xi[-1], color='r', linestyle='--', alpha=0.5)
+            self.ax_rms_slope.annotate(f'ξ_max={xi[-1]:.4f}',
+                xy=(q[-1], xi[-1]), xytext=(0.7, 0.9),
+                textcoords='axes fraction', fontsize=9,
+                arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
+
+        # Plot 2: Local Strain
+        valid_strain = strain > 0
+        if np.any(valid_strain):
+            self.ax_local_strain.loglog(q[valid_strain], strain[valid_strain]*100, 'r-', linewidth=2)
+        self.ax_local_strain.set_title('Local Strain ε(q)', fontweight='bold')
+        self.ax_local_strain.set_xlabel('파수 q (1/m)')
+        self.ax_local_strain.set_ylabel('ε (%)')
+        self.ax_local_strain.grid(True, alpha=0.3)
+
+        # Add strain thresholds
+        self.ax_local_strain.axhline(y=1, color='g', linestyle=':', alpha=0.5, label='1%')
+        self.ax_local_strain.axhline(y=10, color='orange', linestyle=':', alpha=0.5, label='10%')
+        self.ax_local_strain.axhline(y=100, color='red', linestyle=':', alpha=0.5, label='100%')
+        self.ax_local_strain.legend(loc='lower right', fontsize=7)
+
+        if len(strain) > 0 and strain[-1] > 0:
+            self.ax_local_strain.annotate(f'ε_max={strain[-1]*100:.2f}%',
+                xy=(q[-1], strain[-1]*100), xytext=(0.7, 0.9),
+                textcoords='axes fraction', fontsize=9,
+                arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
+
+        # Plot 3: RMS Height
+        valid_hrms = hrms > 0
+        if np.any(valid_hrms):
+            self.ax_rms_height.loglog(q[valid_hrms], hrms[valid_hrms]*1e6, 'g-', linewidth=2)
+        self.ax_rms_height.set_title('RMS Height h_rms(q)', fontweight='bold')
+        self.ax_rms_height.set_xlabel('파수 q (1/m)')
+        self.ax_rms_height.set_ylabel('h_rms (μm)')
+        self.ax_rms_height.grid(True, alpha=0.3)
+
+        if len(hrms) > 0 and hrms[-1] > 0:
+            self.ax_rms_height.annotate(f'h_rms={hrms[-1]*1e6:.2f}μm',
+                xy=(q[-1], hrms[-1]*1e6), xytext=(0.7, 0.9),
+                textcoords='axes fraction', fontsize=9,
+                arrowprops=dict(arrowstyle='->', color='green', alpha=0.5))
+
+        # Plot 4: PSD Reference
+        valid_C = C_q > 0
+        if np.any(valid_C):
+            self.ax_psd_ref.loglog(q[valid_C], C_q[valid_C], 'k-', linewidth=1.5)
+        self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold')
+        self.ax_psd_ref.set_xlabel('파수 q (1/m)')
+        self.ax_psd_ref.set_ylabel('C(q) (m⁴)')
+        self.ax_psd_ref.grid(True, alpha=0.3)
+
+        self.fig_rms.tight_layout()
+        self.canvas_rms.draw()
+
+    def _update_rms_result_text(self):
+        """Update RMS slope result text."""
+        self.rms_result_text.delete(1.0, tk.END)
+
+        if self.rms_slope_calculator is None:
+            return
+
+        summary = self.rms_slope_calculator.get_summary()
+        profiles = self.rms_slope_profiles
+
+        self.rms_result_text.insert(tk.END, "=" * 35 + "\n")
+        self.rms_result_text.insert(tk.END, "RMS Slope / Local Strain 결과\n")
+        self.rms_result_text.insert(tk.END, "=" * 35 + "\n\n")
+
+        self.rms_result_text.insert(tk.END, "[입력 데이터]\n")
+        self.rms_result_text.insert(tk.END, f"  q_min: {summary['q_min']:.2e} 1/m\n")
+        self.rms_result_text.insert(tk.END, f"  q_max: {summary['q_max']:.2e} 1/m\n")
+        self.rms_result_text.insert(tk.END, f"  데이터 점: {summary['n_points']}\n")
+        self.rms_result_text.insert(tk.END, f"  Strain Factor: {summary['strain_factor']}\n\n")
+
+        self.rms_result_text.insert(tk.END, "[RMS Slope]\n")
+        self.rms_result_text.insert(tk.END, f"  ξ_max: {summary['xi_max']:.4f}\n")
+        self.rms_result_text.insert(tk.END, f"  ξ(q_max): {summary['xi_at_qmax']:.4f}\n\n")
+
+        self.rms_result_text.insert(tk.END, "[Local Strain]\n")
+        self.rms_result_text.insert(tk.END, f"  ε_max: {summary['strain_max']*100:.2f}%\n")
+        self.rms_result_text.insert(tk.END, f"  ε(q_max): {summary['strain_at_qmax']*100:.2f}%\n\n")
+
+        self.rms_result_text.insert(tk.END, "[RMS Height]\n")
+        self.rms_result_text.insert(tk.END, f"  h_rms: {summary['hrms_total']*1e6:.2f} μm\n\n")
+
+        # Show strain at representative q values
+        self.rms_result_text.insert(tk.END, "[파수별 Local Strain]\n")
+        q = profiles['q']
+        strain = profiles['strain']
+        indices = np.linspace(0, len(q)-1, min(8, len(q)), dtype=int)
+        for idx in indices:
+            self.rms_result_text.insert(tk.END,
+                f"  q={q[idx]:.2e}: ε={strain[idx]*100:.3f}%\n")
+
+    def _apply_local_strain_to_mu_visc(self):
+        """Apply calculated local strain to mu_visc calculation."""
+        if self.local_strain_array is None or self.rms_slope_profiles is None:
+            messagebox.showwarning("경고", "먼저 RMS Slope를 계산하세요.")
+            return
+
+        # Store for use in mu_visc tab
+        self.status_var.set("Local Strain이 μ_visc 탭에 적용 준비됨")
+
+        messagebox.showinfo("완료",
+            f"Local Strain 데이터가 μ_visc 계산에 사용될 준비가 되었습니다.\n\n"
+            f"데이터 점: {len(self.local_strain_array)}\n"
+            f"ε 범위: {self.local_strain_array[0]*100:.4f}% ~ {self.local_strain_array[-1]*100:.2f}%\n\n"
+            f"μ_visc 탭에서 '비선형 f,g 보정'을 활성화하고\n"
+            f"Strain 추정 방법을 'rms_slope'로 설정하세요."
+        )
+
+    def _export_rms_slope_data(self):
+        """Export RMS slope data to CSV file."""
+        if self.rms_slope_profiles is None:
+            messagebox.showwarning("경고", "먼저 RMS Slope를 계산하세요.")
+            return
+
+        filename = filedialog.asksaveasfilename(
+            defaultextension=".csv",
+            initialfile="rms_slope_data.csv",
+            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        )
+
+        if not filename:
+            return
+
+        try:
+            import csv
+            profiles = self.rms_slope_profiles
+
+            with open(filename, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f)
+                writer.writerow(['# RMS Slope / Local Strain Data'])
+                writer.writerow(['# q (1/m)', 'C(q) (m^4)', 'xi^2', 'xi (RMS Slope)',
+                                'strain (fraction)', 'strain (%)', 'h_rms^2 (m^2)', 'h_rms (m)'])
+
+                for i in range(len(profiles['q'])):
+                    writer.writerow([
+                        f"{profiles['q'][i]:.6e}",
+                        f"{profiles['C_q'][i]:.6e}",
+                        f"{profiles['xi_squared'][i]:.6e}",
+                        f"{profiles['xi'][i]:.6e}",
+                        f"{profiles['strain'][i]:.6e}",
+                        f"{profiles['strain'][i]*100:.4f}",
+                        f"{profiles['hrms_squared'][i]:.6e}",
+                        f"{profiles['hrms'][i]:.6e}"
+                    ])
+
+            messagebox.showinfo("성공", f"데이터 저장 완료:\n{filename}")
+            self.status_var.set(f"RMS Slope 데이터 저장: {filename}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"저장 실패:\n{str(e)}")
+
     def _create_mu_visc_tab(self, parent):
         """Create enhanced Strain/mu_visc calculation tab with piecewise averaging."""
         # Create main container with 2 columns
@@ -1999,9 +2439,9 @@ $\begin{array}{lcc}
         strain_row = ttk.Frame(mu_settings_frame)
         strain_row.pack(fill=tk.X, pady=1)
         ttk.Label(strain_row, text="Strain:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.strain_est_method_var = tk.StringVar(value="fixed")
+        self.strain_est_method_var = tk.StringVar(value="rms_slope")
         ttk.Combobox(strain_row, textvariable=self.strain_est_method_var,
-                     values=["fixed", "persson", "simple"], width=8, state="readonly").pack(side=tk.LEFT, padx=2)
+                     values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly").pack(side=tk.LEFT, padx=2)
         self.fixed_strain_var = tk.StringVar(value="1.0")
         ttk.Entry(strain_row, textvariable=self.fixed_strain_var, width=5).pack(side=tk.LEFT)
         ttk.Label(strain_row, text="%", font=('Arial', 8)).pack(side=tk.LEFT)
@@ -2623,6 +3063,18 @@ $\begin{array}{lcc}
             omega_mid = 2 * np.pi * 1.0  # 1 Hz
             E_prime_ref = self.material.get_storage_modulus(omega_mid, temperature=temperature)
 
+            # Prepare RMS slope strain interpolator if using that method
+            rms_strain_interp = None
+            if strain_est_method == 'rms_slope' and self.rms_slope_calculator is not None:
+                from scipy.interpolate import interp1d
+                rms_q = self.rms_slope_profiles['q']
+                rms_strain = self.rms_slope_profiles['strain']
+                # Use log-log interpolation for better accuracy
+                log_q = np.log10(rms_q)
+                log_strain = np.log10(np.maximum(rms_strain, 1e-10))
+                rms_strain_interp = interp1d(log_q, log_strain, kind='linear',
+                                             bounds_error=False, fill_value='extrapolate')
+
             # Create enhanced loss modulus function with strain-dependent correction
             def loss_modulus_func_enhanced(omega, T, q_val=None, G_val=None, C_val=None):
                 """Loss modulus with optional nonlinear strain correction."""
@@ -2630,7 +3082,14 @@ $\begin{array}{lcc}
 
                 if use_fg and self.g_interpolator is not None:
                     # Estimate local strain based on method
-                    if strain_est_method == 'fixed':
+                    if strain_est_method == 'rms_slope' and rms_strain_interp is not None and q_val is not None:
+                        # Use pre-calculated RMS slope based local strain
+                        try:
+                            strain_estimate = 10 ** rms_strain_interp(np.log10(q_val))
+                            strain_estimate = np.clip(strain_estimate, 0.0, 1.0)
+                        except:
+                            strain_estimate = fixed_strain
+                    elif strain_est_method == 'fixed':
                         strain_estimate = fixed_strain
                     elif strain_est_method == 'persson' and q_val is not None and C_val is not None:
                         # Persson's approach: strain ~ sqrt(C(q)*q^4) * sigma0/E'
@@ -2657,9 +3116,42 @@ $\begin{array}{lcc}
 
             # Simple wrapper for FrictionCalculator compatibility
             def loss_modulus_func(omega, T):
-                return loss_modulus_func_enhanced(omega, T)
+                return self.material.get_loss_modulus(omega, temperature=T)
 
-            # Create friction calculator
+            # Set up g_interpolator for nonlinear correction
+            g_interp = self.g_interpolator if use_fg else None
+
+            # Create strain estimator function based on method
+            def strain_estimator_func(q_arr, G_arr, velocity):
+                """Return strain array for given q values."""
+                n = len(q_arr)
+                if strain_est_method == 'rms_slope' and rms_strain_interp is not None:
+                    # Use pre-calculated RMS slope based local strain
+                    strain_arr = np.zeros(n)
+                    for i, qi in enumerate(q_arr):
+                        try:
+                            strain_arr[i] = 10 ** rms_strain_interp(np.log10(qi))
+                        except:
+                            strain_arr[i] = fixed_strain
+                    return np.clip(strain_arr, 0.0, 1.0)
+                elif strain_est_method == 'fixed':
+                    return np.full(n, fixed_strain)
+                elif strain_est_method == 'persson':
+                    from persson_model.core.friction import estimate_local_strain
+                    strain_arr = np.zeros(n)
+                    C_q_local = self.psd_model(q_arr)
+                    for i, (qi, Gi, Ci) in enumerate(zip(q_arr, G_arr, C_q_local)):
+                        omega_i = qi * velocity
+                        E_prime = self.material.get_storage_modulus(omega_i, temperature=temperature)
+                        strain_arr[i] = estimate_local_strain(Gi, Ci, qi, sigma_0, E_prime, method='persson')
+                    return np.clip(strain_arr, 0.0, 1.0)
+                elif strain_est_method == 'simple':
+                    strain_arr = np.sqrt(np.maximum(G_arr, 1e-10)) * sigma_0 / max(E_prime_ref, 1e3)
+                    return np.clip(strain_arr, 0.0, 1.0)
+                else:
+                    return np.full(n, fixed_strain)
+
+            # Create friction calculator with g_interpolator
             friction_calc = FrictionCalculator(
                 psd_func=self.psd_model,
                 loss_modulus_func=loss_modulus_func,
@@ -2668,7 +3160,9 @@ $\begin{array}{lcc}
                 temperature=temperature,
                 poisson_ratio=poisson,
                 gamma=gamma,
-                n_angle_points=n_phi
+                n_angle_points=n_phi,
+                g_interpolator=g_interp,
+                strain_estimate=fixed_strain
             )
 
             # Calculate mu_visc for all velocities
@@ -2676,8 +3170,11 @@ $\begin{array}{lcc}
                 self.mu_progress_var.set(percent)
                 self.root.update()
 
+            # Use strain_estimator if nonlinear correction is enabled
+            strain_est = strain_estimator_func if use_fg else None
+
             mu_array_raw, details = friction_calc.calculate_mu_visc_multi_velocity(
-                q, G_matrix, v, C_q, progress_callback
+                q, G_matrix, v, C_q, progress_callback, strain_estimator=strain_est
             )
 
             # Apply smoothing if enabled
