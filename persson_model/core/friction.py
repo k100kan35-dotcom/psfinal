@@ -139,10 +139,13 @@ class FrictionCalculator:
         """
         Compute inner integral over angle phi for friction.
 
-        Integrates: integral[0->2pi] dphi * cos(phi) * Im[E(q*v*cos(phi)) / ((1-nu^2)*sigma0)]
+        Integrates: integral[0->2pi] dphi * cos(phi) * Im[E(q*v*cos(phi))] / ((1-nu^2)*sigma0)
 
-        Due to the cos(phi) symmetry, we can use:
-        integral[0->2pi] = 4 * integral[0->pi/2] for cos(phi) > 0 portion
+        Due to symmetry:
+        - For phi in [0, pi/2]: cos(phi) > 0, omega > 0, contribution positive
+        - For phi in [pi/2, 3pi/2]: cos(phi) changes sign, but Im[E(-omega)] = -Im[E(omega)]
+          due to causality, so contribution is still positive
+        - We use symmetry: integrate 0 to pi/2 and multiply by 4
 
         Parameters
         ----------
@@ -154,33 +157,33 @@ class FrictionCalculator:
         float
             Result of angle integration
         """
-        # Create angle array
-        phi = np.linspace(0, 2 * np.pi, self.n_angle_points)
+        # Use symmetry: integrate over [0, pi/2] and multiply by 4
+        # This avoids numerical cancellation issues
+        phi = np.linspace(0, np.pi / 2, self.n_angle_points)
 
         # Calculate frequencies for each angle
-        # omega = q * v * cos(phi)
+        # omega = q * v * cos(phi), always positive in [0, pi/2]
         omega = q * self.velocity * np.cos(phi)
 
-        # Get cos(phi) values
+        # Get cos(phi) values (always positive in [0, pi/2])
         cos_phi = np.cos(phi)
 
         # Calculate integrand: cos(phi) * Im[E(omega)] / ((1-nu^2)*sigma0)
         integrand = np.zeros_like(phi)
 
         for i, (w, c) in enumerate(zip(omega, cos_phi)):
-            # Handle zero and negative frequencies
-            omega_abs = np.abs(w)
-            if omega_abs < 1e-10:
-                omega_abs = 1e-10
+            # Handle very small frequencies
+            omega_val = max(w, 1e-10)
 
             # Get loss modulus at this frequency
-            ImE = self.loss_modulus_func(omega_abs, self.temperature)
+            ImE = self.loss_modulus_func(omega_val, self.temperature)
 
             # Calculate integrand term
             integrand[i] = c * ImE * self.prefactor
 
         # Numerical integration using trapezoidal rule
-        result = np.trapezoid(integrand, phi)
+        # Multiply by 4 due to symmetry (0 to pi/2 -> 0 to 2pi)
+        result = 4.0 * np.trapezoid(integrand, phi)
 
         return result
 
@@ -474,27 +477,27 @@ def calculate_mu_visc_simple(
     # Calculate S(q) from P(q)
     S_array = gamma + (1 - gamma) * P_array**2
 
-    # Angle array
-    phi = np.linspace(0, 2 * np.pi, n_phi)
+    # Angle array - use symmetry: integrate 0 to pi/2 and multiply by 4
+    phi = np.linspace(0, np.pi / 2, n_phi)
 
     # Calculate angle integral and full integrand for each q
     angle_integral_array = np.zeros(n)
     integrand_array = np.zeros(n)
 
     for i, q in enumerate(q_array):
-        # Calculate omega = q * v * cos(phi)
+        # Calculate omega = q * v * cos(phi), always positive in [0, pi/2]
         omega = q * v * np.cos(phi)
         cos_phi = np.cos(phi)
 
         # Calculate integrand: cos(phi) * Im[E(omega)] * prefactor
         integrand_phi = np.zeros_like(phi)
         for j, (w, c) in enumerate(zip(omega, cos_phi)):
-            omega_abs = max(np.abs(w), 1e-10)
-            ImE = func_ImE(omega_abs, temperature)
+            omega_val = max(w, 1e-10)
+            ImE = func_ImE(omega_val, temperature)
             integrand_phi[j] = c * ImE * prefactor
 
-        # Angle integral
-        angle_integral_array[i] = np.trapezoid(integrand_phi, phi)
+        # Angle integral (multiply by 4 due to symmetry)
+        angle_integral_array[i] = 4.0 * np.trapezoid(integrand_phi, phi)
 
         # Full integrand: q^3 * C(q) * P(q) * S(q) * angle_integral
         integrand_array[i] = (
