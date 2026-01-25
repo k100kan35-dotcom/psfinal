@@ -3689,7 +3689,7 @@ $\begin{array}{lcc}
     def _calculate_integrand_visualization(self):
         """Calculate and visualize integrands for G(q) and μ_visc."""
         # Check if data is available
-        if self.psd_model is None or self.dma_model is None:
+        if self.psd_model is None or self.material is None:
             messagebox.showwarning("경고", "먼저 PSD와 DMA 데이터를 로드하세요.")
             return
 
@@ -3795,8 +3795,8 @@ $\begin{array}{lcc}
                 integrand_mu = np.zeros_like(phi)
 
                 for i, w in enumerate(omega_eval):
-                    E_prime = self.dma_model.storage_modulus(w)
-                    E_loss = self.dma_model.loss_modulus(w)
+                    E_prime = self.material.get_storage_modulus(np.array([w]))[0]
+                    E_loss = self.material.get_loss_modulus(np.array([w]))[0]
 
                     if use_fg and f_interp is not None and g_interp is not None:
                         f_val = np.clip(f_interp(strain_at_q), 0.0, 1.0)
@@ -3865,8 +3865,8 @@ $\begin{array}{lcc}
 
                 integrand = np.zeros_like(phi)
                 for j, w in enumerate(omega_eval):
-                    E_prime = self.dma_model.storage_modulus(w)
-                    E_loss = self.dma_model.loss_modulus(w)
+                    E_prime = self.material.get_storage_modulus(np.array([w]))[0]
+                    E_loss = self.material.get_loss_modulus(np.array([w]))[0]
 
                     if use_fg and f_interp is not None and g_interp is not None:
                         strain_q = 0.01  # simplified
@@ -3913,9 +3913,9 @@ $\begin{array}{lcc}
             self.ax_freq_range.plot(v_range, omega_max, 'b-', linewidth=1.5, label='ω_max = qv')
 
             # Show DMA frequency range
-            if hasattr(self.dma_model, 'omega'):
-                omega_dma_min = self.dma_model.omega.min()
-                omega_dma_max = self.dma_model.omega.max()
+            if hasattr(self, 'raw_dma_data') and self.raw_dma_data is not None:
+                omega_dma_min = self.raw_dma_data['omega'].min()
+                omega_dma_max = self.raw_dma_data['omega'].max()
                 self.ax_freq_range.axhline(omega_dma_min, color='r', linestyle='--', alpha=0.7, label=f'DMA ω_min = {omega_dma_min:.1e}')
                 self.ax_freq_range.axhline(omega_dma_max, color='r', linestyle='--', alpha=0.7, label=f'DMA ω_max = {omega_dma_max:.1e}')
 
@@ -3927,7 +3927,7 @@ $\begin{array}{lcc}
             # Frequency range info text
             self.freq_range_text.insert(tk.END, f"선택 q = {q_ref:.2e} 1/m, v = {v:.2e} m/s\n")
             self.freq_range_text.insert(tk.END, f"ω 범위: 0 ~ {q_ref * v:.2e} rad/s\n\n")
-            if hasattr(self.dma_model, 'omega'):
+            if hasattr(self, 'raw_dma_data') and self.raw_dma_data is not None:
                 self.freq_range_text.insert(tk.END, f"DMA 데이터 범위:\n")
                 self.freq_range_text.insert(tk.END, f"  {omega_dma_min:.2e} ~ {omega_dma_max:.2e} rad/s\n")
 
