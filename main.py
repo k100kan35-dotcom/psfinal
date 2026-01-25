@@ -2448,11 +2448,28 @@ $\begin{array}{lcc}
         strain_row.pack(fill=tk.X, pady=1)
         ttk.Label(strain_row, text="Strain:", font=('Arial', 8)).pack(side=tk.LEFT)
         self.strain_est_method_var = tk.StringVar(value="rms_slope")
-        ttk.Combobox(strain_row, textvariable=self.strain_est_method_var,
-                     values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly").pack(side=tk.LEFT, padx=2)
+        strain_combo = ttk.Combobox(strain_row, textvariable=self.strain_est_method_var,
+                     values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly")
+        strain_combo.pack(side=tk.LEFT, padx=2)
+
         self.fixed_strain_var = tk.StringVar(value="1.0")
-        ttk.Entry(strain_row, textvariable=self.fixed_strain_var, width=5).pack(side=tk.LEFT)
-        ttk.Label(strain_row, text="%", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.fixed_strain_entry = ttk.Entry(strain_row, textvariable=self.fixed_strain_var, width=5)
+        self.fixed_strain_entry.pack(side=tk.LEFT)
+        self.fixed_strain_label = ttk.Label(strain_row, text="%", font=('Arial', 8))
+        self.fixed_strain_label.pack(side=tk.LEFT)
+
+        # Callback to show/hide fixed strain entry based on method
+        def on_strain_method_change(*args):
+            method = self.strain_est_method_var.get()
+            if method == 'rms_slope':
+                self.fixed_strain_entry.config(state='disabled')
+                self.fixed_strain_label.config(foreground='gray')
+            else:
+                self.fixed_strain_entry.config(state='normal')
+                self.fixed_strain_label.config(foreground='black')
+
+        self.strain_est_method_var.trace_add('write', on_strain_method_change)
+        on_strain_method_change()  # Initialize state
 
         # Integration parameters in single row
         integ_row = ttk.Frame(mu_settings_frame)
@@ -2523,11 +2540,11 @@ $\begin{array}{lcc}
         self.ax_mu_v.set_xscale('log')
         self.ax_mu_v.grid(True, alpha=0.3)
 
-        # Bottom-left: Integrand components
+        # Bottom-left: Contact Area Ratio vs Velocity
         self.ax_mu_cumulative = self.fig_mu_visc.add_subplot(223)
-        self.ax_mu_cumulative.set_title('피적분함수 (Integrand)', fontweight='bold')
-        self.ax_mu_cumulative.set_xlabel('파수 q (1/m)')
-        self.ax_mu_cumulative.set_ylabel('값')
+        self.ax_mu_cumulative.set_title('실접촉 면적비율 P(v)', fontweight='bold')
+        self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
+        self.ax_mu_cumulative.set_ylabel('평균 P(q)')
         self.ax_mu_cumulative.set_xscale('log')
         self.ax_mu_cumulative.grid(True, alpha=0.3)
 
@@ -3058,6 +3075,22 @@ $\begin{array}{lcc}
             strain_est_method = self.strain_est_method_var.get()
             fixed_strain = float(self.fixed_strain_var.get()) / 100.0  # Convert % to fraction
 
+            # Check RMS slope data if using rms_slope method
+            if strain_est_method == 'rms_slope':
+                if self.rms_slope_calculator is None or self.rms_slope_profiles is None:
+                    messagebox.showwarning("경고",
+                        "RMS Slope 데이터가 없습니다.\n\n"
+                        "Tab 6 (RMS Slope/Local Strain)에서\n"
+                        "'RMS Slope / Local Strain 계산' 버튼을 먼저 실행하세요.")
+                    self.mu_calc_button.config(state='normal')
+                    return
+                else:
+                    # Show info about strain range being used
+                    strain_min = self.rms_slope_profiles['strain'][0]
+                    strain_max = self.rms_slope_profiles['strain'][-1]
+                    self.status_var.set(f"RMS Slope 기반 strain 적용: {strain_min*100:.3f}% ~ {strain_max*100:.1f}%")
+                    self.root.update()
+
             # Get G(q,v) results
             results_2d = self.results['2d_results']
             q = results_2d['q']
@@ -3210,7 +3243,7 @@ $\begin{array}{lcc}
             }
 
             # Update plots
-            self._update_mu_visc_plots(v, mu_array, details)
+            self._update_mu_visc_plots(v, mu_array, details, use_nonlinear=use_fg)
 
             # Update result text with detailed information
             self.mu_result_text.delete(1.0, tk.END)
@@ -3292,7 +3325,7 @@ $\begin{array}{lcc}
             import traceback
             traceback.print_exc()
 
-    def _update_mu_visc_plots(self, v, mu_array, details):
+    def _update_mu_visc_plots(self, v, mu_array, details, use_nonlinear=False):
         """Update mu_visc plots."""
         # Clear all subplots
         self.ax_mu_v.clear()
@@ -3326,28 +3359,34 @@ $\begin{array}{lcc}
                          label=f'최대값: μ={smart_format(peak_mu)} @ v={peak_v:.4f} m/s')
         self.ax_mu_v.legend(loc='upper left', fontsize=7)
 
-        # Plot 2: Integrand components (for middle velocity)
+        # Plot 2: Real Contact Area Ratio vs velocity
+        # Calculate average P (contact area ratio) for each velocity
+        P_avg_array = np.zeros(len(v))
+        for i, det in enumerate(details['details']):
+            P = det.get('P', np.zeros(1))
+            # Weighted average by integrand contribution
+            integrand = det.get('integrand', np.ones_like(P))
+            if np.sum(np.abs(integrand)) > 0:
+                weights = np.abs(integrand) / np.sum(np.abs(integrand))
+                P_avg_array[i] = np.sum(P * weights)
+            else:
+                P_avg_array[i] = np.mean(P)
+
+        label_str = '비선형 적용' if use_nonlinear else '선형 (미적용)'
+        color = 'r' if use_nonlinear else 'b'
+        self.ax_mu_cumulative.semilogx(v, P_avg_array, f'{color}-', linewidth=2,
+                                        marker='s', markersize=4, label=label_str)
+        self.ax_mu_cumulative.set_title('실접촉 면적비율 P(v)', fontweight='bold', fontsize=9)
+        self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
+        self.ax_mu_cumulative.set_ylabel('평균 P(q)')
+        self.ax_mu_cumulative.legend(loc='best', fontsize=8)
+        self.ax_mu_cumulative.grid(True, alpha=0.3)
+        self.ax_mu_cumulative.set_ylim(0, 1.05)
+
+        # Plot 3: P(q), S(q) for middle velocity
         mid_idx = len(details['details']) // 2
         detail = details['details'][mid_idx]
         q = detail['q']
-
-        # Show the integrand and angle integral on log scale
-        integrand = detail.get('integrand', np.zeros_like(q))
-        angle_int = detail.get('angle_integral', np.zeros_like(q))
-
-        # Only plot positive values on log scale
-        integrand_pos = np.where(integrand > 0, integrand, np.nan)
-        angle_int_pos = np.where(angle_int > 0, angle_int, np.nan)
-
-        self.ax_mu_cumulative.loglog(q, integrand_pos, 'b-', linewidth=1.5, label='피적분함수')
-        self.ax_mu_cumulative.loglog(q, angle_int_pos, 'r--', linewidth=1, alpha=0.7, label='각도적분')
-        self.ax_mu_cumulative.set_title(f'피적분함수 (v={v[mid_idx]:.2e} m/s)', fontweight='bold', fontsize=9)
-        self.ax_mu_cumulative.set_xlabel('파수 q (1/m)')
-        self.ax_mu_cumulative.set_ylabel('값')
-        self.ax_mu_cumulative.legend(loc='best', fontsize=7)
-        self.ax_mu_cumulative.grid(True, alpha=0.3)
-
-        # Plot 3: P(q), S(q) and cumulative mu
         P = detail['P']
         S = detail['S']
         cumulative = detail.get('cumulative_mu', np.zeros_like(q))
