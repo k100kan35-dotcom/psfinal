@@ -813,3 +813,264 @@ def estimate_local_strain(
     strain = np.clip(strain, 0.0, 1.0)  # 0 to 100%
 
     return float(strain)
+
+
+def calculate_rms_slope_profile(
+    q_array: np.ndarray,
+    C_q_array: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculate cumulative RMS slope (xi) profile from PSD data.
+
+    The RMS slope squared is computed as:
+        xi²(q) = 2π ∫[q0→q] k³ C(k) dk
+
+    This represents the cumulative contribution of surface roughness
+    up to wavenumber q.
+
+    Parameters
+    ----------
+    q_array : np.ndarray
+        Array of wavenumbers (1/m), should be in ascending order
+    C_q_array : np.ndarray
+        Array of PSD values C(q) at each wavenumber (m⁴)
+
+    Returns
+    -------
+    xi_squared_array : np.ndarray
+        Cumulative RMS slope squared at each q
+    xi_array : np.ndarray
+        Cumulative RMS slope (sqrt of xi_squared) at each q
+
+    Notes
+    -----
+    Based on Persson theory [Source 21, 119]:
+    - The integrand is k³ × C(k)
+    - Factor of 2π comes from angular integration in 2D PSD
+    """
+    q_array = np.asarray(q_array)
+    C_q_array = np.asarray(C_q_array)
+    n = len(q_array)
+
+    # Calculate integrand: k³ × C(k)
+    integrand = q_array**3 * C_q_array
+
+    # Cumulative integration using trapezoidal rule
+    xi_squared_array = np.zeros(n)
+
+    for i in range(1, n):
+        # Integrate from q[0] to q[i]
+        xi_squared_array[i] = 2 * np.pi * np.trapezoid(integrand[:i+1], q_array[:i+1])
+
+    # RMS slope is sqrt of xi_squared
+    xi_array = np.sqrt(np.maximum(xi_squared_array, 0))
+
+    return xi_squared_array, xi_array
+
+
+def calculate_strain_profile(
+    q_array: np.ndarray,
+    C_q_array: np.ndarray,
+    strain_factor: float = 0.5
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calculate local strain profile from PSD data using RMS slope.
+
+    The local strain at each wavenumber is estimated as:
+        ε(q) = strain_factor × ξ(q)
+
+    where ξ(q) is the cumulative RMS slope up to wavenumber q.
+
+    Parameters
+    ----------
+    q_array : np.ndarray
+        Array of wavenumbers (1/m)
+    C_q_array : np.ndarray
+        Array of PSD values C(q) at each wavenumber (m⁴)
+    strain_factor : float, optional
+        Factor to convert RMS slope to strain (default: 0.5)
+        Persson theory suggests ε ≈ 0.5 × ξ [Source 197]
+
+    Returns
+    -------
+    strain_array : np.ndarray
+        Local strain at each wavenumber (fraction, not %)
+    xi_array : np.ndarray
+        RMS slope at each wavenumber
+    xi_squared_array : np.ndarray
+        RMS slope squared at each wavenumber
+
+    Notes
+    -----
+    The strain estimate follows Persson's approach where the local
+    deformation at contact asperities is related to the surface slope.
+    """
+    xi_squared_array, xi_array = calculate_rms_slope_profile(q_array, C_q_array)
+
+    # Strain estimate: ε = strain_factor × ξ
+    strain_array = strain_factor * xi_array
+
+    # Clip to physically reasonable range (0 to 100%)
+    strain_array = np.clip(strain_array, 0.0, 1.0)
+
+    return strain_array, xi_array, xi_squared_array
+
+
+def calculate_hrms_profile(
+    q_array: np.ndarray,
+    C_q_array: np.ndarray
+) -> Tuple[np.ndarray, np.ndarray]:
+    """
+    Calculate cumulative RMS height (hrms) profile from PSD data.
+
+    The RMS height squared is computed as:
+        h²_rms(q) = 2π ∫[q0→q] k C(k) dk
+
+    Parameters
+    ----------
+    q_array : np.ndarray
+        Array of wavenumbers (1/m)
+    C_q_array : np.ndarray
+        Array of PSD values C(q) at each wavenumber (m⁴)
+
+    Returns
+    -------
+    hrms_squared_array : np.ndarray
+        Cumulative RMS height squared at each q (m²)
+    hrms_array : np.ndarray
+        Cumulative RMS height at each q (m)
+    """
+    q_array = np.asarray(q_array)
+    C_q_array = np.asarray(C_q_array)
+    n = len(q_array)
+
+    # Integrand: k × C(k)
+    integrand = q_array * C_q_array
+
+    # Cumulative integration
+    hrms_squared_array = np.zeros(n)
+
+    for i in range(1, n):
+        hrms_squared_array[i] = 2 * np.pi * np.trapezoid(integrand[:i+1], q_array[:i+1])
+
+    hrms_array = np.sqrt(np.maximum(hrms_squared_array, 0))
+
+    return hrms_squared_array, hrms_array
+
+
+class RMSSlopeCalculator:
+    """
+    Calculator for RMS slope and local strain profiles.
+
+    This class provides methods to calculate surface roughness statistics
+    from PSD data and estimate local strains for friction calculations.
+    """
+
+    def __init__(
+        self,
+        q_array: np.ndarray,
+        C_q_array: np.ndarray,
+        strain_factor: float = 0.5
+    ):
+        """
+        Initialize RMS slope calculator.
+
+        Parameters
+        ----------
+        q_array : np.ndarray
+            Array of wavenumbers (1/m)
+        C_q_array : np.ndarray
+            Array of PSD values C(q) at each wavenumber (m⁴)
+        strain_factor : float, optional
+            Factor to convert RMS slope to strain (default: 0.5)
+        """
+        self.q_array = np.asarray(q_array)
+        self.C_q_array = np.asarray(C_q_array)
+        self.strain_factor = strain_factor
+
+        # Calculate profiles
+        self._calculate_profiles()
+
+    def _calculate_profiles(self):
+        """Calculate all roughness profiles."""
+        # RMS slope
+        self.xi_squared, self.xi = calculate_rms_slope_profile(
+            self.q_array, self.C_q_array
+        )
+
+        # Local strain
+        self.strain = self.strain_factor * self.xi
+        self.strain = np.clip(self.strain, 0.0, 1.0)
+
+        # RMS height
+        self.hrms_squared, self.hrms = calculate_hrms_profile(
+            self.q_array, self.C_q_array
+        )
+
+    def get_strain_at_q(self, q: float) -> float:
+        """
+        Get interpolated strain value at specific wavenumber.
+
+        Parameters
+        ----------
+        q : float
+            Wavenumber (1/m)
+
+        Returns
+        -------
+        float
+            Strain value at q (fraction)
+        """
+        from scipy.interpolate import interp1d
+
+        if q <= self.q_array[0]:
+            return self.strain[0]
+        if q >= self.q_array[-1]:
+            return self.strain[-1]
+
+        # Log-log interpolation for better accuracy
+        log_q = np.log10(self.q_array)
+        log_strain = np.log10(np.maximum(self.strain, 1e-10))
+
+        interp_func = interp1d(log_q, log_strain, kind='linear', fill_value='extrapolate')
+        return 10**interp_func(np.log10(q))
+
+    def get_summary(self) -> Dict:
+        """
+        Get summary statistics of the roughness profiles.
+
+        Returns
+        -------
+        dict
+            Summary containing key statistics
+        """
+        return {
+            'q_min': self.q_array[0],
+            'q_max': self.q_array[-1],
+            'n_points': len(self.q_array),
+            'xi_max': np.max(self.xi),
+            'xi_at_qmax': self.xi[-1],
+            'strain_max': np.max(self.strain),
+            'strain_at_qmax': self.strain[-1],
+            'hrms_total': self.hrms[-1],
+            'strain_factor': self.strain_factor
+        }
+
+    def get_profiles(self) -> Dict:
+        """
+        Get all calculated profiles.
+
+        Returns
+        -------
+        dict
+            Dictionary containing all profile arrays
+        """
+        return {
+            'q': self.q_array.copy(),
+            'C_q': self.C_q_array.copy(),
+            'xi_squared': self.xi_squared.copy(),
+            'xi': self.xi.copy(),
+            'strain': self.strain.copy(),
+            'hrms_squared': self.hrms_squared.copy(),
+            'hrms': self.hrms.copy()
+        }
