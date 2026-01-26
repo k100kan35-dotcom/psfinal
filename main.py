@@ -2015,7 +2015,7 @@ class PerssonModelGUI_V2:
             self.q_min_var.set(str(q0))
             self.q_max_var.set(str(q1))
 
-            # Calculate actual RMS slope from the PSD
+            # Calculate actual RMS slope from the PSD for verification
             # ξ² = 2π ∫ q³ C(q) dq
             q_calc = np.logspace(np.log10(q0), np.log10(q1), 1000)
             C_calc = psd_model(q_calc)
@@ -2023,20 +2023,33 @@ class PerssonModelGUI_V2:
             xi_squared = 2 * np.pi * np.trapezoid(integrand, q_calc)
             xi_actual = np.sqrt(xi_squared)
 
-            # Store target xi for consistency with Tab 4 (RMS Slope)
-            self.target_xi = xi_actual
-            self.psd_model.target_xi = xi_actual
+            # Use user's input ξ value from Tab 2 directly as target_xi
+            # (The user specified ξ, calculated C(q0) from it, so target ξ is the input value)
+            try:
+                xi_user_input = float(self.psd_xi_var.get())
+            except:
+                xi_user_input = xi_actual
+
+            # Store user's target xi for consistency with Tab 4 (RMS Slope)
+            self.target_xi = xi_user_input
+            self.psd_model.target_xi = xi_user_input
 
             # Update plots
             self._update_verification_plots()
-            self.status_var.set(f"PSD applied: ξ={xi_actual:.3f}, H={H:.2f}, C(q0)={C_q0:.1e}")
+            self.status_var.set(f"PSD applied: ξ(target)={xi_user_input:.3f}, ξ(calc)={xi_actual:.3f}, H={H:.2f}")
+
+            # Show both target and calculated ξ for transparency
+            xi_diff_pct = abs(xi_user_input - xi_actual) / xi_user_input * 100 if xi_user_input > 0 else 0
+            xi_info = f"- Target RMS slope ξ = {xi_user_input:.4f}\n- Calculated RMS slope ξ = {xi_actual:.4f}"
+            if xi_diff_pct > 1:
+                xi_info += f"\n  (차이: {xi_diff_pct:.1f}% - 수치 적분 오차)"
 
             messagebox.showinfo("Complete", f"PSD model applied:\n"
                               f"- q range: {q0:.1e} ~ {q1:.1e} 1/m\n"
                               f"- Hurst exponent H: {H:.3f}\n"
                               f"- C(q0): {C_q0:.1e} m^4\n"
                               f"- Power law: C(q) = C(q0)*(q/q0)^{exponent:.2f}\n"
-                              f"- RMS slope ξ = {xi_actual:.4f}")
+                              f"{xi_info}")
 
         except Exception as e:
             messagebox.showerror("Error", f"PSD settings failed:\n{str(e)}")
@@ -3387,9 +3400,10 @@ $\begin{array}{lcc}
         self.rms_result_text.insert(tk.END, f"  Strain Factor: {summary['strain_factor']}\n\n")
 
         self.rms_result_text.insert(tk.END, "[RMS Slope]\n")
-        # Use target_xi from Tab 2 if available for consistency
-        xi_max_display = self.target_xi if self.target_xi is not None else summary['xi_max']
-        self.rms_result_text.insert(tk.END, f"  ξ_max: {xi_max_display:.4f}\n")
+        # Show both target ξ (user input from Tab 2) and calculated ξ
+        if self.target_xi is not None:
+            self.rms_result_text.insert(tk.END, f"  ξ_target (Tab 2 입력값): {self.target_xi:.4f}\n")
+        self.rms_result_text.insert(tk.END, f"  ξ_calc (적분 계산값): {summary['xi_max']:.4f}\n")
         self.rms_result_text.insert(tk.END, f"  ξ(q_max): {summary['xi_at_qmax']:.4f}\n\n")
 
         self.rms_result_text.insert(tk.END, "[Local Strain]\n")
