@@ -5499,6 +5499,24 @@ $\begin{array}{lcc}
             if any_zero_E:
                 self._log_debug("\n  ⚠️ 경고: 일부 주파수에서 E' 또는 E''가 너무 작습니다!")
 
+            # Check master curve frequency range vs expected omega range
+            self._log_debug("\n  마스터 커브 주파수 범위 분석:")
+            if hasattr(self.material, '_frequencies') and self.material._frequencies is not None:
+                omega_data_min = np.min(self.material._frequencies)
+                omega_data_max = np.max(self.material._frequencies)
+                self._log_debug(f"  • 마스터 커브 ω 범위: {omega_data_min:.2e} ~ {omega_data_max:.2e} rad/s")
+
+                # Estimate typical omega range for mu_visc calculation
+                q_typical = [1e2, 1e4, 1e6]  # typical q values
+                v_typical = [0.001, 0.1, 10]  # typical velocities
+                self._log_debug("\n  μ_visc 계산 시 예상 ω 범위 (ω = q × v):")
+                for q in q_typical:
+                    for v in v_typical:
+                        omega_calc = q * v
+                        in_range = omega_data_min <= omega_calc <= omega_data_max
+                        status = "✓" if in_range else "⚠️ 범위 밖"
+                        self._log_debug(f"    q={q:.0e}, v={v:.0e} → ω={omega_calc:.2e} {status}")
+
         # 2. Check PSD data
         self._log_debug("\n\n[2] PSD 데이터 검사")
         self._log_debug("-" * 50)
@@ -5606,6 +5624,14 @@ $\begin{array}{lcc}
 
         prefactor = 1.0 / ((1 - poisson**2) * sigma_0)
         self._log_debug(f"  • prefactor = 1/((1-ν²)σ₀) = {prefactor:.4e}")
+
+        # Check if prefactor is reasonable
+        # For E'' ~ 1e7 Pa and prefactor ~ 4e-6, angle_integral ~ 4 * (pi/2) * 1e7 * 4e-6 ~ 0.25
+        # This should give non-zero mu_visc
+        if prefactor > 1e-4:
+            self._log_debug("  ⚠️ 경고: prefactor가 큼 (σ₀가 너무 작음)")
+        elif prefactor < 1e-8:
+            self._log_debug("  ⚠️ 경고: prefactor가 작음 (σ₀가 너무 큼)")
 
         # 5. Test single point calculation
         self._log_debug("\n\n[5] 단일점 계산 테스트")
