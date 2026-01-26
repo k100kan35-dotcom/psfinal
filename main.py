@@ -3489,6 +3489,7 @@ $\begin{array}{lcc}
 
             # Extend to 100% strain with hold extrapolation
             max_data_strain = grid_strain[-1]
+            original_len = len(grid_strain)  # Store original length before extension
             if max_data_strain < 1.0:
                 # Add points up to 100% strain holding the last value
                 extend_strains = np.array([0.5, 0.7, 1.0])
@@ -3502,6 +3503,7 @@ $\begin{array}{lcc}
             # Store piecewise result
             self.piecewise_result = {
                 'strain': grid_strain.copy(),
+                'strain_original_len': original_len,  # For plotting Group A/B
                 'f_avg': f_stitched,
                 'g_avg': g_stitched,
                 'n_eff': n_eff_stitched,
@@ -3561,22 +3563,25 @@ $\begin{array}{lcc}
         if self.piecewise_result is not None:
             s = self.piecewise_result['strain']
             split = self.piecewise_result['split']
+            # Get original length for Group A/B plotting (before extension)
+            orig_len = self.piecewise_result.get('strain_original_len', len(s))
+            s_orig = s[:orig_len]
 
-            # Group A average
+            # Group A average (use original strain length)
             if self.piecewise_result['result_A'] is not None:
                 f_A = self.piecewise_result['result_A']['f_avg']
                 g_A = self.piecewise_result['result_A']['g_avg']
-                self.ax_fg_curves.plot(s, f_A, 'b--', linewidth=2, alpha=0.6, label='Group A f(ε)')
-                self.ax_fg_curves.plot(s, g_A, 'r--', linewidth=2, alpha=0.6, label='Group A g(ε)')
+                self.ax_fg_curves.plot(s_orig, f_A, 'b--', linewidth=2, alpha=0.6, label='Group A f(ε)')
+                self.ax_fg_curves.plot(s_orig, g_A, 'r--', linewidth=2, alpha=0.6, label='Group A g(ε)')
 
-            # Group B average
+            # Group B average (use original strain length)
             if self.piecewise_result['result_B'] is not None:
                 f_B = self.piecewise_result['result_B']['f_avg']
                 g_B = self.piecewise_result['result_B']['g_avg']
-                self.ax_fg_curves.plot(s, f_B, 'c--', linewidth=2, alpha=0.6, label='Group B f(ε)')
-                self.ax_fg_curves.plot(s, g_B, 'm--', linewidth=2, alpha=0.6, label='Group B g(ε)')
+                self.ax_fg_curves.plot(s_orig, f_B, 'c--', linewidth=2, alpha=0.6, label='Group B f(ε)')
+                self.ax_fg_curves.plot(s_orig, g_B, 'm--', linewidth=2, alpha=0.6, label='Group B g(ε)')
 
-            # Stitched (final) result
+            # Stitched (final) result - use full extended strain
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
             self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='STITCHED f(ε)')
