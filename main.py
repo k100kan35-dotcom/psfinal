@@ -3479,13 +3479,9 @@ $\begin{array}{lcc}
             f_min_val = f_stitched[f_min_idx]
             g_min_val = g_stitched[g_min_idx]
 
-            # After minimum, hold the minimum value (prevent increase)
-            for i in range(f_min_idx + 1, len(f_stitched)):
-                if f_stitched[i] > f_min_val:
-                    f_stitched[i] = f_min_val
-            for i in range(g_min_idx + 1, len(g_stitched)):
-                if g_stitched[i] > g_min_val:
-                    g_stitched[i] = g_min_val
+            # After minimum, ALL values become the minimum (flat plateau)
+            f_stitched[f_min_idx:] = f_min_val
+            g_stitched[g_min_idx:] = g_min_val
 
             # Extend to 100% strain with hold extrapolation
             max_data_strain = grid_strain[-1]
