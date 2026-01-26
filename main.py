@@ -3472,6 +3472,33 @@ $\begin{array}{lcc}
                 else:
                     g_stitched[:] = 1.0  # Default
 
+            # Force monotonic decrease: after minimum, hold the minimum value
+            # (Payne effect: f,g should decrease with strain, not increase)
+            f_min_idx = np.argmin(f_stitched)
+            g_min_idx = np.argmin(g_stitched)
+            f_min_val = f_stitched[f_min_idx]
+            g_min_val = g_stitched[g_min_idx]
+
+            # After minimum, hold the minimum value (prevent increase)
+            for i in range(f_min_idx + 1, len(f_stitched)):
+                if f_stitched[i] > f_min_val:
+                    f_stitched[i] = f_min_val
+            for i in range(g_min_idx + 1, len(g_stitched)):
+                if g_stitched[i] > g_min_val:
+                    g_stitched[i] = g_min_val
+
+            # Extend to 100% strain with hold extrapolation
+            max_data_strain = grid_strain[-1]
+            if max_data_strain < 1.0:
+                # Add points up to 100% strain holding the last value
+                extend_strains = np.array([0.5, 0.7, 1.0])
+                extend_strains = extend_strains[extend_strains > max_data_strain]
+                if len(extend_strains) > 0:
+                    grid_strain = np.concatenate([grid_strain, extend_strains])
+                    f_stitched = np.concatenate([f_stitched, np.full(len(extend_strains), f_stitched[-1])])
+                    g_stitched = np.concatenate([g_stitched, np.full(len(extend_strains), g_stitched[-1])])
+                    n_eff_stitched = np.concatenate([n_eff_stitched, np.full(len(extend_strains), n_eff_stitched[-1])])
+
             # Store piecewise result
             self.piecewise_result = {
                 'strain': grid_strain.copy(),
