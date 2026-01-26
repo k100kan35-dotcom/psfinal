@@ -4217,16 +4217,21 @@ $\begin{array}{lcc}
                 return f'{val:.2e}'
             return f'{val:.4f}'
 
-        # Plot 1: mu_visc vs velocity
-        self.ax_mu_v.semilogx(v, mu_array, 'b-', linewidth=2.5, marker='o', markersize=4)
+        # Plot 1: mu_visc vs velocity (handle NaN values)
+        valid_mask = np.isfinite(mu_array)
+        if np.any(valid_mask):
+            self.ax_mu_v.semilogx(v[valid_mask], mu_array[valid_mask], 'b-', linewidth=2.5, marker='o', markersize=4)
+        else:
+            self.ax_mu_v.semilogx(v, np.zeros_like(v), 'b-', linewidth=2.5, marker='o', markersize=4)
         self.ax_mu_v.set_title('μ_visc(v) 곡선', fontweight='bold')
         self.ax_mu_v.set_xlabel('속도 v (m/s)')
         self.ax_mu_v.set_ylabel('마찰 계수 μ_visc')
         self.ax_mu_v.grid(True, alpha=0.3)
 
-        # Find peak
-        peak_idx = np.argmax(mu_array)
-        peak_mu = mu_array[peak_idx]
+        # Find peak (handle NaN values)
+        mu_for_peak = np.where(np.isfinite(mu_array), mu_array, -np.inf)
+        peak_idx = np.argmax(mu_for_peak)
+        peak_mu = mu_array[peak_idx] if np.isfinite(mu_array[peak_idx]) else 0.0
         peak_v = v[peak_idx]
         self.ax_mu_v.plot(peak_v, peak_mu, 'r*', markersize=15,
                          label=f'최대값: μ={smart_format(peak_mu)} @ v={peak_v:.4f} m/s')
@@ -4253,17 +4258,26 @@ $\begin{array}{lcc}
             color = 'b'
             title_suffix = ''
 
-        # Plot A/A₀ = P(q_max)
-        self.ax_mu_cumulative.semilogx(v, P_qmax_array, f'{color}-', linewidth=2,
-                                        marker='s', markersize=4, label=label_str)
+        # Plot A/A₀ = P(q_max) (handle NaN values)
+        valid_P_mask = np.isfinite(P_qmax_array)
+        if np.any(valid_P_mask):
+            self.ax_mu_cumulative.semilogx(v[valid_P_mask], P_qmax_array[valid_P_mask], f'{color}-', linewidth=2,
+                                            marker='s', markersize=4, label=label_str)
+        else:
+            self.ax_mu_cumulative.semilogx(v, np.zeros_like(v), f'{color}-', linewidth=2,
+                                            marker='s', markersize=4, label=label_str)
 
         self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A₀{title_suffix}', fontweight='bold', fontsize=8)
         self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
         self.ax_mu_cumulative.set_ylabel('A/A₀ = P(q_max)')
         self.ax_mu_cumulative.legend(loc='best', fontsize=7)
         self.ax_mu_cumulative.grid(True, alpha=0.3)
-        # Set y-axis to show data with padding
-        y_max = max(np.max(P_qmax_array) * 1.2, 0.05)
+        # Set y-axis to show data with padding (handle NaN values)
+        valid_P = P_qmax_array[np.isfinite(P_qmax_array)]
+        if len(valid_P) > 0:
+            y_max = max(np.max(valid_P) * 1.2, 0.05)
+        else:
+            y_max = 1.0
         self.ax_mu_cumulative.set_ylim(0, y_max)
 
         # Plot 3: P(q), S(q) for middle velocity
