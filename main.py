@@ -1090,42 +1090,17 @@ class PerssonModelGUI_V2:
         try:
             # Get master curve data
             omega = 2 * np.pi * self.master_curve_gen.master_f
-            E_storage_raw = self.master_curve_gen.master_E_storage
-            E_loss_raw = self.master_curve_gen.master_E_loss
-
-            # Auto-detect units: typical rubber E' is 1-100 MPa
-            # If values are > 1e5, assume they are already in Pa
-            # If values are < 1000, assume they are in MPa
-            E_max = max(np.max(E_storage_raw), np.max(E_loss_raw))
-            E_min = min(np.min(E_storage_raw[E_storage_raw > 0]), np.min(E_loss_raw[E_loss_raw > 0]))
-
-            if E_max > 1e5:
-                # Likely already in Pa
-                E_storage = E_storage_raw
-                E_loss = E_loss_raw
-                unit_detected = "Pa (자동 감지)"
-            elif E_max < 1000:
-                # Likely in MPa
-                E_storage = E_storage_raw * 1e6  # MPa to Pa
-                E_loss = E_loss_raw * 1e6
-                unit_detected = "MPa → Pa 변환"
-            else:
-                # Ambiguous - assume MPa
-                E_storage = E_storage_raw * 1e6
-                E_loss = E_loss_raw * 1e6
-                unit_detected = "MPa 가정 → Pa 변환"
-
-            print(f"[Master Curve → Tab 1] E' range: {E_min:.2e} ~ {E_max:.2e} (raw)")
-            print(f"[Master Curve → Tab 1] Unit: {unit_detected}")
-            print(f"[Master Curve → Tab 1] E' after: {np.min(E_storage):.2e} ~ {np.max(E_storage):.2e} Pa")
+            E_storage = self.master_curve_gen.master_E_storage * 1e6  # MPa to Pa
+            E_loss = self.master_curve_gen.master_E_loss * 1e6  # MPa to Pa
+            T_ref = self.master_curve_gen.T_ref
 
             # Create material from master curve
             self.material = create_material_from_dma(
                 omega=omega,
                 E_storage=E_storage,
                 E_loss=E_loss,
-                material_name=f"Master Curve (Tref={self.master_curve_gen.T_ref}°C)",
-                reference_temp=self.master_curve_gen.T_ref
+                material_name=f"Master Curve (Tref={T_ref}°C)",
+                reference_temp=T_ref
             )
 
             # Store raw data for plotting (in omega units)
@@ -1139,20 +1114,19 @@ class PerssonModelGUI_V2:
             self.master_curve_shift_factors = {
                 'aT': self.master_curve_gen.aT.copy(),
                 'bT': self.master_curve_gen.bT.copy(),
-                'T_ref': self.master_curve_gen.T_ref,
+                'T_ref': T_ref,
                 'C1': self.master_curve_gen.C1,
                 'C2': self.master_curve_gen.C2,
                 'temperatures': list(self.master_curve_gen.temperatures)
             }
 
             # Update temperature entry with reference temperature
-            self.temperature_var.set(str(self.master_curve_gen.T_ref))
+            self.temperature_var.set(str(T_ref))
 
             # Update status label in Tab 1
             f_min = self.master_curve_gen.master_f.min()
             f_max = self.master_curve_gen.master_f.max()
-            T_ref = self.master_curve_gen.T_ref
-            self.dma_import_status_var.set(f"Master Curve ({unit_detected}, Tref={T_ref}°C)")
+            self.dma_import_status_var.set(f"Master Curve (Tref={T_ref}°C, {f_min:.1e}~{f_max:.1e} Hz)")
 
             # Update verification plots
             self._update_verification_plots()
@@ -1597,35 +1571,9 @@ class PerssonModelGUI_V2:
         try:
             # Get master curve data
             omega = 2 * np.pi * self.master_curve_gen.master_f
-            E_storage_raw = self.master_curve_gen.master_E_storage
-            E_loss_raw = self.master_curve_gen.master_E_loss
+            E_storage = self.master_curve_gen.master_E_storage * 1e6  # MPa to Pa
+            E_loss = self.master_curve_gen.master_E_loss * 1e6  # MPa to Pa
             T_ref = self.master_curve_gen.T_ref
-
-            # Auto-detect units: typical rubber E' is 1-100 MPa
-            # If values are > 1e5, assume they are already in Pa
-            # If values are < 1000, assume they are in MPa
-            E_max = max(np.max(E_storage_raw), np.max(E_loss_raw))
-            E_min = min(np.min(E_storage_raw[E_storage_raw > 0]), np.min(E_loss_raw[E_loss_raw > 0]))
-
-            if E_max > 1e5:
-                # Likely already in Pa
-                E_storage = E_storage_raw
-                E_loss = E_loss_raw
-                unit_detected = "Pa (자동 감지)"
-            elif E_max < 1000:
-                # Likely in MPa
-                E_storage = E_storage_raw * 1e6  # MPa to Pa
-                E_loss = E_loss_raw * 1e6
-                unit_detected = "MPa → Pa 변환"
-            else:
-                # Ambiguous - ask user or assume MPa
-                E_storage = E_storage_raw * 1e6
-                E_loss = E_loss_raw * 1e6
-                unit_detected = "MPa 가정 → Pa 변환"
-
-            print(f"E' range: {E_min:.2e} ~ {E_max:.2e} (raw)")
-            print(f"Unit detection: {unit_detected}")
-            print(f"E' range after conversion: {np.min(E_storage):.2e} ~ {np.max(E_storage):.2e} Pa")
 
             # Create material from master curve
             self.material = create_material_from_dma(
@@ -1659,13 +1607,13 @@ class PerssonModelGUI_V2:
             # Update status
             f_min = self.master_curve_gen.master_f.min()
             f_max = self.master_curve_gen.master_f.max()
-            self.dma_import_status_var.set(f"Master Curve ({unit_detected}, Tref={T_ref}°C)")
+            self.dma_import_status_var.set(f"Master Curve (Tref={T_ref}°C, {f_min:.1e}~{f_max:.1e} Hz)")
 
             # Update plots
             self._update_material_display()
             self._update_verification_plots()
 
-            self.status_var.set(f"마스터 커브 가져오기 완료 ({unit_detected})")
+            self.status_var.set(f"마스터 커브 가져오기 완료")
 
         except Exception as e:
             messagebox.showerror("Error", f"스무딩 적용 실패:\n{str(e)}")
