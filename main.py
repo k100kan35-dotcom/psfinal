@@ -618,25 +618,27 @@ class PerssonModelGUI_V2:
         self.ax_master_curve.clear()
         self.ax_psd.clear()
 
-        # Plot 1: Master Curve (E', E'')
+        # Plot 1: Master Curve (E', E'') - X-axis in Hz
         omega = np.logspace(-2, 12, 200)
+        f_Hz = omega / (2 * np.pi)  # Convert omega (rad/s) to f (Hz)
         E_storage = self.material.get_storage_modulus(omega)
         E_loss = self.material.get_loss_modulus(omega)
 
         ax1 = self.ax_master_curve
 
         # Plot smoothed data (from interpolator)
-        ax1.loglog(omega, E_storage/1e6, 'g-', linewidth=2.5, label="E' (보간/평활화)", alpha=0.9, zorder=2)
-        ax1.loglog(omega, E_loss/1e6, 'orange', linewidth=2.5, label="E'' (보간/평활화)", alpha=0.9, zorder=2)
+        ax1.loglog(f_Hz, E_storage/1e6, 'g-', linewidth=2.5, label="E' (보간/평활화)", alpha=0.9, zorder=2)
+        ax1.loglog(f_Hz, E_loss/1e6, 'orange', linewidth=2.5, label="E'' (보간/평활화)", alpha=0.9, zorder=2)
 
         # Plot raw measured data if available
         if self.raw_dma_data is not None:
-            ax1.scatter(self.raw_dma_data['omega'], self.raw_dma_data['E_storage']/1e6,
+            f_raw = self.raw_dma_data['omega'] / (2 * np.pi)  # Convert to Hz
+            ax1.scatter(f_raw, self.raw_dma_data['E_storage']/1e6,
                        c='darkgreen', s=20, alpha=0.5, label="E' (측정값)", zorder=1)
-            ax1.scatter(self.raw_dma_data['omega'], self.raw_dma_data['E_loss']/1e6,
+            ax1.scatter(f_raw, self.raw_dma_data['E_loss']/1e6,
                        c='darkorange', s=20, alpha=0.5, label="E'' (측정값)", zorder=1)
 
-        ax1.set_xlabel('각주파수 ω (rad/s)', fontweight='bold', fontsize=11, labelpad=5)
+        ax1.set_xlabel('주파수 f (Hz)', fontweight='bold', fontsize=11, labelpad=5)
         ax1.set_ylabel('탄성률 (MPa)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
         ax1.set_title('점탄성 마스터 곡선', fontweight='bold', fontsize=12, pad=10)
         ax1.legend(loc='upper left', fontsize=8, ncol=2)
