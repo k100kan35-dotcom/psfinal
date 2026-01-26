@@ -130,11 +130,17 @@ class ViscoelasticMaterial:
         else:
             interp_kind = 'linear'
 
+        # Store frequency range for later reference
+        self._log_freq_min = log_freq.min()
+        self._log_freq_max = log_freq.max()
+
+        # Use edge values for out-of-range frequencies (hold extrapolation)
+        # This is more physically reasonable than polynomial extrapolation
         self._E_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_prime,
             kind=interp_kind,
-            fill_value='extrapolate',
+            fill_value=(log_E_prime[0], log_E_prime[-1]),  # Hold edge values
             bounds_error=False
         )
 
@@ -142,7 +148,7 @@ class ViscoelasticMaterial:
             log_freq,
             log_E_double_prime,
             kind=interp_kind,
-            fill_value='extrapolate',
+            fill_value=(log_E_double_prime[0], log_E_double_prime[-1]),  # Hold edge values
             bounds_error=False
         )
 
@@ -243,10 +249,12 @@ class ViscoelasticMaterial:
         log_E_prime = self._E_prime_interp(log_freq)
         log_E_double_prime = self._E_double_prime_interp(log_freq)
 
-        # Validate interpolated values - clip to reasonable range
-        # log10(1e3) = 3, log10(1e12) = 12 for Pa
+        # Validate interpolated values - clip to reasonable range for rubber
+        # E' (storage): 1e3 Pa (rubbery) to 1e12 Pa (glassy)
+        # E'' (loss): 1e4 Pa (typical minimum) to 1e10 Pa (typical maximum)
+        # Note: Edge value hold should prevent extreme extrapolation, but clip for safety
         log_E_prime = np.clip(log_E_prime, 3, 12)
-        log_E_double_prime = np.clip(log_E_double_prime, 0, 12)
+        log_E_double_prime = np.clip(log_E_double_prime, 4, 10)  # E'' >= 1e4 Pa
 
         # Handle any remaining NaN values
         if np.any(~np.isfinite(log_E_prime)):
