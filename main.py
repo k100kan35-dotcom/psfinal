@@ -1464,9 +1464,9 @@ class PerssonModelGUI_V2:
         self.ax_psd.clear()
 
         # Plot 1: Master Curve (E', E'') - X-axis in Hz
-        # Use material's actual omega range for plotting (respects extrapolation settings)
-        omega_min = self.material.omega.min()
-        omega_max = self.material.omega.max()
+        # Use material's actual frequency range for plotting (respects extrapolation settings)
+        omega_min = self.material._frequencies.min()
+        omega_max = self.material._frequencies.max()
         omega = np.logspace(np.log10(omega_min), np.log10(omega_max), 500)
         f_Hz = omega / (2 * np.pi)  # Convert omega (rad/s) to f (Hz)
         E_storage = self.material.get_storage_modulus(omega)
