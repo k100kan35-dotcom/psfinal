@@ -1119,19 +1119,33 @@ def average_fg_curves(
 
     n_eff = np.sum(np.isfinite(F), axis=0)
 
-    # Handle points with insufficient data
-    hold_started = False
-    last_f, last_g = 1.0, 1.0
+    # Handle NaN values with forward-then-backward fill
+    # First, find valid values and fill NaN from edges
+    valid_mask = np.isfinite(f_avg) & np.isfinite(g_avg) & (n_eff >= n_min)
 
-    for i in range(len(grid_strain)):
-        if not hold_started:
-            if n_eff[i] < n_min or not np.isfinite(f_avg[i]) or not np.isfinite(g_avg[i]):
-                hold_started = True
-            else:
-                last_f, last_g = float(f_avg[i]), float(g_avg[i])
-        if hold_started:
-            f_avg[i] = last_f
-            g_avg[i] = last_g
+    if not np.any(valid_mask):
+        # No valid data at all - use default values
+        f_avg = np.ones_like(f_avg)
+        g_avg = np.ones_like(g_avg)
+    else:
+        # Forward fill: fill NaN with last valid value
+        last_valid_f, last_valid_g = 1.0, 1.0
+        for i in range(len(grid_strain)):
+            if valid_mask[i]:
+                last_valid_f = float(f_avg[i])
+                last_valid_g = float(g_avg[i])
+            elif not np.isfinite(f_avg[i]) or not np.isfinite(g_avg[i]):
+                f_avg[i] = last_valid_f
+                g_avg[i] = last_valid_g
+
+        # Backward fill: fill remaining NaN at the beginning
+        first_valid_idx = np.argmax(valid_mask)
+        if first_valid_idx > 0:
+            first_f = float(f_avg[first_valid_idx])
+            first_g = float(g_avg[first_valid_idx])
+            for i in range(first_valid_idx):
+                f_avg[i] = first_f
+                g_avg[i] = first_g
 
     if clip_leq_1:
         f_avg = np.minimum(f_avg, 1.0)

@@ -3432,6 +3432,38 @@ $\begin{array}{lcc}
             n_eff_stitched[mask_A] = result_A['n_eff'][mask_A]
             n_eff_stitched[mask_B] = result_B['n_eff'][mask_B]
 
+            # Handle any remaining NaN values with interpolation/fill
+            if np.any(~np.isfinite(f_stitched)) or np.any(~np.isfinite(g_stitched)):
+                # Forward-backward fill for NaN values
+                valid_f = np.isfinite(f_stitched)
+                valid_g = np.isfinite(g_stitched)
+
+                if np.any(valid_f):
+                    # Forward fill
+                    last_val = f_stitched[valid_f][0]
+                    for i in range(len(f_stitched)):
+                        if valid_f[i]:
+                            last_val = f_stitched[i]
+                        else:
+                            f_stitched[i] = last_val
+                    # Backward fill for beginning
+                    first_valid_idx = np.argmax(valid_f)
+                    f_stitched[:first_valid_idx] = f_stitched[first_valid_idx]
+                else:
+                    f_stitched[:] = 1.0  # Default
+
+                if np.any(valid_g):
+                    last_val = g_stitched[valid_g][0]
+                    for i in range(len(g_stitched)):
+                        if valid_g[i]:
+                            last_val = g_stitched[i]
+                        else:
+                            g_stitched[i] = last_val
+                    first_valid_idx = np.argmax(valid_g)
+                    g_stitched[:first_valid_idx] = g_stitched[first_valid_idx]
+                else:
+                    g_stitched[:] = 1.0  # Default
+
             # Store piecewise result
             self.piecewise_result = {
                 'strain': grid_strain.copy(),
@@ -3454,9 +3486,10 @@ $\begin{array}{lcc}
                 'n_eff': n_eff_stitched
             }
 
-            # Create interpolators
+            # Create interpolators with 'hold' extrapolation to avoid NaN at edges
             self.f_interpolator, self.g_interpolator = create_fg_interpolator(
-                grid_strain, f_stitched, g_stitched
+                grid_strain, f_stitched, g_stitched,
+                interp_kind='loglog_linear', extrap_mode='hold'
             )
 
             # Update plot
