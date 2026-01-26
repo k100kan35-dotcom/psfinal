@@ -339,52 +339,64 @@ class PerssonModelGUI_V2:
             foreground='gray'
         ).grid(row=0, column=1, sticky=tk.W, padx=10, pady=3)
 
-        # DMA Smoothing and Extrapolation controls
-        smooth_extrap_frame = ttk.LabelFrame(parent, text="DMA 스무딩 및 외삽", padding=10)
-        smooth_extrap_frame.pack(fill=tk.X, padx=10, pady=5)
+        # Two-column layout for DMA and PSD settings
+        settings_container = ttk.Frame(parent)
+        settings_container.pack(fill=tk.X, padx=10, pady=5)
 
-        # Smoothing controls row
-        smooth_row = ttk.Frame(smooth_extrap_frame)
-        smooth_row.pack(fill=tk.X, pady=2)
+        # Left column: DMA Smoothing/Extrapolation (compact)
+        dma_frame = ttk.LabelFrame(settings_container, text="DMA Smoothing/Extrapolation", padding=5)
+        dma_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
 
+        # Smoothing row
+        smooth_row = ttk.Frame(dma_frame)
+        smooth_row.pack(fill=tk.X, pady=1)
         self.verify_smooth_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            smooth_row,
-            text="스무딩 적용",
-            variable=self.verify_smooth_var
-        ).pack(side=tk.LEFT, padx=5)
-
-        ttk.Label(smooth_row, text="강도:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Checkbutton(smooth_row, text="Smooth", variable=self.verify_smooth_var).pack(side=tk.LEFT)
+        ttk.Label(smooth_row, text="Window:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 2))
         self.verify_smooth_window_var = tk.IntVar(value=11)
-        self.verify_smooth_slider = ttk.Scale(
-            smooth_row,
-            from_=5, to=51,
-            orient=tk.HORIZONTAL,
-            variable=self.verify_smooth_window_var,
-            command=lambda v: self.verify_smooth_label.config(text=f"{int(float(v))}")
-        )
-        self.verify_smooth_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        self.verify_smooth_label = ttk.Label(smooth_row, text="11", width=3)
-        self.verify_smooth_label.pack(side=tk.LEFT)
+        ttk.Entry(smooth_row, textvariable=self.verify_smooth_window_var, width=4).pack(side=tk.LEFT)
 
-        # Extrapolation controls row
-        extrap_row = ttk.Frame(smooth_extrap_frame)
-        extrap_row.pack(fill=tk.X, pady=2)
-
+        # Extrapolation row with range
+        extrap_row = ttk.Frame(dma_frame)
+        extrap_row.pack(fill=tk.X, pady=1)
         self.verify_extrap_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(
-            extrap_row,
-            text="Extrapolate frequency (1e-2 ~ 1e12 Hz)",
-            variable=self.verify_extrap_var
-        ).pack(side=tk.LEFT, padx=5)
+        ttk.Checkbutton(extrap_row, text="Extrapolate", variable=self.verify_extrap_var).pack(side=tk.LEFT)
+        ttk.Label(extrap_row, text="f_min:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 2))
+        self.dma_extrap_fmin_var = tk.StringVar(value="1e-2")
+        ttk.Entry(extrap_row, textvariable=self.dma_extrap_fmin_var, width=6).pack(side=tk.LEFT)
+        ttk.Label(extrap_row, text="f_max:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 2))
+        self.dma_extrap_fmax_var = tk.StringVar(value="1e12")
+        ttk.Entry(extrap_row, textvariable=self.dma_extrap_fmax_var, width=6).pack(side=tk.LEFT)
 
-        # Apply button
-        ttk.Button(
-            extrap_row,
-            text="스무딩/외삽 적용",
-            command=self._apply_dma_smoothing_extrapolation,
-            width=18
-        ).pack(side=tk.RIGHT, padx=5)
+        # Apply DMA button
+        ttk.Button(dma_frame, text="Apply DMA", command=self._apply_dma_smoothing_extrapolation, width=12).pack(pady=2)
+
+        # Right column: PSD Settings
+        psd_frame = ttk.LabelFrame(settings_container, text="PSD Settings (Power Law)", padding=5)
+        psd_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+
+        # q0, q1 row
+        q_row = ttk.Frame(psd_frame)
+        q_row.pack(fill=tk.X, pady=1)
+        ttk.Label(q_row, text="q0:", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.psd_q0_var = tk.StringVar(value="1e2")
+        ttk.Entry(q_row, textvariable=self.psd_q0_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(q_row, text="q1:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 0))
+        self.psd_q1_var = tk.StringVar(value="1e8")
+        ttk.Entry(q_row, textvariable=self.psd_q1_var, width=8).pack(side=tk.LEFT, padx=2)
+
+        # H, C(q0) row
+        hc_row = ttk.Frame(psd_frame)
+        hc_row.pack(fill=tk.X, pady=1)
+        ttk.Label(hc_row, text="H (Hurst):", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.psd_H_var = tk.StringVar(value="0.8")
+        ttk.Entry(hc_row, textvariable=self.psd_H_var, width=6).pack(side=tk.LEFT, padx=2)
+        ttk.Label(hc_row, text="C(q0):", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 0))
+        self.psd_Cq0_var = tk.StringVar(value="1e-18")
+        ttk.Entry(hc_row, textvariable=self.psd_Cq0_var, width=8).pack(side=tk.LEFT, padx=2)
+
+        # Apply PSD button
+        ttk.Button(psd_frame, text="Apply PSD", command=self._apply_psd_settings, width=12).pack(pady=2)
 
         # Plot area
         plot_frame = ttk.Frame(parent)
@@ -1721,9 +1733,11 @@ class PerssonModelGUI_V2:
 
             # Apply extrapolation if enabled
             if self.verify_extrap_var.get():
-                # Target range: 10^-2 to 10^12 Hz -> omega = 2*pi*f
-                omega_min_target = 2 * np.pi * 1e-2
-                omega_max_target = 2 * np.pi * 1e12
+                # Get user-specified frequency range
+                f_min = float(self.dma_extrap_fmin_var.get())
+                f_max = float(self.dma_extrap_fmax_var.get())
+                omega_min_target = 2 * np.pi * f_min
+                omega_max_target = 2 * np.pi * f_max
 
                 # Create extended omega array
                 omega_extended = np.logspace(
@@ -1793,6 +1807,72 @@ class PerssonModelGUI_V2:
 
         except Exception as e:
             messagebox.showerror("Error", f"스무딩/외삽 적용 실패:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _apply_psd_settings(self):
+        """Apply PSD power-law settings from user input."""
+        try:
+            from scipy.interpolate import interp1d
+
+            # Get user parameters
+            q0 = float(self.psd_q0_var.get())
+            q1 = float(self.psd_q1_var.get())
+            H = float(self.psd_H_var.get())
+            C_q0 = float(self.psd_Cq0_var.get())
+
+            if q1 <= q0:
+                messagebox.showerror("Error", "q1 must be greater than q0")
+                return
+
+            if H < 0 or H > 1:
+                messagebox.showwarning("Warning", "Hurst exponent H should be between 0 and 1")
+
+            # Create power-law PSD: C(q) = C(q0) * (q/q0)^(-2(H+1))
+            # Power law exponent: -2(H+1)
+            exponent = -2 * (H + 1)
+
+            # Create q array
+            q_array = np.logspace(np.log10(q0), np.log10(q1), 500)
+            C_array = C_q0 * (q_array / q0) ** exponent
+
+            # Create interpolator for PSD model
+            log_q = np.log10(q_array)
+            log_C = np.log10(C_array)
+
+            def psd_model(q_input):
+                """Power-law PSD model with hold extrapolation."""
+                q_input = np.atleast_1d(q_input)
+                log_q_input = np.log10(np.maximum(q_input, 1e-10))
+
+                # Interpolate in log-log space
+                log_C_out = np.interp(log_q_input, log_q, log_C)
+
+                # Hold extrapolation at boundaries
+                log_C_out[log_q_input < log_q[0]] = log_C[0]
+                log_C_out[log_q_input > log_q[-1]] = log_C[-1]
+
+                return 10 ** log_C_out
+
+            # Store the PSD model
+            self.psd_model = psd_model
+
+            # Store q range for calculations
+            self.q_min_var.set(str(q0))
+            self.q_max_var.set(str(q1))
+
+            # Update plots
+            self._update_verification_plots()
+            self.status_var.set(f"PSD applied: q0={q0:.1e}, q1={q1:.1e}, H={H:.2f}, C(q0)={C_q0:.1e}")
+
+            messagebox.showinfo("Complete", f"PSD model applied:\n"
+                              f"- q range: {q0:.1e} ~ {q1:.1e} 1/m\n"
+                              f"- Hurst exponent H: {H:.3f}\n"
+                              f"- C(q0): {C_q0:.1e} m^4\n"
+                              f"- Power law: C(q) = C(q0)*(q/q0)^{exponent:.2f}")
+
+        except Exception as e:
+            messagebox.showerror("Error", f"PSD settings failed:\n{str(e)}")
             import traceback
             traceback.print_exc()
 
@@ -3727,20 +3807,8 @@ $\begin{array}{lcc}
         if self.piecewise_result is not None:
             s = self.piecewise_result['strain']
             split = self.piecewise_result['split']
-            # Get original length for Group A/B plotting (before extension)
-            orig_len = self.piecewise_result.get('strain_original_len', len(s))
-            s_orig = s[:orig_len]
 
-            # Group A average (use original strain length)
-            if self.piecewise_result['result_A'] is not None:
-                f_A = self.piecewise_result['result_A']['f_avg']
-                g_A = self.piecewise_result['result_A']['g_avg']
-                self.ax_fg_curves.plot(s_orig, f_A, 'b--', linewidth=2, alpha=0.6, label='Group A f(ε)')
-                self.ax_fg_curves.plot(s_orig, g_A, 'r--', linewidth=2, alpha=0.6, label='Group A g(ε)')
-
-            # Group B removed from plot as requested (not visible anyway)
-
-            # Stitched (final) result - use full extended strain
+            # Stitched (final) result only - Group A/B removed
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
             self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='STITCHED f(ε)')
@@ -4629,12 +4697,12 @@ $\begin{array}{lcc}
         self.strain_map_nv_var = tk.StringVar(value="32")
         ttk.Entry(ctrl_row, textvariable=self.strain_map_nv_var, width=6).pack(side=tk.LEFT)
 
-        # Strain estimation method
+        # Strain estimation method - default to rms_slope
         ttk.Label(ctrl_row, text="  변형률 추정:").pack(side=tk.LEFT, padx=5)
-        self.strain_map_method_var = tk.StringVar(value="persson")
+        self.strain_map_method_var = tk.StringVar(value="rms_slope")
         method_combo = ttk.Combobox(
             ctrl_row, textvariable=self.strain_map_method_var,
-            values=["persson", "simple", "rms_slope", "fixed"],
+            values=["rms_slope", "persson", "simple", "fixed"],
             width=10, state="readonly"
         )
         method_combo.pack(side=tk.LEFT)
@@ -4654,21 +4722,23 @@ $\begin{array}{lcc}
         self.strain_map_progress = ttk.Progressbar(control_frame, mode='determinate')
         self.strain_map_progress.pack(fill=tk.X, pady=3)
 
-        # Plot area - 2x2 grid for 4 heatmaps
+        # Plot area - 2x4 grid for 8 heatmaps
         plot_frame = ttk.Frame(main_frame)
         plot_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.fig_strain_map = Figure(figsize=(14, 10), dpi=100)
+        self.fig_strain_map = Figure(figsize=(18, 9), dpi=100)
 
-        # 2x2 subplots - reorganized to remove duplicates and add E'
-        # Top-left: Local Strain with contours
-        # Top-right: E' storage modulus
-        # Bottom-left: E'' loss modulus (with g correction)
-        # Bottom-right: E' storage modulus (with f correction)
-        self.ax_strain_contour = self.fig_strain_map.add_subplot(221)
-        self.ax_E_storage = self.fig_strain_map.add_subplot(222)
-        self.ax_E_loss_nonlinear = self.fig_strain_map.add_subplot(223)
-        self.ax_E_storage_nonlinear = self.fig_strain_map.add_subplot(224)
+        # 2x4 subplots layout:
+        # Row 1: Local Strain | E' Storage | E''*g Loss | E'*f Storage
+        # Row 2: G Integrand (linear) | G Integrand (nonlinear) | A/A0 (linear) | A/A0 (nonlinear)
+        self.ax_strain_contour = self.fig_strain_map.add_subplot(241)
+        self.ax_E_storage = self.fig_strain_map.add_subplot(242)
+        self.ax_E_loss_nonlinear = self.fig_strain_map.add_subplot(243)
+        self.ax_E_storage_nonlinear = self.fig_strain_map.add_subplot(244)
+        self.ax_G_integrand_linear = self.fig_strain_map.add_subplot(245)
+        self.ax_G_integrand_nonlinear = self.fig_strain_map.add_subplot(246)
+        self.ax_contact_linear = self.fig_strain_map.add_subplot(247)
+        self.ax_contact_nonlinear = self.fig_strain_map.add_subplot(248)
 
         self.canvas_strain_map = FigureCanvasTkAgg(self.fig_strain_map, plot_frame)
         self.canvas_strain_map.draw()
@@ -4683,17 +4753,21 @@ $\begin{array}{lcc}
     def _init_strain_map_plots(self):
         """Initialize strain map plots with placeholder data."""
         for ax, title in [
-            (self.ax_strain_contour, 'Local Strain (q,v) [%]'),
-            (self.ax_E_storage, "E'(q,v) - Storage Modulus"),
-            (self.ax_E_loss_nonlinear, "E''*g - Loss Modulus (nonlinear)"),
-            (self.ax_E_storage_nonlinear, "E'*f - Storage Modulus (nonlinear)")
+            (self.ax_strain_contour, 'Local Strain [%]'),
+            (self.ax_E_storage, "E' Storage [log Pa]"),
+            (self.ax_E_loss_nonlinear, "E''*g Loss [log Pa]"),
+            (self.ax_E_storage_nonlinear, "E'*f Storage [log Pa]"),
+            (self.ax_G_integrand_linear, "G Integrand (linear)"),
+            (self.ax_G_integrand_nonlinear, "G Integrand (f applied)"),
+            (self.ax_contact_linear, "A/A0 Contact (linear)"),
+            (self.ax_contact_nonlinear, "A/A0 Contact (f applied)")
         ]:
-            ax.set_title(title, fontweight='bold', fontsize=10)
-            ax.set_xlabel('log10(v) [m/s]')
-            ax.set_ylabel('log10(q) [1/m]')
-            ax.text(0.5, 0.5, 'No data\nClick calculate button',
+            ax.set_title(title, fontweight='bold', fontsize=9)
+            ax.set_xlabel('log10(v) [m/s]', fontsize=8)
+            ax.set_ylabel('log10(q) [1/m]', fontsize=8)
+            ax.text(0.5, 0.5, 'No data',
                    ha='center', va='center', transform=ax.transAxes,
-                   fontsize=12, color='gray')
+                   fontsize=10, color='gray')
 
         self.fig_strain_map.tight_layout()
         self.canvas_strain_map.draw()
@@ -4754,6 +4828,12 @@ $\begin{array}{lcc}
             E_loss_nonlinear = np.zeros((n_q, n_v))
             E_storage_nonlinear = np.zeros((n_q, n_v))  # E'·f(ε)
 
+            # NEW: G integrand and contact area matrices
+            G_integrand_linear = np.zeros((n_q, n_v))
+            G_integrand_nonlinear = np.zeros((n_q, n_v))
+            contact_linear = np.zeros((n_q, n_v))
+            contact_nonlinear = np.zeros((n_q, n_v))
+
             # Calculate for each (q, v) pair
             total = n_q * n_v
             count = 0
@@ -4775,6 +4855,9 @@ $\begin{array}{lcc}
                     elif method == 'rms_slope' and rms_strain_interp is not None:
                         try:
                             strain = 10 ** rms_strain_interp(np.log10(q))
+                            # Fix NaN issue
+                            if not np.isfinite(strain):
+                                strain = fixed_strain
                         except:
                             strain = fixed_strain
                     elif method == 'persson':
@@ -4787,6 +4870,9 @@ $\begin{array}{lcc}
                     else:
                         strain = fixed_strain
 
+                    # Ensure finite value
+                    if not np.isfinite(strain):
+                        strain = fixed_strain
                     strain = np.clip(strain, 0.0, 1.0)
                     strain_matrix[i, j] = strain
 
@@ -4803,7 +4889,36 @@ $\begin{array}{lcc}
                         f_val = np.clip(f_val, 0.0, 1.0)
                         E_storage_nonlinear[i, j] = E_storage * f_val
                     else:
+                        f_val = 1.0
                         E_storage_nonlinear[i, j] = E_storage
+
+                    # Calculate G integrand: q^3 * C(q) * |E*|^2 / ((1-nu^2)*sigma0)^2
+                    # Linear: E* = E' + iE''
+                    # Nonlinear: E*_eff = E'*f + iE''*g
+                    C_val = C_q[i]
+                    prefactor = 1.0 / ((1 - poisson**2) * sigma_0)**2
+
+                    # Linear |E*|^2 = E'^2 + E''^2
+                    E_star_sq_linear = E_storage**2 + E_loss**2
+                    G_integrand_linear[i, j] = q**3 * C_val * E_star_sq_linear * prefactor
+
+                    # Nonlinear |E*_eff|^2
+                    E_prime_eff = E_storage_nonlinear[i, j]
+                    E_loss_eff = E_loss_nonlinear[i, j]
+                    E_star_sq_nonlinear = E_prime_eff**2 + E_loss_eff**2
+                    G_integrand_nonlinear[i, j] = q**3 * C_val * E_star_sq_nonlinear * prefactor
+
+                    # Calculate contact area ratio A/A0 = P(q) = erf(1/(2*sqrt(G)))
+                    # G ~ cumulative integral of q^3*C(q)*|E*|^2
+                    # Approximate G at this point for visualization
+                    from scipy.special import erf
+                    G_linear_approx = max(G_integrand_linear[i, j] * (q / n_q), 1e-20)
+                    G_nonlinear_approx = max(G_integrand_nonlinear[i, j] * (q / n_q), 1e-20)
+
+                    arg_linear = 1.0 / (2.0 * np.sqrt(G_linear_approx))
+                    arg_nonlinear = 1.0 / (2.0 * np.sqrt(G_nonlinear_approx))
+                    contact_linear[i, j] = erf(min(arg_linear, 10.0))
+                    contact_nonlinear[i, j] = erf(min(arg_nonlinear, 10.0))
 
                     count += 1
                     if count % (total // 20 + 1) == 0:
@@ -4815,10 +4930,15 @@ $\begin{array}{lcc}
                 'q': q_array,
                 'v': v_array,
                 'strain': strain_matrix,
+                'C_q': C_q,
                 'E_storage': E_storage_matrix,
                 'E_storage_nonlinear': E_storage_nonlinear,
                 'E_loss_linear': E_loss_linear,
-                'E_loss_nonlinear': E_loss_nonlinear
+                'E_loss_nonlinear': E_loss_nonlinear,
+                'G_integrand_linear': G_integrand_linear,
+                'G_integrand_nonlinear': G_integrand_nonlinear,
+                'contact_linear': contact_linear,
+                'contact_nonlinear': contact_nonlinear
             }
 
             # Update plots
@@ -4833,7 +4953,7 @@ $\begin{array}{lcc}
             self.status_var.set("오류 발생")
 
     def _update_strain_map_plots(self):
-        """Update strain map heatmap plots."""
+        """Update strain map heatmap plots (8 plots total)."""
         if not hasattr(self, 'strain_map_results') or self.strain_map_results is None:
             return
 
@@ -4843,13 +4963,17 @@ $\begin{array}{lcc}
         E_storage = self.strain_map_results['E_storage']
         E_storage_nl = self.strain_map_results['E_storage_nonlinear']
         E_loss_nl = self.strain_map_results['E_loss_nonlinear']
+        G_int_lin = self.strain_map_results.get('G_integrand_linear')
+        G_int_nl = self.strain_map_results.get('G_integrand_nonlinear')
+        contact_lin = self.strain_map_results.get('contact_linear')
+        contact_nl = self.strain_map_results.get('contact_nonlinear')
 
         # Create meshgrid for pcolormesh
         log_v = np.log10(v)
         log_q = np.log10(q)
         V, Q = np.meshgrid(log_v, log_q)
 
-        # CRITICAL: Remove existing colorbars before creating new ones
+        # Remove existing colorbars
         if hasattr(self, '_strain_map_colorbars'):
             for cbar in self._strain_map_colorbars:
                 try:
@@ -4858,93 +4982,130 @@ $\begin{array}{lcc}
                     pass
         self._strain_map_colorbars = []
 
-        # Clear all axes
-        for ax in [self.ax_strain_contour, self.ax_E_storage,
-                   self.ax_E_loss_nonlinear, self.ax_E_storage_nonlinear]:
+        # Clear all 8 axes
+        all_axes = [self.ax_strain_contour, self.ax_E_storage,
+                    self.ax_E_loss_nonlinear, self.ax_E_storage_nonlinear,
+                    self.ax_G_integrand_linear, self.ax_G_integrand_nonlinear,
+                    self.ax_contact_linear, self.ax_contact_nonlinear]
+        for ax in all_axes:
             ax.clear()
 
         # Color maps
-        strain_cmap = 'YlOrRd'  # Yellow to Red for strain
-        modulus_cmap = 'viridis'  # Viridis for modulus
+        strain_cmap = 'YlOrRd'
+        modulus_cmap = 'viridis'
+        contact_cmap = 'plasma'
 
-        # Plot 1: Local Strain with contours (top-left)
-        im1 = self.ax_strain_contour.pcolormesh(V, Q, strain * 100, cmap=strain_cmap, shading='auto')
-        self.ax_strain_contour.set_title('Local Strain (q,v) [%]', fontweight='bold', fontsize=10)
-        self.ax_strain_contour.set_xlabel('log10(v) [m/s]')
-        self.ax_strain_contour.set_ylabel('log10(q) [1/m]')
-        cbar1 = self.fig_strain_map.colorbar(im1, ax=self.ax_strain_contour, label='strain [%]')
+        # Fix NaN in strain for statistics
+        strain_valid = np.nan_to_num(strain, nan=0.0)
+
+        # === Row 1 ===
+        # Plot 1: Local Strain with contours
+        im1 = self.ax_strain_contour.pcolormesh(V, Q, strain_valid * 100, cmap=strain_cmap, shading='auto')
+        self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=9)
+        self.ax_strain_contour.set_xlabel('log10(v)', fontsize=8)
+        self.ax_strain_contour.set_ylabel('log10(q)', fontsize=8)
+        cbar1 = self.fig_strain_map.colorbar(im1, ax=self.ax_strain_contour)
         self._strain_map_colorbars.append(cbar1)
-
-        # Add contour lines
         try:
-            contour_levels = [0.1, 0.5, 1.0, 2.0, 5.0, 10.0]
-            cs = self.ax_strain_contour.contour(V, Q, strain * 100, levels=contour_levels, colors='black', linewidths=0.8)
-            self.ax_strain_contour.clabel(cs, inline=True, fontsize=8, fmt='%.1f%%', colors='black')
+            cs = self.ax_strain_contour.contour(V, Q, strain_valid * 100, levels=[1, 5, 10], colors='k', linewidths=0.5)
+            self.ax_strain_contour.clabel(cs, inline=True, fontsize=7, fmt='%.0f%%')
         except:
             pass
+        strain_mean = np.nanmean(strain) * 100
+        strain_max = np.nanmax(strain) * 100
+        self.ax_strain_contour.text(0.02, 0.98, f'Mean:{strain_mean:.1f}%\nMax:{strain_max:.1f}%',
+            transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
+            bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Add strain statistics
-        strain_mean = np.mean(strain) * 100
-        strain_max = np.max(strain) * 100
-        strain_min = np.min(strain) * 100
-        self.ax_strain_contour.text(
-            0.02, 0.98, f'Mean: {strain_mean:.2f}%\nMax: {strain_max:.2f}%\nMin: {strain_min:.2f}%',
-            transform=self.ax_strain_contour.transAxes,
-            fontsize=9, verticalalignment='top', fontweight='bold',
-            bbox=dict(boxstyle='round', facecolor='white', alpha=0.9, edgecolor='black')
-        )
-
-        # Plot 2: E' Storage Modulus (top-right)
-        E_storage_safe = np.maximum(E_storage, 1e-10)
-        im2 = self.ax_E_storage.pcolormesh(V, Q, np.log10(E_storage_safe), cmap=modulus_cmap, shading='auto')
-        self.ax_E_storage.set_title("E' Storage Modulus [log10 Pa]", fontweight='bold', fontsize=10)
-        self.ax_E_storage.set_xlabel('log10(v) [m/s]')
-        self.ax_E_storage.set_ylabel('log10(q) [1/m]')
-        cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage, label="log10(E') [Pa]")
+        # Plot 2: E' Storage Modulus
+        E_s_safe = np.maximum(E_storage, 1e-10)
+        im2 = self.ax_E_storage.pcolormesh(V, Q, np.log10(E_s_safe), cmap=modulus_cmap, shading='auto')
+        self.ax_E_storage.set_title("E' Storage [log Pa]", fontweight='bold', fontsize=9)
+        self.ax_E_storage.set_xlabel('log10(v)', fontsize=8)
+        self.ax_E_storage.set_ylabel('log10(q)', fontsize=8)
+        cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage)
         self._strain_map_colorbars.append(cbar2)
 
-        # Plot 3: E'' * g(e) - Nonlinear Loss Modulus (bottom-left)
-        E_loss_nl_safe = np.maximum(E_loss_nl, 1e-10)
-        im3 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, np.log10(E_loss_nl_safe), cmap=modulus_cmap, shading='auto')
-        self.ax_E_loss_nonlinear.set_title("E''*g(e) Loss Modulus [log10 Pa]", fontweight='bold', fontsize=10)
-        self.ax_E_loss_nonlinear.set_xlabel('log10(v) [m/s]')
-        self.ax_E_loss_nonlinear.set_ylabel('log10(q) [1/m]')
-        cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_nonlinear, label="log10(E''*g) [Pa]")
+        # Plot 3: E''*g Loss Modulus
+        E_l_safe = np.maximum(E_loss_nl, 1e-10)
+        im3 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, np.log10(E_l_safe), cmap=modulus_cmap, shading='auto')
+        self.ax_E_loss_nonlinear.set_title("E''*g Loss [log Pa]", fontweight='bold', fontsize=9)
+        self.ax_E_loss_nonlinear.set_xlabel('log10(v)', fontsize=8)
+        self.ax_E_loss_nonlinear.set_ylabel('log10(q)', fontsize=8)
+        cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_nonlinear)
         self._strain_map_colorbars.append(cbar3)
-
-        # Add g(e) reduction info
         if self.g_interpolator is not None:
-            E_loss_linear = self.strain_map_results['E_loss_linear']
-            ratio_g = E_loss_nl / np.maximum(E_loss_linear, 1e-10)
-            avg_g = np.mean(ratio_g)
-            min_g = np.min(ratio_g)
-            self.ax_E_loss_nonlinear.text(
-                0.02, 0.98, f'Avg g: {avg_g:.2%}\nMin g: {min_g:.2%}',
-                transform=self.ax_E_loss_nonlinear.transAxes,
-                fontsize=9, verticalalignment='top', fontweight='bold',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9, edgecolor='black')
-            )
+            E_loss_lin = self.strain_map_results['E_loss_linear']
+            avg_g = np.mean(E_loss_nl / np.maximum(E_loss_lin, 1e-10))
+            self.ax_E_loss_nonlinear.text(0.02, 0.98, f'Avg g:{avg_g:.1%}',
+                transform=self.ax_E_loss_nonlinear.transAxes, fontsize=7, va='top',
+                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 4: E' * f(e) - Nonlinear Storage Modulus (bottom-right)
-        E_storage_nl_safe = np.maximum(E_storage_nl, 1e-10)
-        im4 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, np.log10(E_storage_nl_safe), cmap=modulus_cmap, shading='auto')
-        self.ax_E_storage_nonlinear.set_title("E'*f(e) Storage Modulus [log10 Pa]", fontweight='bold', fontsize=10)
-        self.ax_E_storage_nonlinear.set_xlabel('log10(v) [m/s]')
-        self.ax_E_storage_nonlinear.set_ylabel('log10(q) [1/m]')
-        cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_storage_nonlinear, label="log10(E'*f) [Pa]")
+        # Plot 4: E'*f Storage Modulus
+        E_snl_safe = np.maximum(E_storage_nl, 1e-10)
+        im4 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, np.log10(E_snl_safe), cmap=modulus_cmap, shading='auto')
+        self.ax_E_storage_nonlinear.set_title("E'*f Storage [log Pa]", fontweight='bold', fontsize=9)
+        self.ax_E_storage_nonlinear.set_xlabel('log10(v)', fontsize=8)
+        self.ax_E_storage_nonlinear.set_ylabel('log10(q)', fontsize=8)
+        cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_storage_nonlinear)
         self._strain_map_colorbars.append(cbar4)
-
-        # Add f(e) reduction info
         if self.f_interpolator is not None:
-            ratio_f = E_storage_nl / np.maximum(E_storage, 1e-10)
-            avg_f = np.mean(ratio_f)
-            min_f = np.min(ratio_f)
-            self.ax_E_storage_nonlinear.text(
-                0.02, 0.98, f'Avg f: {avg_f:.2%}\nMin f: {min_f:.2%}',
-                transform=self.ax_E_storage_nonlinear.transAxes,
-                fontsize=9, verticalalignment='top', fontweight='bold',
-                bbox=dict(boxstyle='round', facecolor='white', alpha=0.9, edgecolor='black')
-            )
+            avg_f = np.mean(E_storage_nl / np.maximum(E_storage, 1e-10))
+            self.ax_E_storage_nonlinear.text(0.02, 0.98, f'Avg f:{avg_f:.1%}',
+                transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
+                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+
+        # === Row 2 ===
+        # Plot 5: G Integrand (linear)
+        if G_int_lin is not None:
+            G_lin_safe = np.maximum(G_int_lin, 1e-30)
+            im5 = self.ax_G_integrand_linear.pcolormesh(V, Q, np.log10(G_lin_safe), cmap='inferno', shading='auto')
+            self.ax_G_integrand_linear.set_title('G Integrand (linear)', fontweight='bold', fontsize=9)
+            self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
+            cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_G_integrand_linear)
+            self._strain_map_colorbars.append(cbar5)
+
+        # Plot 6: G Integrand (nonlinear with f applied)
+        if G_int_nl is not None:
+            G_nl_safe = np.maximum(G_int_nl, 1e-30)
+            im6 = self.ax_G_integrand_nonlinear.pcolormesh(V, Q, np.log10(G_nl_safe), cmap='inferno', shading='auto')
+            self.ax_G_integrand_nonlinear.set_title('G Integrand (f applied)', fontweight='bold', fontsize=9)
+            self.ax_G_integrand_nonlinear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_G_integrand_nonlinear.set_ylabel('log10(q)', fontsize=8)
+            cbar6 = self.fig_strain_map.colorbar(im6, ax=self.ax_G_integrand_nonlinear)
+            self._strain_map_colorbars.append(cbar6)
+            if G_int_lin is not None:
+                ratio = np.mean(G_int_nl / np.maximum(G_int_lin, 1e-30))
+                self.ax_G_integrand_nonlinear.text(0.02, 0.98, f'Ratio:{ratio:.1%}',
+                    transform=self.ax_G_integrand_nonlinear.transAxes, fontsize=7, va='top',
+                    bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+
+        # Plot 7: Contact area ratio A/A0 (linear)
+        if contact_lin is not None:
+            im7 = self.ax_contact_linear.pcolormesh(V, Q, contact_lin, cmap=contact_cmap, shading='auto', vmin=0, vmax=1)
+            self.ax_contact_linear.set_title('A/A0 Contact (linear)', fontweight='bold', fontsize=9)
+            self.ax_contact_linear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_contact_linear.set_ylabel('log10(q)', fontsize=8)
+            cbar7 = self.fig_strain_map.colorbar(im7, ax=self.ax_contact_linear)
+            self._strain_map_colorbars.append(cbar7)
+            avg_P = np.mean(contact_lin)
+            self.ax_contact_linear.text(0.02, 0.98, f'Avg P:{avg_P:.2f}',
+                transform=self.ax_contact_linear.transAxes, fontsize=7, va='top',
+                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+
+        # Plot 8: Contact area ratio A/A0 (nonlinear)
+        if contact_nl is not None:
+            im8 = self.ax_contact_nonlinear.pcolormesh(V, Q, contact_nl, cmap=contact_cmap, shading='auto', vmin=0, vmax=1)
+            self.ax_contact_nonlinear.set_title('A/A0 Contact (f applied)', fontweight='bold', fontsize=9)
+            self.ax_contact_nonlinear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_contact_nonlinear.set_ylabel('log10(q)', fontsize=8)
+            cbar8 = self.fig_strain_map.colorbar(im8, ax=self.ax_contact_nonlinear)
+            self._strain_map_colorbars.append(cbar8)
+            avg_P_nl = np.mean(contact_nl)
+            self.ax_contact_nonlinear.text(0.02, 0.98, f'Avg P:{avg_P_nl:.2f}',
+                transform=self.ax_contact_nonlinear.transAxes, fontsize=7, va='top',
+                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         self.fig_strain_map.tight_layout()
         self.canvas_strain_map.draw()
