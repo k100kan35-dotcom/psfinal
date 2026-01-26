@@ -127,6 +127,7 @@ class PerssonModelGUI_V2:
         self.g_calculator = None
         self.results = {}
         self.raw_dma_data = None  # Store raw DMA data for plotting
+        self.raw_psd_data = None  # Store raw PSD data for comparison plotting
 
         # Strain/mu_visc related variables
         self.strain_data = None  # Strain sweep raw data by temperature
@@ -349,9 +350,8 @@ class PerssonModelGUI_V2:
 
         # Load DMA button row (inside labelframe, at top)
         dma_load_row = ttk.Frame(dma_frame)
-        dma_load_row.pack(fill=tk.X, pady=(0, 3))
+        dma_load_row.pack(fill=tk.X, pady=(0, 8))
         ttk.Button(dma_load_row, text="Load DMA", command=self._load_material, width=10).pack(side=tk.LEFT)
-        ttk.Button(dma_load_row, text="Load PSD", command=self._load_psd_data, width=10).pack(side=tk.LEFT, padx=(5, 0))
 
         # Smoothing row
         smooth_row = ttk.Frame(dma_frame)
@@ -380,6 +380,11 @@ class PerssonModelGUI_V2:
         # Right column: PSD Settings
         psd_frame = ttk.LabelFrame(settings_container, text="PSD Settings (Power Law)", padding=5)
         psd_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
+
+        # Load PSD button row (at top of PSD frame)
+        psd_load_row = ttk.Frame(psd_frame)
+        psd_load_row.pack(fill=tk.X, pady=(0, 8))
+        ttk.Button(psd_load_row, text="Load PSD", command=self._load_psd_data, width=10).pack(side=tk.LEFT)
 
         # q0, q1 row
         q_row = ttk.Frame(psd_frame)
@@ -1529,37 +1534,57 @@ class PerssonModelGUI_V2:
         ax1.xaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
         ax1.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
 
-        # Plot 2: PSD C(q) with Hurst exponent
-        if self.psd_model is not None:
-            q_min = float(self.q_min_var.get())
-            q_max = float(self.q_max_var.get())
-            q_plot = np.logspace(np.log10(q_min), np.log10(q_max), 200)
-            C_q = self.psd_model(q_plot)
+        # Plot 2: PSD C(q) - compare raw data with applied power law
+        has_raw_psd = self.raw_psd_data is not None
+        has_psd_model = self.psd_model is not None
 
-            # Calculate Hurst exponent from power law fitting
-            # C(q) = A * q^(-2(H+1)) => log(C) = log(A) - 2(H+1)*log(q)
-            # Use middle range for fitting (avoid edge artifacts)
-            fit_idx = (q_plot > q_min * 10) & (q_plot < q_max / 10)
-            if np.sum(fit_idx) > 10:
-                log_q_fit = np.log10(q_plot[fit_idx])
-                log_C_fit = np.log10(C_q[fit_idx])
-                # Linear fit: log(C) = a + b*log(q), where b = -2(H+1)
-                coeffs = np.polyfit(log_q_fit, log_C_fit, 1)
-                slope = coeffs[0]
-                intercept = coeffs[1]
-                H = -slope / 2.0 - 1.0  # Hurst exponent
+        if has_raw_psd or has_psd_model:
+            # Plot raw PSD data first (if available)
+            if has_raw_psd:
+                q_raw = self.raw_psd_data['q']
+                C_raw = self.raw_psd_data['C_q']
+                self.ax_psd.loglog(q_raw, C_raw, 'ko', markersize=3, alpha=0.5,
+                                  label='Raw PSD (측정값)', zorder=1)
 
-                # Plot fitted line
-                C_fit = 10**(intercept + slope * np.log10(q_plot))
-                self.ax_psd.loglog(q_plot, C_fit, 'r--', linewidth=1.5, alpha=0.7,
-                                  label=f'Power law fit (H={H:.3f})')
+            # Plot applied PSD model (power law or loaded)
+            if has_psd_model:
+                q_min = float(self.q_min_var.get())
+                q_max = float(self.q_max_var.get())
+                q_plot = np.logspace(np.log10(q_min), np.log10(q_max), 200)
+                C_q = self.psd_model(q_plot)
 
-            self.ax_psd.loglog(q_plot, C_q, 'b-', linewidth=2, label='로드된 PSD', alpha=0.9)
+                # Check if this is a power-law model (has q_data attribute from _apply_psd_settings)
+                is_power_law = hasattr(self.psd_model, 'q_data')
+
+                if is_power_law:
+                    # Plot power law model with different color
+                    self.ax_psd.loglog(q_plot, C_q, 'r-', linewidth=2.5,
+                                      label='적용된 PSD (Power Law)', alpha=0.9, zorder=2)
+                else:
+                    # Plot loaded/interpolated PSD
+                    self.ax_psd.loglog(q_plot, C_q, 'b-', linewidth=2,
+                                      label='적용된 PSD (보간)', alpha=0.9, zorder=2)
+
+                    # Calculate Hurst exponent from power law fitting for display
+                    fit_idx = (q_plot > q_min * 10) & (q_plot < q_max / 10)
+                    if np.sum(fit_idx) > 10:
+                        log_q_fit = np.log10(q_plot[fit_idx])
+                        log_C_fit = np.log10(C_q[fit_idx])
+                        coeffs = np.polyfit(log_q_fit, log_C_fit, 1)
+                        slope = coeffs[0]
+                        intercept = coeffs[1]
+                        H = -slope / 2.0 - 1.0
+
+                        # Plot fitted line
+                        C_fit = 10**(intercept + slope * np.log10(q_plot))
+                        self.ax_psd.loglog(q_plot, C_fit, 'g--', linewidth=1.5, alpha=0.7,
+                                          label=f'Power law fit (H={H:.3f})')
+
             self.ax_psd.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
             self.ax_psd.set_ylabel('PSD C(q) (m⁴)', fontweight='bold', fontsize=11,
                                    rotation=90, labelpad=10)
-            self.ax_psd.set_title('표면 거칠기 PSD', fontweight='bold', fontsize=12, pad=10)
-            self.ax_psd.legend(fontsize=9)
+            self.ax_psd.set_title('표면 거칠기 PSD 비교', fontweight='bold', fontsize=12, pad=10)
+            self.ax_psd.legend(fontsize=8, loc='upper right')
             self.ax_psd.grid(True, alpha=0.3)
 
             # Fix axis formatter
@@ -1629,6 +1654,12 @@ class PerssonModelGUI_V2:
 
                 if np.any(q <= 0) or np.any(C_q <= 0):
                     raise ValueError("Invalid data: q and C must be positive after conversion")
+
+                # Store raw PSD data for comparison plotting
+                self.raw_psd_data = {
+                    'q': q.copy(),
+                    'C_q': C_q.copy()
+                }
 
                 self.psd_model = create_psd_from_data(q, C_q, interpolation_kind='log-log')
 
