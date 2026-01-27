@@ -1327,22 +1327,86 @@ class PerssonModelGUI_V2:
         self.n_q_var = tk.StringVar(value="100")
         ttk.Entry(input_frame, textvariable=self.n_q_var, width=15).grid(row=row, column=1, pady=5)
 
-        # Target h'rms (hrms_slope) for q1 determination
+        # ===== h'rms / q1 모드 선택 섹션 =====
         row += 1
-        ttk.Label(input_frame, text="목표 h'rms (q1 결정):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        mode_frame = ttk.LabelFrame(input_frame, text="h'rms / q1 결정 모드", padding=5)
+        mode_frame.grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=10)
+
+        # 모드 선택 라디오 버튼
+        self.hrms_q1_mode_var = tk.StringVar(value="hrms_to_q1")  # 기본값: h'rms → q1
+
+        mode_row1 = ttk.Frame(mode_frame)
+        mode_row1.pack(fill=tk.X, pady=2)
+        ttk.Radiobutton(mode_row1, text="모드 1: h'rms → q1 계산",
+                       variable=self.hrms_q1_mode_var, value="hrms_to_q1",
+                       command=self._on_hrms_q1_mode_changed).pack(side=tk.LEFT)
+
+        mode_row2 = ttk.Frame(mode_frame)
+        mode_row2.pack(fill=tk.X, pady=2)
+        ttk.Radiobutton(mode_row2, text="모드 2: q1 → h'rms 계산",
+                       variable=self.hrms_q1_mode_var, value="q1_to_hrms",
+                       command=self._on_hrms_q1_mode_changed).pack(side=tk.LEFT)
+
+        # 구분선
+        ttk.Separator(mode_frame, orient='horizontal').pack(fill=tk.X, pady=5)
+
+        # h'rms 입력 (모드 1용)
+        self.hrms_input_frame = ttk.Frame(mode_frame)
+        self.hrms_input_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(self.hrms_input_frame, text="입력 h'rms:").pack(side=tk.LEFT)
         self.target_hrms_slope_var = tk.StringVar(value="1.3")
-        ttk.Entry(input_frame, textvariable=self.target_hrms_slope_var, width=15).grid(row=row, column=1, pady=5)
+        self.hrms_entry = ttk.Entry(self.hrms_input_frame, textvariable=self.target_hrms_slope_var, width=12)
+        self.hrms_entry.pack(side=tk.LEFT, padx=5)
+
+        # q1 입력 (모드 2용)
+        self.q1_input_frame = ttk.Frame(mode_frame)
+        self.q1_input_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(self.q1_input_frame, text="입력 q1 (1/m):").pack(side=tk.LEFT)
+        self.input_q1_var = tk.StringVar(value="1.0e+08")
+        self.q1_entry = ttk.Entry(self.q1_input_frame, textvariable=self.input_q1_var, width=12)
+        self.q1_entry.pack(side=tk.LEFT, padx=5)
 
         # Add trace to sync target_hrms_slope_var with Tab 1's psd_xi_var and Tab 4's display
         self.target_hrms_slope_var.trace_add('write', self._on_target_hrms_changed)
 
-        # Display for calculated q1 (will be updated after calculation)
-        row += 1
-        ttk.Label(input_frame, text="계산된 q1 (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        # 계산 버튼
+        calc_btn_frame = ttk.Frame(mode_frame)
+        calc_btn_frame.pack(fill=tk.X, pady=5)
+        self.hrms_q1_calc_btn = ttk.Button(calc_btn_frame, text="h'rms/q1 계산",
+                                           command=self._calculate_hrms_q1)
+        self.hrms_q1_calc_btn.pack(side=tk.LEFT, padx=5)
+
+        ttk.Button(calc_btn_frame, text="Tab 4로 전달",
+                  command=self._send_hrms_q1_to_tab4).pack(side=tk.LEFT, padx=5)
+
+        # 구분선
+        ttk.Separator(mode_frame, orient='horizontal').pack(fill=tk.X, pady=5)
+
+        # 결과 표시 영역
+        result_frame = ttk.Frame(mode_frame)
+        result_frame.pack(fill=tk.X, pady=2)
+
+        # 계산된 q1 표시 (모드 1 결과)
+        q1_result_row = ttk.Frame(result_frame)
+        q1_result_row.pack(fill=tk.X, pady=2)
+        ttk.Label(q1_result_row, text="계산된 q1:").pack(side=tk.LEFT)
         self.calculated_q1_var = tk.StringVar(value="(계산 후 표시)")
-        self.calculated_q1_label = ttk.Label(input_frame, textvariable=self.calculated_q1_var,
+        self.calculated_q1_label = ttk.Label(q1_result_row, textvariable=self.calculated_q1_var,
                                              font=('Arial', 9, 'bold'), foreground='blue')
-        self.calculated_q1_label.grid(row=row, column=1, pady=5, sticky=tk.W)
+        self.calculated_q1_label.pack(side=tk.LEFT, padx=5)
+        ttk.Label(q1_result_row, text="(1/m)").pack(side=tk.LEFT)
+
+        # 계산된 h'rms 표시 (모드 2 결과)
+        hrms_result_row = ttk.Frame(result_frame)
+        hrms_result_row.pack(fill=tk.X, pady=2)
+        ttk.Label(hrms_result_row, text="계산된 h'rms:").pack(side=tk.LEFT)
+        self.calculated_hrms_var = tk.StringVar(value="(계산 후 표시)")
+        self.calculated_hrms_label = ttk.Label(hrms_result_row, textvariable=self.calculated_hrms_var,
+                                               font=('Arial', 9, 'bold'), foreground='green')
+        self.calculated_hrms_label.pack(side=tk.LEFT, padx=5)
+
+        # 초기 모드에 따른 UI 상태 설정
+        self._on_hrms_q1_mode_changed()
 
         # PSD type
         row += 1
@@ -1465,6 +1529,140 @@ class PerssonModelGUI_V2:
         except (ValueError, AttributeError):
             # Invalid value or variables not yet initialized
             pass
+
+    def _on_hrms_q1_mode_changed(self):
+        """모드 변경 시 UI 상태 업데이트."""
+        mode = self.hrms_q1_mode_var.get()
+        if mode == "hrms_to_q1":
+            # 모드 1: h'rms 입력 활성화, q1 입력 비활성화
+            self.hrms_entry.config(state='normal')
+            self.q1_entry.config(state='disabled')
+            self.hrms_q1_calc_btn.config(text="h'rms → q1 계산")
+        else:
+            # 모드 2: q1 입력 활성화, h'rms 입력 비활성화
+            self.hrms_entry.config(state='disabled')
+            self.q1_entry.config(state='normal')
+            self.hrms_q1_calc_btn.config(text="q1 → h'rms 계산")
+
+    def _calculate_hrms_q1(self):
+        """선택된 모드에 따라 h'rms 또는 q1 계산."""
+        if self.psd_model is None:
+            messagebox.showwarning("경고", "PSD 데이터를 먼저 로드해주세요!")
+            return
+
+        try:
+            mode = self.hrms_q1_mode_var.get()
+
+            # PSD 데이터에서 q 범위 결정
+            if hasattr(self.psd_model, 'q_data'):
+                q_data = self.psd_model.q_data
+                C_data = self.psd_model.C_data
+            else:
+                q_min = float(self.q_min_var.get())
+                q_max = float(self.q_max_var.get())
+                q_data = np.logspace(np.log10(q_min), np.log10(q_max), 500)
+                C_data = self.psd_model(q_data)
+
+            # 누적 h'rms 계산: h'rms²(q) = 2π∫[q0 to q] k³C(k)dk
+            hrms_squared_cumulative = np.zeros_like(q_data)
+            for i in range(len(q_data)):
+                q_int = q_data[:i+1]
+                C_int = C_data[:i+1]
+                hrms_squared_cumulative[i] = 2 * np.pi * np.trapezoid(q_int**3 * C_int, q_int)
+            hrms_cumulative = np.sqrt(hrms_squared_cumulative)
+
+            if mode == "hrms_to_q1":
+                # 모드 1: 주어진 h'rms로 q1 계산
+                target_hrms = float(self.target_hrms_slope_var.get())
+
+                # h'rms 값이 도달 가능한지 확인
+                if target_hrms > hrms_cumulative[-1]:
+                    messagebox.showwarning("경고",
+                        f"목표 h'rms ({target_hrms:.4f})가 최대 도달 가능한 값 ({hrms_cumulative[-1]:.4f})보다 큽니다.\n"
+                        f"q 범위를 늘리거나 목표 h'rms를 줄이세요.")
+                    return
+
+                # 목표 h'rms에 해당하는 q1 찾기 (보간 사용)
+                from scipy.interpolate import interp1d
+                # hrms → q 보간기 생성
+                f_interp = interp1d(hrms_cumulative, q_data, kind='linear', fill_value='extrapolate')
+                q1_calculated = float(f_interp(target_hrms))
+
+                # 결과 표시
+                self.calculated_q1_var.set(f"{q1_calculated:.3e}")
+                self.calculated_q1 = q1_calculated
+                self.target_xi = target_hrms
+
+                self.status_var.set(f"계산 완료: h'rms={target_hrms:.4f} → q1={q1_calculated:.3e} (1/m)")
+                messagebox.showinfo("계산 완료",
+                    f"모드 1: h'rms → q1 계산\n\n"
+                    f"입력 h'rms: {target_hrms:.4f}\n"
+                    f"계산된 q1: {q1_calculated:.3e} (1/m)")
+
+            else:
+                # 모드 2: 주어진 q1로 h'rms 계산
+                target_q1 = float(self.input_q1_var.get())
+
+                # q1이 범위 내에 있는지 확인
+                if target_q1 < q_data[0] or target_q1 > q_data[-1]:
+                    messagebox.showwarning("경고",
+                        f"입력 q1 ({target_q1:.3e})이 PSD 데이터 범위 밖입니다.\n"
+                        f"범위: {q_data[0]:.3e} ~ {q_data[-1]:.3e} (1/m)")
+                    return
+
+                # q1에 해당하는 h'rms 찾기 (보간 사용)
+                from scipy.interpolate import interp1d
+                # q → hrms 보간기 생성
+                f_interp = interp1d(q_data, hrms_cumulative, kind='linear', fill_value='extrapolate')
+                hrms_calculated = float(f_interp(target_q1))
+
+                # 결과 표시
+                self.calculated_hrms_var.set(f"{hrms_calculated:.4f}")
+                self.calculated_q1 = target_q1
+                self.target_xi = hrms_calculated
+
+                # h'rms 입력란에도 반영
+                self.target_hrms_slope_var.set(f"{hrms_calculated:.4f}")
+
+                self.status_var.set(f"계산 완료: q1={target_q1:.3e} → h'rms={hrms_calculated:.4f}")
+                messagebox.showinfo("계산 완료",
+                    f"모드 2: q1 → h'rms 계산\n\n"
+                    f"입력 q1: {target_q1:.3e} (1/m)\n"
+                    f"계산된 h'rms: {hrms_calculated:.4f}")
+
+        except ValueError as e:
+            messagebox.showerror("오류", f"입력값이 유효하지 않습니다: {e}")
+        except Exception as e:
+            messagebox.showerror("오류", f"계산 중 오류 발생: {e}")
+            import traceback
+            traceback.print_exc()
+
+    def _send_hrms_q1_to_tab4(self):
+        """계산된 h'rms와 q1을 Tab 4로 전달."""
+        try:
+            # 계산된 q1이 있으면 Tab 4의 q_max에 전달
+            if hasattr(self, 'calculated_q1') and self.calculated_q1 is not None:
+                self.rms_q_max_var.set(f"{self.calculated_q1:.3e}")
+
+            # target_xi를 Tab 4에 전달
+            if self.target_xi is not None:
+                if hasattr(self, 'rms_target_xi_display'):
+                    self.rms_target_xi_display.set(f"{self.target_xi:.4f}")
+                if hasattr(self, 'psd_xi_var'):
+                    self.psd_xi_var.set(f"{self.target_xi:.4f}")
+
+            # Tab 4로 전환
+            self.notebook.select(4)
+
+            self.status_var.set(f"Tab 4로 전달 완료: h'rms={self.target_xi:.4f}, q1={self.calculated_q1:.3e}")
+            messagebox.showinfo("전달 완료",
+                f"Tab 4로 전달되었습니다.\n\n"
+                f"h'rms: {self.target_xi:.4f}\n"
+                f"q1: {self.calculated_q1:.3e} (1/m)\n\n"
+                f"Tab 4에서 'h'rms slope 계산' 버튼을 클릭하세요.")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"Tab 4로 전달 중 오류: {e}")
 
     def _create_results_tab(self, parent):
         """Create G(q,v) results tab."""
@@ -2159,23 +2357,48 @@ class PerssonModelGUI_V2:
                 self.ax_psd_f.clear()
 
                 # TOP SUBPLOT: Plot PSD(q) - wavenumber based (static)
+                # Include plateau region (q < q0) if available
                 if self.psd_model is not None:
-                    q_plot = np.logspace(np.log10(q_min), np.log10(q_max), 200)
+                    # Determine plot range including plateau region
+                    if hasattr(self.psd_model, 'q_data') and len(self.psd_model.q_data) > 0:
+                        # Use full q_data range which includes plateau
+                        q_plot_min = min(self.psd_model.q_data)
+                        q_plot_max = max(self.psd_model.q_data[self.psd_model.q_data <= q_max]) if np.any(self.psd_model.q_data <= q_max) else q_max
+                        q_plot_max = max(q_plot_max, q_max)
+                    elif hasattr(self.psd_model, 'q0'):
+                        # If q0 is defined, extend plot range to include plateau
+                        q_plot_min = self.psd_model.q0 / 10  # Show some plateau region
+                        q_plot_max = q_max
+                    else:
+                        q_plot_min = q_min
+                        q_plot_max = q_max
+
+                    q_plot = np.logspace(np.log10(q_plot_min), np.log10(q_plot_max), 300)
                     C_q = self.psd_model(q_plot)
 
+                    # Plot full PSD including plateau
                     self.ax_psd_q.loglog(q_plot, C_q, 'b-', linewidth=2, label='PSD C(q)')
 
-                    # Highlight the q range being used
+                    # Highlight plateau region (q < q0) if q0 is defined
+                    if hasattr(self.psd_model, 'q0'):
+                        q0_psd = self.psd_model.q0
+                        if q_plot_min < q0_psd:
+                            self.ax_psd_q.axvspan(q_plot_min, q0_psd, alpha=0.2, facecolor='yellow',
+                                                 edgecolor='orange', linewidth=1, label=f'플래토 (q < q0={q0_psd:.1e})')
+                            # Mark q0 with vertical line
+                            self.ax_psd_q.axvline(x=q0_psd, color='orange', linestyle='--', linewidth=1.5, alpha=0.7)
+
+                    # Highlight the q range being used for calculation
                     self.ax_psd_q.axvspan(q_min, q_max, alpha=0.15, facecolor='cyan',
-                                         edgecolor='blue', linewidth=1.5, label='사용 q 범위')
+                                         edgecolor='blue', linewidth=1.5, label=f'계산 q 범위')
 
                     self.ax_psd_q.set_xlabel('파수 q (1/m)', fontsize=10, fontweight='bold')
                     self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontsize=10, fontweight='bold')
                     self.ax_psd_q.set_xscale('log')
                     self.ax_psd_q.set_yscale('log')
                     self.ax_psd_q.grid(True, alpha=0.3)
-                    self.ax_psd_q.legend(loc='best', fontsize=8)
-                    self.ax_psd_q.set_title('PSD (파수 기준)', fontsize=11, fontweight='bold')
+                    self.ax_psd_q.legend(loc='upper right', fontsize=7)
+                    self.ax_psd_q.set_title('PSD (파수 기준) - 플래토 영역 포함', fontsize=11, fontweight='bold')
 
                 # MIDDLE SUBPLOT: Plot DMA master curve
                 if self.material is not None:
