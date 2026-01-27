@@ -3162,7 +3162,7 @@ $\begin{array}{lcc}
 
         self.rms_calc_btn = ttk.Button(
             calc_frame,
-            text="h'rms / Local Strain 계산",
+            text="h'rms slope / Local Strain 계산",
             command=self._calculate_rms_slope
         )
         self.rms_calc_btn.pack(fill=tk.X)
@@ -3364,12 +3364,12 @@ $\begin{array}{lcc}
             self._update_rms_result_text()
 
             self.rms_progress_var.set(100)
-            self.status_var.set("h'rms / Local Strain 계산 완료")
+            self.status_var.set("h'rms slope / Local Strain 계산 완료")
 
             # Use target_xi from Tab 2 if available for consistency
             xi_max_display = self.target_xi if self.target_xi is not None else self.rms_slope_profiles['xi'][-1]
             messagebox.showinfo("완료",
-                f"h'rms / Local Strain 계산 완료!\n\n"
+                f"h'rms slope / Local Strain 계산 완료!\n\n"
                 f"ξ_max (h'rms) = {xi_max_display:.4f}\n"
                 f"ε_max = {self.rms_slope_profiles['strain'][-1]*100:.2f}%\n"
                 f"h_rms = {self.rms_slope_profiles['hrms'][-1]*1e6:.2f} μm"
@@ -3478,7 +3478,7 @@ $\begin{array}{lcc}
         profiles = self.rms_slope_profiles
 
         self.rms_result_text.insert(tk.END, "=" * 35 + "\n")
-        self.rms_result_text.insert(tk.END, "h'rms / Local Strain 결과\n")
+        self.rms_result_text.insert(tk.END, "h'rms slope / Local Strain 결과\n")
         self.rms_result_text.insert(tk.END, "=" * 35 + "\n\n")
 
         self.rms_result_text.insert(tk.END, "[입력 데이터]\n")
@@ -3548,7 +3548,7 @@ $\begin{array}{lcc}
 
             with open(filename, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f)
-                writer.writerow(["# h'rms / Local Strain Data"])
+                writer.writerow(["# h'rms slope / Local Strain Data"])
                 writer.writerow(["# q (1/m)", "C(q) (m^4)", "xi^2", "xi (h'rms)",
                                 "strain (fraction)", "strain (%)", "h_rms^2 (m^2)", "h_rms (m)"])
 
@@ -4441,7 +4441,7 @@ $\begin{array}{lcc}
                     messagebox.showwarning("경고",
                         "h'rms 데이터가 없습니다.\n\n"
                         "Tab 4 (h'rms/Local Strain)에서\n"
-                        "'h'rms / Local Strain 계산' 버튼을 먼저 실행하세요.")
+                        "'h'rms slope / Local Strain 계산' 버튼을 먼저 실행하세요.")
                     self.mu_calc_button.config(state='normal')
                     return
                 else:
