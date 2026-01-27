@@ -5641,93 +5641,162 @@ $\begin{array}{lcc}
             report.append(f"  {v_pt:10.4f}  {calc_val:.4f}  {ref_val:.4f}  {diff_val:+.4f}  {rel_val:+.1f}%")
         report.append("")
 
-        # Generate recommendations based on analysis
-        report.append("[4. 원인 분석 및 조언]")
-        report.append("-" * 50)
-
-        recommendations = []
-
-        # Check overall offset
-        mean_diff = np.mean(diff)
-        if mean_diff < -0.1:
-            recommendations.append(
-                "▶ 전체적으로 계산값이 참조값보다 낮습니다.\n"
-                "  가능한 원인:\n"
-                "  1. P(q), S(q) 보정 인자가 크게 적용됨\n"
-                "     → γ 값 증가 시도 (현재 γ에서 0.7~0.8로)\n"
-                "  2. 비선형 보정 (f,g)이 과도하게 적용됨\n"
-                "     → f,g 보정 해제 후 비교해 보세요\n"
-                "  3. DMA 마스터 커브의 E'' 피크가 낮음\n"
-                "     → DMA 데이터 확인 필요")
-        elif mean_diff > 0.1:
-            recommendations.append(
-                "▶ 전체적으로 계산값이 참조값보다 높습니다.\n"
-                "  가능한 원인:\n"
-                "  1. P(q)=1, S(q)=1 근사 사용 가능성\n"
-                "     → 현재 구현은 실제 P(q), S(q) 사용\n"
-                "  2. PSD C(q0) 값이 너무 큼\n"
-                "     → C(q0) 값 감소 시도")
-
-        # Check low velocity region
-        if avg_diff_low < -0.05:
-            recommendations.append(
-                "\n▶ 저속 영역 (v < 0.01 m/s)에서 차이가 큽니다.\n"
-                "  원인: 저주파수에서 E''(ω)가 작아 μ가 낮아짐\n"
-                "  조언:\n"
-                "  1. DMA 마스터 커브가 저주파수까지 커버하는지 확인\n"
-                "  2. 참조 프로그램이 μ_adh (adhesion)를 포함할 수 있음\n"
-                "  3. WLF 시프트 파라미터 (C1, C2) 확인 필요")
-
-        # Check high velocity region
-        if avg_diff_high < -0.1:
-            recommendations.append(
-                "\n▶ 고속 영역 (v ≥ 1 m/s)에서 차이가 큽니다.\n"
-                "  원인: 고주파수 영역에서 계산 차이\n"
-                "  조언:\n"
-                "  1. q1 (상한 파수) 값 확인 - 더 높은 q1 필요할 수 있음\n"
-                "  2. PSD의 고주파수 기여도 확인\n"
-                "  3. 각도 적분 점의 개수 증가 시도")
-
-        # Check curve shape
+        # Calculate slope (기울기) in log-log space
         slope_calc = np.polyfit(np.log10(v_common), calc_at_common, 1)[0]
         slope_ref = np.polyfit(np.log10(v_common), ref_at_common, 1)[0]
+        slope_diff = slope_calc - slope_ref
 
-        if abs(slope_calc - slope_ref) > 0.02:
-            recommendations.append(
-                f"\n▶ 곡선 기울기가 다릅니다.\n"
-                f"  계산 기울기: {slope_calc:.4f}\n"
-                f"  참조 기울기: {slope_ref:.4f}\n"
-                "  원인: 마스터 커브 형태 또는 PSD 파라미터 차이\n"
-                "  조언:\n"
-                "  1. Hurst exponent (H) 값 조정 시도\n"
-                "  2. DMA 마스터 커브의 전이 영역 확인")
+        report.append("[4. 기울기 분석]")
+        report.append("-" * 50)
+        report.append(f"  계산 기울기 (dμ/d(log v)): {slope_calc:.4f}")
+        report.append(f"  참조 기울기 (dμ/d(log v)): {slope_ref:.4f}")
+        report.append(f"  기울기 차이: {slope_diff:+.4f}")
+        report.append("")
 
-        if not recommendations:
-            recommendations.append(
-                "▶ 계산값과 참조값이 비교적 잘 일치합니다!\n"
-                "  미세 조정이 필요하면:\n"
-                "  1. γ 값 미세 조정\n"
-                "  2. strain factor 값 조정\n"
-                "  3. q 범위 (q0, q1) 미세 조정")
+        # Pattern analysis
+        low_high_pattern = ""
+        if avg_diff_low > 0 and avg_diff_high < 0:
+            low_high_pattern = "저속↑ 고속↓"
+            report.append(f"  패턴: {low_high_pattern} (기울기가 참조보다 낮음)")
+        elif avg_diff_low < 0 and avg_diff_high > 0:
+            low_high_pattern = "저속↓ 고속↑"
+            report.append(f"  패턴: {low_high_pattern} (기울기가 참조보다 높음)")
+        elif avg_diff_low > 0 and avg_diff_high > 0:
+            low_high_pattern = "전체↑"
+            report.append(f"  패턴: {low_high_pattern} (전체적으로 높음)")
+        elif avg_diff_low < 0 and avg_diff_high < 0:
+            low_high_pattern = "전체↓"
+            report.append(f"  패턴: {low_high_pattern} (전체적으로 낮음)")
+        report.append("")
 
-        for rec in recommendations:
-            report.append(rec)
+        # Generate detailed recommendations based on pattern
+        report.append("[5. 원인 분석 및 조언]")
+        report.append("=" * 50)
+
+        # Pattern: 저속↑ 고속↓ (기울기가 낮음)
+        if avg_diff_low > 0 and avg_diff_high < 0:
+            report.append("")
+            report.append("▶ 패턴: 저속에서 높고, 고속에서 낮음 (기울기 부족)")
+            report.append("")
+            report.append("┌─────────────────────────────────────────────────────┐")
+            report.append("│ [원인 1] DMA 마스터 커브 형태 차이                  │")
+            report.append("├─────────────────────────────────────────────────────┤")
+            report.append("│ • E'' 피크가 더 낮은 주파수에 위치                  │")
+            report.append("│ • 전이 영역(transition region)이 더 넓음            │")
+            report.append("│ • 저주파수 E''이 참조보다 높음                      │")
+            report.append("│                                                     │")
+            report.append("│ 해결: DMA 마스터 커브 비교 필요                     │")
+            report.append("│       → Tab 1에서 마스터 커브 형태 확인            │")
+            report.append("└─────────────────────────────────────────────────────┘")
+            report.append("")
+            report.append("┌─────────────────────────────────────────────────────┐")
+            report.append("│ [원인 2] WLF 시프트 파라미터 차이                   │")
+            report.append("├─────────────────────────────────────────────────────┤")
+            report.append("│ • C1, C2 값이 다르면 주파수-온도 이동이 달라짐     │")
+            report.append("│ • 참조 온도(T_ref)가 다를 수 있음                   │")
+            report.append("│                                                     │")
+            report.append("│ 해결: WLF 파라미터 확인                             │")
+            report.append("│       → Persson 프로그램의 C1, C2, T_ref 확인      │")
+            report.append("└─────────────────────────────────────────────────────┘")
+            report.append("")
+            report.append("┌─────────────────────────────────────────────────────┐")
+            report.append("│ [원인 3] PSD 파라미터 차이                          │")
+            report.append("├─────────────────────────────────────────────────────┤")
+            report.append("│ • Hurst exponent (H)가 다름                         │")
+            report.append("│   - H↑: 고주파수 기여↓ → 고속 μ↓                   │")
+            report.append("│   - H↓: 고주파수 기여↑ → 고속 μ↑                   │")
+            report.append("│ • q1 (상한 파수)이 다름                             │")
+            report.append("│                                                     │")
+            report.append("│ 해결: H 값 감소 시도 (예: 0.56 → 0.50)              │")
+            report.append("│       또는 q1 증가 시도                             │")
+            report.append("└─────────────────────────────────────────────────────┘")
+            report.append("")
+            report.append("┌─────────────────────────────────────────────────────┐")
+            report.append("│ [원인 4] 저속 영역 추가 기여                        │")
+            report.append("├─────────────────────────────────────────────────────┤")
+            report.append("│ • Persson 프로그램이 저속에서 μ_adh 미포함         │")
+            report.append("│ • 또는 P(q), S(q) 처리 방식 차이                    │")
+            report.append("│                                                     │")
+            report.append("│ 해결: γ 값 조정 (현재 → 0.5 이하로)                 │")
+            report.append("└─────────────────────────────────────────────────────┘")
+
+        # Pattern: 저속↓ 고속↑ (기울기가 높음)
+        elif avg_diff_low < 0 and avg_diff_high > 0:
+            report.append("")
+            report.append("▶ 패턴: 저속에서 낮고, 고속에서 높음 (기울기 과다)")
+            report.append("")
+            report.append("┌─────────────────────────────────────────────────────┐")
+            report.append("│ [원인 1] DMA 마스터 커브 형태 차이                  │")
+            report.append("├─────────────────────────────────────────────────────┤")
+            report.append("│ • E'' 피크가 더 높은 주파수에 위치                  │")
+            report.append("│ • 저주파수 E''이 참조보다 낮음                      │")
+            report.append("│                                                     │")
+            report.append("│ 해결: DMA 마스터 커브 비교 필요                     │")
+            report.append("└─────────────────────────────────────────────────────┘")
+            report.append("")
+            report.append("┌─────────────────────────────────────────────────────┐")
+            report.append("│ [원인 2] PSD 파라미터 차이                          │")
+            report.append("├─────────────────────────────────────────────────────┤")
+            report.append("│ • Hurst exponent (H)가 너무 낮음                    │")
+            report.append("│ • q1이 너무 높음                                    │")
+            report.append("│                                                     │")
+            report.append("│ 해결: H 값 증가 시도 또는 q1 감소                   │")
+            report.append("└─────────────────────────────────────────────────────┘")
+
+        # Pattern: 전체적으로 높거나 낮음
+        elif low_high_pattern == "전체↑":
+            report.append("")
+            report.append("▶ 패턴: 전체적으로 참조보다 높음")
+            report.append("")
+            report.append("  가능한 원인:")
+            report.append("  • P(q)=1, S(q)=1 근사 사용 (접촉 면적 보정 미적용)")
+            report.append("  • C(q0) 값이 너무 큼")
+            report.append("  • γ 값이 너무 높음")
+            report.append("")
+            report.append("  해결:")
+            report.append("  • γ 값 감소 시도")
+            report.append("  • C(q0) 값 감소 시도")
+
+        elif low_high_pattern == "전체↓":
+            report.append("")
+            report.append("▶ 패턴: 전체적으로 참조보다 낮음")
+            report.append("")
+            report.append("  가능한 원인:")
+            report.append("  • P(q), S(q) 보정이 과도하게 적용됨")
+            report.append("  • f,g 비선형 보정이 과도함")
+            report.append("  • E'' 마스터 커브가 전체적으로 낮음")
+            report.append("")
+            report.append("  해결:")
+            report.append("  • γ 값 증가 시도")
+            report.append("  • f,g 보정 해제 후 비교")
 
         report.append("")
         report.append("=" * 60)
-        report.append("[5. 파라미터 조정 가이드]")
+        report.append("[6. 파라미터 조정 가이드]")
         report.append("=" * 60)
         report.append("")
-        report.append("μ를 높이려면:")
-        report.append("  • γ 증가 (0.5 → 0.7)")
-        report.append("  • Strain factor 감소")
-        report.append("  • f,g 비선형 보정 해제")
-        report.append("  • q1 증가 (고주파수 기여 증가)")
+        report.append("┌─────────────────────────────────────────────────────┐")
+        report.append("│ 기울기를 높이려면 (고속 μ↑, 저속 μ↓):               │")
+        report.append("├─────────────────────────────────────────────────────┤")
+        report.append("│ • Hurst exponent (H) 감소                           │")
+        report.append("│ • q1 (상한 파수) 증가                               │")
+        report.append("│ • DMA: E'' 피크를 고주파수로 이동                   │")
+        report.append("└─────────────────────────────────────────────────────┘")
         report.append("")
-        report.append("μ를 낮추려면:")
-        report.append("  • γ 감소 (0.5 → 0.3)")
-        report.append("  • f,g 비선형 보정 적용")
-        report.append("  • q1 감소")
+        report.append("┌─────────────────────────────────────────────────────┐")
+        report.append("│ 기울기를 낮추려면 (고속 μ↓, 저속 μ↑):               │")
+        report.append("├─────────────────────────────────────────────────────┤")
+        report.append("│ • Hurst exponent (H) 증가                           │")
+        report.append("│ • q1 (상한 파수) 감소                               │")
+        report.append("│ • DMA: E'' 피크를 저주파수로 이동                   │")
+        report.append("└─────────────────────────────────────────────────────┘")
+        report.append("")
+        report.append("┌─────────────────────────────────────────────────────┐")
+        report.append("│ 전체 레벨 조정:                                     │")
+        report.append("├─────────────────────────────────────────────────────┤")
+        report.append("│ μ↑: γ 증가, f/g 보정 해제, C(q0) 증가              │")
+        report.append("│ μ↓: γ 감소, f/g 보정 적용, C(q0) 감소              │")
+        report.append("└─────────────────────────────────────────────────────┘")
         report.append("")
 
         # Insert report
