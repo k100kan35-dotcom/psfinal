@@ -84,6 +84,7 @@ class GCalculator:
         self.loss_modulus_func = loss_modulus_func
 
         # Precompute constant factor
+        # Persson formula: |E / ((1-ν²)σ₀)|²
         self.prefactor = 1.0 / ((1 - poisson_ratio**2) * sigma_0)
 
         # Nonlinear correction (default: none)
