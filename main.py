@@ -156,6 +156,22 @@ class PerssonModelGUI_V2:
         # Reference μ_visc data for comparison (Persson program output)
         self._init_reference_mu_data()
 
+        # Initialize tkinter variables that were previously in verification tab
+        # These are needed by other functions that reference them
+        self.dma_import_status_var = tk.StringVar(value="데이터 미로드")
+        self.psd_status_var = tk.StringVar(value="PSD 미설정")
+        self.psd_q_range_var = tk.StringVar(value="- ~ - (1/m)")
+        self.psd_H_var = tk.StringVar(value="0.8")
+        self.psd_xi_var = tk.StringVar(value="1.3")
+        self.verify_smooth_var = tk.BooleanVar(value=True)
+        self.verify_smooth_window_var = tk.IntVar(value=11)
+        self.verify_extrap_var = tk.BooleanVar(value=True)
+        self.dma_extrap_fmin_var = tk.StringVar(value="1e-2")
+        self.dma_extrap_fmax_var = tk.StringVar(value="1e12")
+        self.psd_q0_var = tk.StringVar(value="500")
+        self.psd_q1_var = tk.StringVar(value="1e5")
+        self.psd_Cq0_var = tk.StringVar(value="3.5e-13")
+
         # Create UI
         self._create_menu()
         self._create_main_layout()
@@ -206,7 +222,6 @@ class PerssonModelGUI_V2:
                 # User must use Tab 0 (PSD 생성) to set PSD data
 
                 self._update_material_display()
-                self._update_verification_plots()
 
                 self.status_var.set(f"초기 DMA 데이터 로드 완료 ({len(omega_raw)}개). PSD는 Tab 0에서 설정하세요.")
             else:
@@ -581,216 +596,58 @@ class PerssonModelGUI_V2:
         self.notebook.add(self.tab_master_curve, text="1. 마스터 커브 생성")
         self._create_master_curve_tab(self.tab_master_curve)
 
-        # Tab 2: Input Data Verification
-        self.tab_verification = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_verification, text="2. 입력 데이터 검증")
-        self._create_verification_tab(self.tab_verification)
-
-        # Tab 3: Calculation Parameters
+        # Tab 2: Calculation Parameters
         self.tab_parameters = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_parameters, text="3. 계산 설정")
+        self.notebook.add(self.tab_parameters, text="2. 계산 설정")
         self._create_parameters_tab(self.tab_parameters)
 
-        # Tab 4: G(q,v) Results
+        # Tab 3: G(q,v) Results
         self.tab_results = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_results, text="4. G(q,v) 결과")
+        self.notebook.add(self.tab_results, text="3. G(q,v) 결과")
         self._create_results_tab(self.tab_results)
 
-        # Tab 5: h'rms / Local Strain
+        # Tab 4: h'rms / Local Strain
         self.tab_rms_slope = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_rms_slope, text="5. h'rms/Local Strain")
+        self.notebook.add(self.tab_rms_slope, text="4. h'rms/Local Strain")
         self._create_rms_slope_tab(self.tab_rms_slope)
 
-        # Tab 6: mu_visc Calculation
+        # Tab 5: mu_visc Calculation
         self.tab_mu_visc = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_mu_visc, text="6. μ_visc 계산")
+        self.notebook.add(self.tab_mu_visc, text="5. μ_visc 계산")
         self._create_mu_visc_tab(self.tab_mu_visc)
 
-        # Tab 7: Local Strain Map
+        # Tab 6: Local Strain Map
         self.tab_strain_map = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_strain_map, text="7. Local Strain Map")
+        self.notebook.add(self.tab_strain_map, text="6. Local Strain Map")
         self._create_strain_map_tab(self.tab_strain_map)
 
-        # Tab 8: Integrand Visualization
+        # Tab 7: Integrand Visualization
         self.tab_integrand = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_integrand, text="8. 피적분함수 분석")
+        self.notebook.add(self.tab_integrand, text="7. 피적분함수 분석")
         self._create_integrand_tab(self.tab_integrand)
 
-        # Tab 9: Equations Summary
+        # Tab 8: Equations Summary
         self.tab_equations = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_equations, text="9. 수식 정리")
+        self.notebook.add(self.tab_equations, text="8. 수식 정리")
         self._create_equations_tab(self.tab_equations)
 
-        # Tab 10: Variable Relationship
+        # Tab 9: Variable Relationship
         self.tab_variables = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_variables, text="10. 변수 관계")
+        self.notebook.add(self.tab_variables, text="9. 변수 관계")
         self._create_variables_tab(self.tab_variables)
 
-        # Tab 11: Debug Log
+        # Tab 10: Debug Log
         self.tab_debug = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_debug, text="11. 디버그 로그")
+        self.notebook.add(self.tab_debug, text="10. 디버그 로그")
         self._create_debug_tab(self.tab_debug)
 
-        # Tab 12: Friction Factor Analysis
+        # Tab 11: Friction Factor Analysis
         self.tab_friction_factors = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_friction_factors, text="12. 마찰계수 영향 인자")
+        self.notebook.add(self.tab_friction_factors, text="11. 마찰계수 영향 인자")
         self._create_friction_factors_tab(self.tab_friction_factors)
 
         # Initialize debug log storage
         self.debug_log_messages = []
-
-    def _create_verification_tab(self, parent):
-        """Create input data verification tab."""
-        # Instruction label
-        instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
-        instruction.pack(fill=tk.X, padx=10, pady=5)
-
-        ttk.Label(instruction, text=
-            "이 탭에서는 계산 전에 재료 물성과 표면 거칠기 데이터가 올바르게\n"
-            "로드되었는지 확인합니다. E', E'', tan(δ) 및 C(q)를 검토하세요.",
-            font=('Arial', 10)
-        ).pack()
-
-        # DMA data import controls
-        import_frame = ttk.LabelFrame(parent, text="DMA 데이터 가져오기", padding=10)
-        import_frame.pack(fill=tk.X, padx=10, pady=5)
-
-        # Create controls in a grid
-        control_grid = ttk.Frame(import_frame)
-        control_grid.pack(fill=tk.X)
-
-        # Import from Master Curve button
-        ttk.Button(
-            control_grid,
-            text="마스터 커브에서 가져오기 (Tab 0)",
-            command=self._import_from_master_curve,
-            width=30
-        ).grid(row=0, column=0, sticky=tk.W, padx=5, pady=3)
-
-        # Status label
-        self.dma_import_status_var = tk.StringVar(value="데이터 미로드")
-        ttk.Label(
-            control_grid,
-            textvariable=self.dma_import_status_var,
-            font=('Arial', 9),
-            foreground='gray'
-        ).grid(row=0, column=1, sticky=tk.W, padx=10, pady=3)
-
-        # Two-column layout for DMA and PSD settings
-        settings_container = ttk.Frame(parent)
-        settings_container.pack(fill=tk.X, padx=10, pady=5)
-
-        # Left column: DMA Smoothing/Extrapolation (compact)
-        dma_frame = ttk.LabelFrame(settings_container, text="DMA Smoothing/Extrapolation", padding=5)
-        dma_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0, 5))
-
-        # Load DMA button row (inside labelframe, at top)
-        dma_load_row = ttk.Frame(dma_frame)
-        dma_load_row.pack(fill=tk.X, pady=(0, 8))
-        ttk.Button(dma_load_row, text="Load DMA", command=self._load_material, width=10).pack(side=tk.LEFT)
-
-        # Smoothing row
-        smooth_row = ttk.Frame(dma_frame)
-        smooth_row.pack(fill=tk.X, pady=1)
-        self.verify_smooth_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(smooth_row, text="Smooth", variable=self.verify_smooth_var).pack(side=tk.LEFT)
-        ttk.Label(smooth_row, text="Window:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 2))
-        self.verify_smooth_window_var = tk.IntVar(value=11)
-        ttk.Entry(smooth_row, textvariable=self.verify_smooth_window_var, width=4).pack(side=tk.LEFT)
-
-        # Extrapolation row with range
-        extrap_row = ttk.Frame(dma_frame)
-        extrap_row.pack(fill=tk.X, pady=1)
-        self.verify_extrap_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(extrap_row, text="Extrapolate", variable=self.verify_extrap_var).pack(side=tk.LEFT)
-        ttk.Label(extrap_row, text="f_min:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 2))
-        self.dma_extrap_fmin_var = tk.StringVar(value="1e-2")
-        ttk.Entry(extrap_row, textvariable=self.dma_extrap_fmin_var, width=6).pack(side=tk.LEFT)
-        ttk.Label(extrap_row, text="f_max:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 2))
-        self.dma_extrap_fmax_var = tk.StringVar(value="1e12")
-        ttk.Entry(extrap_row, textvariable=self.dma_extrap_fmax_var, width=6).pack(side=tk.LEFT)
-
-        # Apply DMA button
-        ttk.Button(dma_frame, text="Apply DMA", command=self._apply_dma_smoothing_extrapolation, width=12).pack(pady=2)
-
-        # Right column: PSD Settings
-        psd_frame = ttk.LabelFrame(settings_container, text="PSD 설정 (Tab 0에서 전송)", padding=5)
-        psd_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
-
-        # PSD source notice
-        psd_notice = ttk.Label(psd_frame,
-            text="※ PSD는 반드시 '0.PSD 생성' 탭에서\n   확정 후 전송해야 합니다.",
-            font=('Arial', 9, 'bold'), foreground='blue')
-        psd_notice.pack(anchor=tk.W, pady=(0, 5))
-
-        # PSD status display (read-only)
-        self.psd_status_var = tk.StringVar(value="PSD 미설정 - Tab 0에서 전송 필요")
-        self.psd_status_label = ttk.Label(psd_frame, textvariable=self.psd_status_var,
-                                          font=('Arial', 8), foreground='red')
-        self.psd_status_label.pack(anchor=tk.W, pady=2)
-
-        # PSD info display (read-only, shows after Tab 0 sends data)
-        psd_info_frame = ttk.Frame(psd_frame)
-        psd_info_frame.pack(fill=tk.X, pady=2)
-
-        # q range display
-        q_row = ttk.Frame(psd_info_frame)
-        q_row.pack(fill=tk.X, pady=1)
-        ttk.Label(q_row, text="q 범위:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.psd_q_range_var = tk.StringVar(value="- ~ - (1/m)")
-        ttk.Label(q_row, textvariable=self.psd_q_range_var, font=('Arial', 8, 'bold')).pack(side=tk.LEFT, padx=5)
-
-        # H display
-        h_row = ttk.Frame(psd_info_frame)
-        h_row.pack(fill=tk.X, pady=1)
-        ttk.Label(h_row, text="H (Hurst):", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.psd_H_var = tk.StringVar(value="-")
-        ttk.Label(h_row, textvariable=self.psd_H_var, font=('Arial', 8, 'bold')).pack(side=tk.LEFT, padx=5)
-
-        # ξ display
-        xi_row = ttk.Frame(psd_info_frame)
-        xi_row.pack(fill=tk.X, pady=1)
-        ttk.Label(xi_row, text="ξ (h'rms):", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.psd_xi_var = tk.StringVar(value="-")
-        ttk.Label(xi_row, textvariable=self.psd_xi_var, font=('Arial', 8, 'bold')).pack(side=tk.LEFT, padx=5)
-
-        # Hidden variables for backward compatibility
-        self.psd_q0_var = tk.StringVar(value="500")
-        self.psd_q1_var = tk.StringVar(value="1e5")
-        self.psd_Cq0_var = tk.StringVar(value="3.5e-13")
-
-        # Plot area
-        plot_frame = ttk.Frame(parent)
-        plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
-
-        # Create figure with 2 subplots
-        self.fig_verification = Figure(figsize=(14, 6), dpi=100)
-
-        self.ax_master_curve = self.fig_verification.add_subplot(121)
-        self.ax_psd = self.fig_verification.add_subplot(122)
-
-        self.canvas_verification = FigureCanvasTkAgg(self.fig_verification, plot_frame)
-        self.canvas_verification.draw()
-        self.canvas_verification.get_tk_widget().pack(fill=tk.BOTH, expand=True)
-
-        toolbar = NavigationToolbar2Tk(self.canvas_verification, plot_frame)
-        toolbar.update()
-
-        # Refresh button
-        btn_frame = ttk.Frame(parent)
-        btn_frame.pack(fill=tk.X, padx=10, pady=5)
-
-        ttk.Button(
-            btn_frame,
-            text="그래프 새로고침",
-            command=self._update_verification_plots
-        ).pack(side=tk.LEFT, padx=5)
-
-        ttk.Button(
-            btn_frame,
-            text="그래프 저장",
-            command=lambda: self._save_plot(self.fig_verification, "verification_plot")
-        ).pack(side=tk.LEFT, padx=5)
 
     def _create_psd_profile_tab(self, parent):
         """Create PSD from Profile tab for calculating PSD from surface height data."""
@@ -2840,15 +2697,14 @@ class PerssonModelGUI_V2:
             f_max = self.master_curve_gen.master_f.max()
             self.dma_import_status_var.set(f"Master Curve (Tref={T_ref}°C, {f_min:.1e}~{f_max:.1e} Hz)")
 
-            # Update verification plots
-            self._update_verification_plots()
+            # Update material display
             self._update_material_display()
 
-            # Switch to verification tab
-            self.notebook.select(1)  # Tab 1
+            # Switch to calculation settings tab
+            self.notebook.select(2)  # Tab 2: 계산 설정
 
             # Build info message
-            info_msg = f"마스터 커브가 Tab 1에 적용되었습니다.\n\n"
+            info_msg = f"마스터 커브가 적용되었습니다.\n\n"
             info_msg += f"기준 온도 (Tref): {self.master_curve_gen.T_ref}°C\n"
             info_msg += f"주파수 범위: {self.master_curve_gen.master_f.min():.2e} ~ "
             info_msg += f"{self.master_curve_gen.master_f.max():.2e} Hz\n\n"
@@ -3480,135 +3336,6 @@ class PerssonModelGUI_V2:
         )
         status_bar.pack(side=tk.BOTTOM, fill=tk.X)
 
-    def _update_verification_plots(self):
-        """Update input data verification plots."""
-        if self.material is None:
-            return
-
-        # Clear previous plots
-        self.ax_master_curve.clear()
-        self.ax_psd.clear()
-
-        # Plot 1: Master Curve (E', E'') - X-axis in Hz
-        # Use material's actual frequency range for plotting (respects extrapolation settings)
-        omega_min = self.material._frequencies.min()
-        omega_max = self.material._frequencies.max()
-        omega = np.logspace(np.log10(omega_min), np.log10(omega_max), 500)
-        f_Hz = omega / (2 * np.pi)  # Convert omega (rad/s) to f (Hz)
-        E_storage = self.material.get_storage_modulus(omega)
-        E_loss = self.material.get_loss_modulus(omega)
-
-        ax1 = self.ax_master_curve
-
-        # Plot smoothed data (from interpolator)
-        ax1.loglog(f_Hz, E_storage/1e6, 'g-', linewidth=2.5, label="E' (보간/평활화)", alpha=0.9, zorder=2)
-        ax1.loglog(f_Hz, E_loss/1e6, 'orange', linewidth=2.5, label="E'' (보간/평활화)", alpha=0.9, zorder=2)
-
-        # Plot raw measured data if available
-        if self.raw_dma_data is not None:
-            f_raw = self.raw_dma_data['omega'] / (2 * np.pi)  # Convert to Hz
-            ax1.scatter(f_raw, self.raw_dma_data['E_storage']/1e6,
-                       c='darkgreen', s=20, alpha=0.5, label="E' (측정값)", zorder=1)
-            ax1.scatter(f_raw, self.raw_dma_data['E_loss']/1e6,
-                       c='darkorange', s=20, alpha=0.5, label="E'' (측정값)", zorder=1)
-
-        ax1.set_xlabel('주파수 f (Hz)', fontweight='bold', fontsize=11, labelpad=5)
-        ax1.set_ylabel('탄성률 (MPa)', fontweight='bold', fontsize=11, rotation=90, labelpad=10)
-        ax1.set_title('점탄성 마스터 곡선', fontweight='bold', fontsize=12, pad=10)
-        ax1.legend(loc='upper left', fontsize=8, ncol=2)
-        ax1.grid(True, alpha=0.3)
-
-        # Fix axis formatter to use superscript notation for all log axes
-        from matplotlib.ticker import FuncFormatter
-        def log_tick_formatter(val, pos=None):
-            if val <= 0:
-                return ''
-            exponent = int(np.floor(np.log10(val)))
-            # For cleaner display, show integer if it's exactly a power of 10
-            if abs(val - 10**exponent) < 1e-10:
-                return f'$10^{{{exponent}}}$'
-            else:
-                # For intermediate values, still show in exponential form
-                mantissa = val / (10**exponent)
-                if abs(mantissa - 1.0) < 0.01:
-                    return f'$10^{{{exponent}}}$'
-                else:
-                    return f'${mantissa:.1f} \\times 10^{{{exponent}}}$'
-        ax1.xaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
-        ax1.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
-
-        # Plot 2: PSD C(q) - compare raw data with applied power law
-        has_raw_psd = self.raw_psd_data is not None
-        has_psd_model = self.psd_model is not None
-
-        if has_raw_psd or has_psd_model:
-            # Plot raw PSD data first (if available)
-            if has_raw_psd:
-                q_raw = self.raw_psd_data['q']
-                C_raw = self.raw_psd_data['C_q']
-                self.ax_psd.loglog(q_raw, C_raw, 'ko', markersize=3, alpha=0.5,
-                                  label='Raw PSD (측정값)', zorder=1)
-
-            # Plot applied PSD model (power law or loaded)
-            if has_psd_model:
-                # Check if this is a power-law model (has q_data attribute from _apply_psd_settings)
-                is_power_law = hasattr(self.psd_model, 'q_data')
-
-                if is_power_law:
-                    # Determine plot range: include plateau region if raw PSD data exists
-                    if has_raw_psd:
-                        q_plot_min = min(self.raw_psd_data['q'])
-                    elif hasattr(self.psd_model, 'q0'):
-                        q_plot_min = self.psd_model.q0 / 10
-                    else:
-                        q_plot_min = float(self.q_min_var.get())
-
-                    q_plot_max = float(self.q_max_var.get())
-                    q_plot = np.logspace(np.log10(q_plot_min), np.log10(q_plot_max), 300)
-                    C_q = self.psd_model(q_plot)
-
-                    # Plot power law model with different color
-                    self.ax_psd.loglog(q_plot, C_q, 'r-', linewidth=2.5,
-                                      label='적용된 PSD (Power Law)', alpha=0.9, zorder=2)
-                else:
-                    q_min = float(self.q_min_var.get())
-                    q_max = float(self.q_max_var.get())
-                    q_plot = np.logspace(np.log10(q_min), np.log10(q_max), 200)
-                    C_q = self.psd_model(q_plot)
-
-                    # Plot loaded/interpolated PSD
-                    self.ax_psd.loglog(q_plot, C_q, 'b-', linewidth=2,
-                                      label='적용된 PSD (보간)', alpha=0.9, zorder=2)
-
-                    # Calculate Hurst exponent from power law fitting for display
-                    fit_idx = (q_plot > q_min * 10) & (q_plot < q_max / 10)
-                    if np.sum(fit_idx) > 10:
-                        log_q_fit = np.log10(q_plot[fit_idx])
-                        log_C_fit = np.log10(C_q[fit_idx])
-                        coeffs = np.polyfit(log_q_fit, log_C_fit, 1)
-                        slope = coeffs[0]
-                        intercept = coeffs[1]
-                        H = -slope / 2.0 - 1.0
-
-                        # Plot fitted line
-                        C_fit = 10**(intercept + slope * np.log10(q_plot))
-                        self.ax_psd.loglog(q_plot, C_fit, 'g--', linewidth=1.5, alpha=0.7,
-                                          label=f'Power law fit (H={H:.3f})')
-
-            self.ax_psd.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=11, labelpad=5)
-            self.ax_psd.set_ylabel('PSD C(q) (m⁴)', fontweight='bold', fontsize=11,
-                                   rotation=90, labelpad=10)
-            self.ax_psd.set_title('표면 거칠기 PSD 비교', fontweight='bold', fontsize=12, pad=10)
-            self.ax_psd.legend(fontsize=8, loc='upper right')
-            self.ax_psd.grid(True, alpha=0.3)
-
-            # Fix axis formatter
-            self.ax_psd.xaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
-            self.ax_psd.yaxis.set_major_formatter(FuncFormatter(log_tick_formatter))
-
-        self.fig_verification.tight_layout(pad=2.0)
-        self.canvas_verification.draw()
-
     def _update_material_display(self):
         """Update material information (if needed)."""
         pass  # Simplified for now
@@ -3645,7 +3372,6 @@ class PerssonModelGUI_V2:
                     reference_temp=float(self.temperature_var.get())
                 )
 
-                self._update_verification_plots()
                 messagebox.showinfo("Success", f"DMA data loaded and smoothed: {len(omega_raw)} points")
 
             except Exception as e:
@@ -3681,8 +3407,6 @@ class PerssonModelGUI_V2:
                 self.q_min_var.set(f"{q[0]:.2e}")
                 self.q_max_var.set(f"{q[-1]:.2e}")
                 self.psd_type_var.set("measured")
-
-                self._update_verification_plots()
 
                 # Show info about loaded data
                 messagebox.showinfo(
@@ -3745,7 +3469,6 @@ class PerssonModelGUI_V2:
 
             # Update plots
             self._update_material_display()
-            self._update_verification_plots()
 
             self.status_var.set(f"마스터 커브 가져오기 완료")
 
@@ -3878,8 +3601,7 @@ class PerssonModelGUI_V2:
             process_str = "+".join(filter(None, [smooth_str, extrap_str])) or "원본"
             self.dma_import_status_var.set(f"처리됨 [{process_str}] ({f_min:.1e}~{f_max:.1e} Hz)")
 
-            # Update plots
-            self._update_verification_plots()
+            # Update status
             self.status_var.set("DMA 스무딩/외삽 적용 완료")
 
             messagebox.showinfo("완료", f"DMA 데이터 처리 완료\n- 스무딩: {'적용' if self.verify_smooth_var.get() else '미적용'}\n- 외삽: {'적용' if self.verify_extrap_var.get() else '미적용'}\n- 주파수 범위: {f_min:.1e} ~ {f_max:.1e} Hz")
@@ -4039,8 +3761,7 @@ class PerssonModelGUI_V2:
             self.target_xi = xi_user_input
             self.psd_model.target_xi = xi_user_input
 
-            # Update plots
-            self._update_verification_plots()
+            # Update status
             self.status_var.set(f"PSD applied: ξ(target)={xi_user_input:.3f}, ξ(calc)={xi_actual:.3f}, H={H:.2f}")
 
             # Show both target and calculated ξ for transparency
