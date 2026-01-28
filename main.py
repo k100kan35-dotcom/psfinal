@@ -3861,7 +3861,8 @@ class PerssonModelGUI_V2:
             test_omegas = [0.1, 1, 10, 100, 1e3, 1e4, 1e5, 1e6]  # rad/s
             print("주파수별 E', E'' 값 (Pa):")
             print("-" * 60)
-            print(f"{'ω (rad/s)':<12} {'E\' (Pa)':<15} {'E\'\' (Pa)':<15} {'|E*| (Pa)':<15}")
+            col1, col2, col3, col4 = "ω (rad/s)", "E' (Pa)", "E'' (Pa)", "|E*| (Pa)"
+            print(f"{col1:<12} {col2:<15} {col3:<15} {col4:<15}")
             print("-" * 60)
             for omega in test_omegas:
                 E_star = self.material.get_modulus(omega, temperature=temperature)
