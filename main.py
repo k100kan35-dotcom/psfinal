@@ -23,9 +23,11 @@ matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
-matplotlib.rcParams['font.family'] = 'DejaVu Sans'
+# Font configuration: Times New Roman for English, fallback to DejaVu Sans
+matplotlib.rcParams['font.family'] = ['Times New Roman', 'DejaVu Sans']
 matplotlib.rcParams['axes.unicode_minus'] = False  # Fix minus sign issue
 matplotlib.rcParams['text.usetex'] = False  # Disable LaTeX to avoid font issues
+matplotlib.rcParams['mathtext.fontset'] = 'stix'  # Use STIX fonts for math
 # Standardize font sizes across all plots
 matplotlib.rcParams['font.size'] = 9
 matplotlib.rcParams['axes.titlesize'] = 9
@@ -974,15 +976,46 @@ class PerssonModelGUI_V2:
         ttk.Button(fit_frame, text="Self-Affine 피팅 실행",
                    command=self._fit_profile_psd).pack(fill=tk.X, pady=5)
 
+        # 4. q1 Extrapolation Settings
+        extrap_frame = ttk.LabelFrame(left_scrollable, text="4. q1 외삽 (Extrapolation)", padding=5)
+        extrap_frame.pack(fill=tk.X, pady=3)
+
+        ttk.Label(extrap_frame, text="※ 피팅 결과를 사용하여 q1까지 PSD 외삽",
+                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+
+        # Enable extrapolation
+        self.enable_q1_extrap_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(extrap_frame, text="q1 외삽 활성화",
+                        variable=self.enable_q1_extrap_var).pack(anchor=tk.W)
+
+        # Target q1 input
+        q1_row = ttk.Frame(extrap_frame)
+        q1_row.pack(fill=tk.X, pady=2)
+        ttk.Label(q1_row, text="Target q1:", font=('Arial', 9)).pack(side=tk.LEFT)
+        self.target_q1_extrap_var = tk.StringVar(value="1e9")
+        ttk.Entry(q1_row, textvariable=self.target_q1_extrap_var, width=10).pack(side=tk.LEFT, padx=5)
+        ttk.Label(q1_row, text="1/m", font=('Arial', 8)).pack(side=tk.LEFT)
+
+        # Extrapolation points per decade
+        extrap_pts_row = ttk.Frame(extrap_frame)
+        extrap_pts_row.pack(fill=tk.X, pady=2)
+        ttk.Label(extrap_pts_row, text="외삽 pts/decade:", font=('Arial', 9)).pack(side=tk.LEFT)
+        self.extrap_pts_per_decade_var = tk.StringVar(value="20")
+        ttk.Entry(extrap_pts_row, textvariable=self.extrap_pts_per_decade_var, width=5).pack(side=tk.LEFT, padx=5)
+
+        # Apply extrapolation button
+        ttk.Button(extrap_frame, text="외삽 적용 및 그래프 업데이트",
+                   command=self._apply_q1_extrapolation).pack(fill=tk.X, pady=5)
+
         # 5. Results Display
-        result_frame = ttk.LabelFrame(left_scrollable, text="4. 결과", padding=5)
+        result_frame = ttk.LabelFrame(left_scrollable, text="5. 결과", padding=5)
         result_frame.pack(fill=tk.X, pady=3)
 
         self.psd_profile_result_text = tk.Text(result_frame, height=12, width=45, font=('Consolas', 9))
         self.psd_profile_result_text.pack(fill=tk.BOTH, expand=True)
 
         # 6. Export Options
-        export_frame = ttk.LabelFrame(left_scrollable, text="5. 내보내기", padding=5)
+        export_frame = ttk.LabelFrame(left_scrollable, text="6. 내보내기", padding=5)
         export_frame.pack(fill=tk.X, pady=3)
 
         export_btn_row = ttk.Frame(export_frame)
@@ -1031,9 +1064,9 @@ class PerssonModelGUI_V2:
 
         # Bottom-left: 1D PSD
         self.ax_psd_1d = self.fig_psd_profile.add_subplot(223)
-        self.ax_psd_1d.set_title('1D PSD C₁ᴅ(q)', fontweight='bold')
+        self.ax_psd_1d.set_title('1D PSD C_1D(q)', fontweight='bold')
         self.ax_psd_1d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_1d.set_ylabel('C₁ᴅ(q) (m³)')
+        self.ax_psd_1d.set_ylabel('C_1D(q) (m³)')
         self.ax_psd_1d.set_xscale('log')
         self.ax_psd_1d.set_yscale('log')
         self.ax_psd_1d.grid(True, alpha=0.3, which='both')
@@ -1106,10 +1139,12 @@ class PerssonModelGUI_V2:
             n = len(self.profile_psd_analyzer.x)
             dx = np.abs(self.profile_psd_analyzer.x[1] - self.profile_psd_analyzer.x[0])
             L = n * dx
-            h_rms = np.std(self.profile_psd_analyzer.h)
+            # Calculate h_rms from detrended profile: h_rms = sqrt(mean(h_detrended^2))
+            h_detrended = self.profile_psd_analyzer.h - np.mean(self.profile_psd_analyzer.h)
+            h_rms = np.sqrt(np.mean(h_detrended**2))
 
             self.profile_data_info_var.set(
-                f"데이터: {n} points, L={L*1e3:.3f} mm, dx={dx*1e6:.3f} μm, h_rms={h_rms*1e6:.3f} μm"
+                f"Data: {n} pts, L={L*1e3:.3f} mm, dx={dx*1e6:.3f} um, h_rms={h_rms*1e6:.4f} um"
             )
 
             # Plot raw profile
@@ -1213,9 +1248,9 @@ class PerssonModelGUI_V2:
         if C_top_1d is not None:
             self.ax_psd_1d.loglog(q, C_top_1d, 'r-', linewidth=1.5, label='Top PSD', alpha=0.8)
 
-        self.ax_psd_1d.set_title('1D PSD C₁ᴅ(q)', fontweight='bold')
+        self.ax_psd_1d.set_title('1D PSD C_1D(q)', fontweight='bold')
         self.ax_psd_1d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_1d.set_ylabel('C₁ᴅ(q) (m³)')
+        self.ax_psd_1d.set_ylabel('C_1D(q) (m³)')
         self.ax_psd_1d.grid(True, alpha=0.3, which='both')
         self.ax_psd_1d.legend(fontsize=8)
 
@@ -1241,9 +1276,29 @@ class PerssonModelGUI_V2:
             self.ax_psd_2d.loglog(fit['q_fit'], fit['C_fit'], 'r--', linewidth=1.5,
                                    label=f'Fit (Top): H={H:.3f}, slope={slope:.2f}')
 
+        # Plot extrapolated data if available
+        if hasattr(self.profile_psd_analyzer, 'q_extrap') and self.profile_psd_analyzer.q_extrap is not None:
+            q_extrap = self.profile_psd_analyzer.q_extrap
+            C_extrap = self.profile_psd_analyzer.C_extrap
+            extrap_info = self.profile_psd_analyzer.extrap_info
+
+            # Plot extrapolated region with different style
+            self.ax_psd_2d.loglog(q_extrap, C_extrap, 'g--', linewidth=2, alpha=0.8,
+                                   label=f'Extrapolated (H={extrap_info["H"]:.3f})')
+
+            # Add vertical line at data boundary
+            q_max_data = extrap_info['q_max_data']
+            self.ax_psd_2d.axvline(x=q_max_data, color='gray', linestyle=':', alpha=0.5,
+                                    label=f'Data limit: {q_max_data:.1e}')
+
+            # Add vertical line at target q1
+            target_q1 = extrap_info['target_q1']
+            self.ax_psd_2d.axvline(x=target_q1, color='green', linestyle=':', alpha=0.5,
+                                    label=f'Target q1: {target_q1:.1e}')
+
         self.ax_psd_2d.set_title('2D Isotropic PSD C(q)', fontweight='bold')
         self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_2d.set_ylabel('C(q) (m⁴)')
+        self.ax_psd_2d.set_ylabel('C(q) (m^4)')
         self.ax_psd_2d.grid(True, alpha=0.3, which='both')
         self.ax_psd_2d.legend(fontsize=8, loc='lower left')
 
@@ -1294,6 +1349,120 @@ class PerssonModelGUI_V2:
             import traceback
             traceback.print_exc()
 
+    def _apply_q1_extrapolation(self):
+        """Apply q1 extrapolation to extend PSD data using self-affine model."""
+        if self.profile_psd_analyzer is None or self.profile_psd_analyzer.q is None:
+            messagebox.showwarning("경고", "먼저 PSD를 계산하세요.")
+            return
+
+        # Check if fitting has been done
+        fit_result = self.profile_psd_analyzer.fit_result_full
+        if self.fit_target_var.get() == "top":
+            fit_result = self.profile_psd_analyzer.fit_result_top
+
+        if fit_result is None:
+            messagebox.showwarning("경고", "먼저 Self-Affine 피팅을 실행하세요.")
+            return
+
+        try:
+            # Get target q1
+            target_q1 = float(self.target_q1_extrap_var.get())
+            pts_per_decade = int(self.extrap_pts_per_decade_var.get())
+
+            # Get current PSD data
+            q_current = self.profile_psd_analyzer.q
+            q_max_data = q_current[-1]
+
+            if target_q1 <= q_max_data:
+                messagebox.showinfo("정보",
+                    f"Target q1 ({target_q1:.2e}) <= 현재 q_max ({q_max_data:.2e})\n"
+                    f"외삽이 필요하지 않습니다.")
+                return
+
+            # Get fitting parameters
+            H = fit_result['H']
+            slope = fit_result['slope']  # slope = -2(1+H)
+
+            # Create extrapolated q array
+            log_q_max = np.log10(q_max_data)
+            log_q1 = np.log10(target_q1)
+            n_decades = log_q1 - log_q_max
+            n_extrap_points = int(n_decades * pts_per_decade)
+
+            if n_extrap_points < 1:
+                n_extrap_points = 1
+
+            q_extrap = np.logspace(log_q_max, log_q1, n_extrap_points + 1)[1:]  # Exclude first (overlap)
+
+            # Extrapolate using power law: C(q) = C(q_max) * (q/q_max)^slope
+            use_top = self.fit_target_var.get() == "top"
+            if use_top:
+                C_at_qmax = self.profile_psd_analyzer.C_top_2d[-1]
+            else:
+                C_at_qmax = self.profile_psd_analyzer.C_full_2d[-1]
+
+            C_extrap = C_at_qmax * (q_extrap / q_max_data) ** slope
+
+            # Store extrapolated data
+            self.profile_psd_analyzer.q_extrap = q_extrap
+            self.profile_psd_analyzer.C_extrap = C_extrap
+            self.profile_psd_analyzer.extrap_info = {
+                'target_q1': target_q1,
+                'H': H,
+                'slope': slope,
+                'q_max_data': q_max_data,
+                'n_points': n_extrap_points
+            }
+
+            # Concatenate for combined array (optional use)
+            self.profile_psd_analyzer.q_combined = np.concatenate([q_current, q_extrap])
+            if use_top:
+                self.profile_psd_analyzer.C_combined = np.concatenate([
+                    self.profile_psd_analyzer.C_top_2d, C_extrap])
+            else:
+                self.profile_psd_analyzer.C_combined = np.concatenate([
+                    self.profile_psd_analyzer.C_full_2d, C_extrap])
+
+            # Recalculate surface parameters with extrapolated data
+            q_full = self.profile_psd_analyzer.q_combined
+            C_full = self.profile_psd_analyzer.C_combined
+
+            # h_rms from extrapolated PSD
+            valid = (q_full > 0) & (C_full > 0) & np.isfinite(C_full)
+            q_v = q_full[valid]
+            C_v = C_full[valid]
+            h_rms_sq = 2 * np.pi * np.trapezoid(q_v * C_v, q_v)
+            h_rms_extrap = np.sqrt(max(h_rms_sq, 0))
+
+            # h'_rms (slope) from extrapolated PSD
+            slope_sq = 2 * np.pi * np.trapezoid(q_v**3 * C_v, q_v)
+            h_rms_slope_extrap = np.sqrt(max(slope_sq, 0))
+
+            self.profile_psd_analyzer.extrap_params = {
+                'h_rms': h_rms_extrap,
+                'h_rms_slope': h_rms_slope_extrap
+            }
+
+            # Update plot
+            self._plot_profile_psd()
+            self._update_psd_profile_results()
+
+            messagebox.showinfo("완료",
+                f"q1 외삽 완료\n\n"
+                f"데이터 q_max: {q_max_data:.2e} 1/m\n"
+                f"외삽 q1: {target_q1:.2e} 1/m\n"
+                f"외삽 점 수: {n_extrap_points}\n"
+                f"사용된 H: {H:.4f}\n\n"
+                f"외삽 포함 h_rms: {h_rms_extrap*1e6:.4f} um\n"
+                f"외삽 포함 h'_rms (xi): {h_rms_slope_extrap:.6f}")
+
+            self.status_var.set(f"외삽 완료: q1={target_q1:.2e}, h'_rms={h_rms_slope_extrap:.4f}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"외삽 실패: {e}")
+            import traceback
+            traceback.print_exc()
+
     def _update_psd_profile_results(self):
         """Update results text display."""
         self.psd_profile_result_text.delete(1.0, tk.END)
@@ -1314,11 +1483,14 @@ class PerssonModelGUI_V2:
             dx = np.abs(x[1] - x[0])
             L = n * dx
 
-            lines.append(f"\n[데이터 정보]")
-            lines.append(f"  데이터 점: {n}")
-            lines.append(f"  전체 길이: {L*1e3:.4f} mm")
-            lines.append(f"  샘플링 간격: {dx*1e6:.4f} μm")
-            lines.append(f"  h_rms (raw): {np.std(h)*1e6:.4f} μm")
+            lines.append(f"\n[Data Information]")
+            lines.append(f"  Data points: {n}")
+            lines.append(f"  Total length: {L*1e3:.4f} mm")
+            lines.append(f"  Sampling interval: {dx*1e6:.4f} um")
+            # Calculate h_rms from detrended profile
+            h_detrended = h - np.mean(h)
+            h_rms_raw = np.sqrt(np.mean(h_detrended**2))
+            lines.append(f"  h_rms (raw profile): {h_rms_raw*1e6:.4f} um")
 
             # Binning info
             if self.profile_psd_analyzer.q is not None:
@@ -1346,9 +1518,9 @@ class PerssonModelGUI_V2:
             lines.append(f"  이론 기울기: -2(1+H) = {-2*(1+fit['H']):.4f}")
             lines.append(f"  R²: {fit['r_squared']:.6f}")
             if 'q0' in fit:
-                lines.append(f"  q₀ (추정): {fit['q0']:.2e} 1/m")
+                lines.append(f"  q0 (추정): {fit['q0']:.2e} 1/m")
             if 'C0' in fit:
-                lines.append(f"  C(q₀) (추정): {fit['C0']:.2e} m⁴")
+                lines.append(f"  C(q0) (추정): {fit['C0']:.2e} m⁴")
 
         if self.profile_psd_analyzer.fit_result_top is not None:
             fit = self.profile_psd_analyzer.fit_result_top
@@ -1360,10 +1532,23 @@ class PerssonModelGUI_V2:
         # Surface parameters
         if self.profile_psd_analyzer.surface_params is not None:
             params = self.profile_psd_analyzer.surface_params
-            lines.append(f"\n[표면 파라미터 (PSD 적분)]")
-            lines.append(f"  h_rms: {params['h_rms']*1e6:.4f} μm")
-            lines.append(f"  h'_rms (ξ): {params['h_rms_slope']:.6f}")
+            lines.append(f"\n[Surface Parameters (PSD Integration)]")
+            lines.append(f"  h_rms: {params['h_rms']*1e6:.4f} um")
+            lines.append(f"  h'_rms (xi): {params['h_rms_slope']:.6f}")
             lines.append(f"  h''_rms: {params['h_rms_curvature']:.2e} 1/m")
+
+        # Extrapolation results
+        if hasattr(self.profile_psd_analyzer, 'extrap_info') and self.profile_psd_analyzer.extrap_info is not None:
+            info = self.profile_psd_analyzer.extrap_info
+            params_ext = self.profile_psd_analyzer.extrap_params
+            lines.append(f"\n[q1 Extrapolation]")
+            lines.append(f"  Data q_max: {info['q_max_data']:.2e} 1/m")
+            lines.append(f"  Target q1: {info['target_q1']:.2e} 1/m")
+            lines.append(f"  Extrap points: {info['n_points']}")
+            lines.append(f"  Used H: {info['H']:.4f}")
+            lines.append(f"\n[With Extrapolation]")
+            lines.append(f"  h_rms (extrap): {params_ext['h_rms']*1e6:.4f} um")
+            lines.append(f"  h'_rms (xi, extrap): {params_ext['h_rms_slope']:.6f}")
 
         self.psd_profile_result_text.insert(tk.END, "\n".join(lines))
 
@@ -1419,7 +1604,22 @@ class PerssonModelGUI_V2:
         try:
             use_top = self.apply_psd_type_var.get() == "top"
 
-            q, C = self.profile_psd_analyzer.get_psd_for_persson(use_top_psd=use_top)
+            # Check if extrapolated data should be used
+            use_extrap = (self.enable_q1_extrap_var.get() and
+                         hasattr(self.profile_psd_analyzer, 'q_combined') and
+                         self.profile_psd_analyzer.q_combined is not None)
+
+            if use_extrap:
+                # Use extrapolated (combined) data
+                q = self.profile_psd_analyzer.q_combined.copy()
+                C = self.profile_psd_analyzer.C_combined.copy()
+                xi = self.profile_psd_analyzer.extrap_params['h_rms_slope']
+                extrap_str = " (with extrapolation)"
+            else:
+                q, C = self.profile_psd_analyzer.get_psd_for_persson(use_top_psd=use_top)
+                params = self.profile_psd_analyzer.get_surface_parameters(use_top_psd=use_top)
+                xi = params['h_rms_slope']
+                extrap_str = ""
 
             # Create PSD model
             self.psd_model = MeasuredPSD(q, C)
@@ -1434,19 +1634,15 @@ class PerssonModelGUI_V2:
                 if hasattr(self, 'psd_H_var'):
                     self.psd_H_var.set(f"{H:.4f}")
 
-            # Calculate surface parameters
-            params = self.profile_psd_analyzer.get_surface_parameters(use_top_psd=use_top)
-            xi = params['h_rms_slope']
-
             # Update Tab 3 settings
             if hasattr(self, 'psd_xi_var'):
                 self.psd_xi_var.set(f"{xi:.6f}")
 
             psd_type_str = "Top PSD" if use_top else "Full PSD"
             messagebox.showinfo("완료",
-                f"{psd_type_str}가 마찰 계산에 적용되었습니다.\n\n"
-                f"q 범위: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
-                f"h'_rms (ξ): {xi:.6f}\n\n"
+                f"{psd_type_str}{extrap_str} 마찰 계산에 적용됨\n\n"
+                f"q range: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
+                f"h'_rms (xi): {xi:.6f}\n\n"
                 f"Tab 2 (입력 데이터 검증)에서 확인하세요."
             )
 
@@ -2562,7 +2758,7 @@ class PerssonModelGUI_V2:
         """선택된 모드에 따라 h'rms(ξ) 또는 q1 계산.
 
         h'rms = ξ = RMS slope (경사), 무차원
-        ξ²(q) = 2π ∫[q₀→q] k³ C(k) dk
+        ξ²(q) = 2π ∫[q0→q] k³ C(k) dk
         """
         if self.psd_model is None:
             messagebox.showwarning("경고", "PSD 데이터를 먼저 로드해주세요!")
@@ -3683,7 +3879,7 @@ class PerssonModelGUI_V2:
         # Plot 2: Local stress probability distribution P(σ,q) for multiple wavenumbers
         # CHANGED: Plot vs wavenumber (q) instead of velocity, with v fixed at 1 m/s
         # Persson theory: P(σ,q) = 1/√(4πG_stress(q)) [exp(-(σ-σ0)²/4G_stress) - exp(-(σ+σ0)²/4G_stress)]
-        # where G_stress(q) = (π/4) * (E*/σ₀)² * ∫[q0→q] k³C(k)dk  [dimensionless]
+        # where G_stress(q) = (π/4) * (E*/sigma_0)² * ∫[q0→q] k³C(k)dk  [dimensionless]
         sigma_0_Pa = self.results['sigma_0']  # Pa
         sigma_0_MPa = sigma_0_Pa / 1e6  # Convert Pa to MPa
 
@@ -3702,14 +3898,14 @@ class PerssonModelGUI_V2:
         print(f"Filtered q range for stress dist: {q_stress[0]:.2e} ~ {q_stress[-1]:.2e} (1/m), {len(q_stress)} points")
 
         # Fixed velocity for wavenumber analysis
-        v_fixed = 0.01  # m/s (lower velocity to see clearer peak at σ₀)
+        v_fixed = 0.01  # m/s (lower velocity to see clearer peak at sigma_0)
 
         # Calculate G_stress(q) at fixed velocity
         # Calculate G_stress(q) at fixed velocity
         print("\n" + "="*80)
         print("DEBUG: G_stress Calculation at FIXED velocity v = 1 m/s")
         print("="*80)
-        print(f"σ₀ = {sigma_0_MPa:.4f} MPa = {sigma_0_Pa:.2e} Pa")
+        print(f"sigma_0 = {sigma_0_MPa:.4f} MPa = {sigma_0_Pa:.2e} Pa")
         print(f"q range: {q_min:.2e} ~ {q_max:.2e} (1/m)")
         print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
         print(f"Poisson ratio: {poisson:.3f}")
@@ -3730,9 +3926,9 @@ class PerssonModelGUI_V2:
         integral_full = np.trapezoid(integrand, q_stress)
         print(f"∫ q³C(q)dq = {integral_full:.4e} m⁴")
 
-        # CRITICAL FIX: Normalize by σ₀ to make G_stress dimensionless
-        E_normalized = E_star_low / sigma_0_Pa  # Normalize E by σ₀
-        print(f"E_normalized = E*/σ₀ = {E_normalized:.2e}")
+        # CRITICAL FIX: Normalize by sigma_0 to make G_stress dimensionless
+        E_normalized = E_star_low / sigma_0_Pa  # Normalize E by sigma_0
+        print(f"E_normalized = E*/sigma_0 = {E_normalized:.2e}")
 
         # Calculate G_stress(q) array
         G_stress_array = np.zeros_like(q_stress)
@@ -3742,8 +3938,8 @@ class PerssonModelGUI_V2:
 
         print(f"G_dimensionless(qmax) = {G_stress_array[-1]:.4e}")
         print(f"√G_dimensionless(qmax) = {np.sqrt(G_stress_array[-1]):.4f}")
-        print(f"Peak location: ALWAYS at σ₀ = {sigma_0_MPa:.2f} MPa (independent of G)")
-        print(f"Distribution width at qmax: √G × σ₀ = {np.sqrt(G_stress_array[-1]) * sigma_0_MPa:.4f} MPa")
+        print(f"Peak location: ALWAYS at sigma_0 = {sigma_0_MPa:.2f} MPa (independent of G)")
+        print(f"Distribution width at qmax: √G × sigma_0 = {np.sqrt(G_stress_array[-1]) * sigma_0_MPa:.4f} MPa")
         print("="*80 + "\n")
 
         # Set x-axis range based on MAXIMUM G to show full Gaussian shapes
@@ -3765,7 +3961,7 @@ class PerssonModelGUI_V2:
         print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
         print(f"G_dimensionless(qmax) = {G_max:.4e}")
         print(f"√G_dimensionless(qmax) = {np.sqrt(G_max):.4f}")
-        print(f"std_max = √G_max × σ₀ = {std_max:.4f} MPa")
+        print(f"std_max = √G_max × sigma_0 = {std_max:.4f} MPa")
         print(f"sigma_min (for x-axis) = {sigma_min:.2f} MPa")
         print(f"sigma_max (for x-axis) = {sigma_max:.2f} MPa")
         print(f"X-axis range: [{sigma_min:.2f}, {sigma_max:.2f}] MPa (±6σ from σ0)")
@@ -3793,13 +3989,13 @@ class PerssonModelGUI_V2:
 
             # Calculate stress distribution at this wavenumber
             if G_norm_q > 1e-10:
-                # Normalize σ by σ₀ for calculation
+                # Normalize σ by sigma_0 for calculation
                 sigma_norm = sigma_array / sigma_0_MPa
 
                 # Calculate individual terms to show mirror image
                 normalization = 1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q))
-                term1 = normalization * np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q))  # Main peak at σ₀
-                term2 = normalization * np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q))  # Mirror at -σ₀
+                term1 = normalization * np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q))  # Main peak at sigma_0
+                term2 = normalization * np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q))  # Mirror at -sigma_0
 
                 # Final P(σ) is difference - clip to ensure non-negative (probability cannot be negative)
                 P_sigma = np.maximum(0, term1 - term2)
@@ -3825,9 +4021,9 @@ class PerssonModelGUI_V2:
                 # Use shared labels for clarity
                 if i == 0:
                     ax2.plot(sigma_array, term1, color=color, linewidth=1.3,
-                            linestyle='--', alpha=0.6, label=f'term1: exp[-(σ-σ₀)²/4G]')
+                            linestyle='--', alpha=0.6, label=f'term1: exp[-(σ-sigma_0)²/4G]')
                     ax2.plot(sigma_array, term2, color=color, linewidth=1.3,
-                            linestyle=':', alpha=0.6, label=f'term2: exp[-(σ+σ₀)²/4G] 거울상')
+                            linestyle=':', alpha=0.6, label=f'term2: exp[-(σ+sigma_0)²/4G] 거울상')
                 else:
                     ax2.plot(sigma_array, term1, color=color, linewidth=1.3,
                             linestyle='--', alpha=0.6)
@@ -3838,7 +4034,7 @@ class PerssonModelGUI_V2:
                 print(f"\n[q = {q_val:.2e} 1/m]")
                 print(f"  G = {G_norm_q:.4e} (무차원)")
                 print(f"  √G = {np.sqrt(G_norm_q):.4f}")
-                print(f"  분포 폭 (√G × σ₀) = {np.sqrt(G_norm_q) * sigma_0_MPa:.4f} MPa")
+                print(f"  분포 폭 (√G × sigma_0) = {np.sqrt(G_norm_q) * sigma_0_MPa:.4f} MPa")
                 print(f"  피크 위치: σ = {sigma_array[np.argmax(P_sigma)]:.4f} MPa")
                 print(f"  ∫P(σ)dσ (전체) = {integral_total:.4f}")
                 print(f"  P(σ > 0) = {P_positive_percent:.2f}% ← 양의 응력 확률")
@@ -4340,7 +4536,7 @@ $\begin{array}{lcc}
             "PSD 데이터로부터 h'rms(ξ)와\n"
             "Local Strain(ε)을 계산합니다.\n\n"
             "수식:\n"
-            "  ξ²(q) = 2π ∫[q₀→q] k³C(k)dk\n"
+            "  ξ²(q) = 2π ∫[q0→q] k³C(k)dk\n"
             "  ε(q) = factor × ξ(q)"
         )
         ttk.Label(desc_frame, text=desc_text, font=('Arial', 9), justify=tk.LEFT).pack(anchor=tk.W)
@@ -5659,7 +5855,7 @@ $\begin{array}{lcc}
 
         Implements the full Persson formula:
         μ_visc = (1/2) ∫[q0→q1] dq · q³ · C(q) · P(q) · S(q)
-                 · ∫[0→2π] dφ · cosφ · Im[E(qv·cosφ, T)] / ((1-ν²)σ₀)
+                 · ∫[0→2π] dφ · cosφ · Im[E(qv·cosφ, T)] / ((1-ν²)sigma_0)
 
         where:
         - P(q) = erf(1/(2√G(q))) : contact area ratio
@@ -5809,7 +6005,7 @@ $\begin{array}{lcc}
 
             # Apply nonlinear correction to G(q) if enabled
             # Recalculate G with f(ε), g(ε) applied INSIDE the integral:
-            # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)σ₀)² dφ dq'
+            # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)sigma_0)² dφ dq'
             # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
             G_matrix_corrected = G_matrix.copy()
 
@@ -5928,7 +6124,7 @@ $\begin{array}{lcc}
 
             # Parameters used
             self.mu_result_text.insert(tk.END, "[계산 파라미터]\n")
-            self.mu_result_text.insert(tk.END, f"  σ₀ (공칭 압력): {sigma_0/1e6:.3f} MPa\n")
+            self.mu_result_text.insert(tk.END, f"  sigma_0 (공칭 압력): {sigma_0/1e6:.3f} MPa\n")
             self.mu_result_text.insert(tk.END, f"  T (온도): {temperature:.1f} °C\n")
             self.mu_result_text.insert(tk.END, f"  ν (푸아송비): {poisson:.2f}\n")
             self.mu_result_text.insert(tk.END, f"  γ (접촉 보정): {gamma:.2f}\n")
@@ -6001,7 +6197,7 @@ $\begin{array}{lcc}
                     self.mu_result_text.insert(tk.END, f"  P(q) 범위: {P_min:.4f} ~ {P_max:.4f} (평균: {P_mean:.4f})\n")
                     if P_max < 0.1:
                         self.mu_result_text.insert(tk.END, f"  ※ 경고: P(q)가 매우 작음 - G(q)가 너무 클 수 있음\n")
-                        self.mu_result_text.insert(tk.END, f"     → σ₀를 높이거나 표면 거칠기를 확인하세요\n")
+                        self.mu_result_text.insert(tk.END, f"     → sigma_0를 높이거나 표면 거칠기를 확인하세요\n")
 
                 # S(q) - contact correction factor
                 if 'S' in mid_detail:
@@ -6108,7 +6304,7 @@ $\begin{array}{lcc}
 
             self.ax_mu_v.legend(loc='upper left', fontsize=7)
 
-            # Plot 2: Real Contact Area Ratio A/A₀ = P(q_max) vs velocity
+            # Plot 2: Real Contact Area Ratio A/A0 = P(q_max) vs velocity
             P_qmax_array = np.zeros(len(v))
 
             for i, det in enumerate(details['details']):
@@ -6120,21 +6316,21 @@ $\begin{array}{lcc}
 
             # Color based on nonlinear correction
             if use_nonlinear:
-                label_str = 'A/A₀ - 비선형 G(q)'
+                label_str = 'A/A0 - 비선형 G(q)'
                 color = 'r'
                 title_suffix = ' (f,g 보정 적용)'
             else:
-                label_str = 'A/A₀ - 선형 G(q)'
+                label_str = 'A/A0 - 선형 G(q)'
                 color = 'b'
                 title_suffix = ''
 
-            # Plot A/A₀ = P(q_max)
+            # Plot A/A0 = P(q_max)
             self.ax_mu_cumulative.semilogx(v, P_qmax_array, f'{color}-', linewidth=2,
                                             marker='s', markersize=4, label=label_str)
 
-            self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A₀{title_suffix}', fontweight='bold', fontsize=8)
+            self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A0{title_suffix}', fontweight='bold', fontsize=8)
             self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
-            self.ax_mu_cumulative.set_ylabel('A/A₀ = P(q_max)')
+            self.ax_mu_cumulative.set_ylabel('A/A0 = P(q_max)')
             self.ax_mu_cumulative.legend(loc='best', fontsize=7)
             self.ax_mu_cumulative.grid(True, alpha=0.3)
 
@@ -7061,11 +7257,11 @@ $\begin{array}{lcc}
                         except:
                             strain = fixed_strain
                     elif method == 'persson':
-                        # Persson approach: ε ~ sqrt(C(q) * q^4) * σ₀ / E'
+                        # Persson approach: ε ~ sqrt(C(q) * q^4) * sigma_0 / E'
                         C_val = self.psd_model(q)
                         strain = np.sqrt(max(C_val * q**4, 1e-20)) * sigma_0 / max(E_storage, 1e3)
                     elif method == 'simple':
-                        # Simple: ε ~ σ₀ / E'
+                        # Simple: ε ~ sigma_0 / E'
                         strain = sigma_0 / max(E_storage, 1e3)
                     else:
                         strain = fixed_strain
@@ -7557,7 +7753,7 @@ $\begin{array}{lcc}
         self.ax_angle_integrand = self.fig_integrand.add_subplot(221)
         self.ax_angle_integrand.set_title('G 각도 피적분함수: |E(qv cosφ)|² vs φ', fontweight='bold')
         self.ax_angle_integrand.set_xlabel('φ (rad)')
-        self.ax_angle_integrand.set_ylabel('|E(ω)/((1-ν²)σ₀)|²')
+        self.ax_angle_integrand.set_ylabel('|E(ω)/((1-ν²)sigma_0)|²')
         self.ax_angle_integrand.grid(True, alpha=0.3)
 
         # Top-right: G(q) integrand vs q
@@ -7573,7 +7769,7 @@ $\begin{array}{lcc}
         self.ax_mu_integrand = self.fig_integrand.add_subplot(223)
         self.ax_mu_integrand.set_title('μ_visc 각도 피적분함수: cosφ × Im[E] vs φ', fontweight='bold')
         self.ax_mu_integrand.set_xlabel('φ (rad)')
-        self.ax_mu_integrand.set_ylabel('cosφ × E\'\'/((1-ν²)σ₀)')
+        self.ax_mu_integrand.set_ylabel('cosφ × E\'\'/((1-ν²)sigma_0)')
         self.ax_mu_integrand.grid(True, alpha=0.3)
 
         # Bottom-right: Frequency range vs velocity
@@ -7637,7 +7833,7 @@ $\begin{array}{lcc}
             # Set up axes labels and titles again
             self.ax_angle_integrand.set_title('G 각도 피적분함수: |E(qv cosφ)|² vs φ', fontweight='bold')
             self.ax_angle_integrand.set_xlabel('φ (rad)')
-            self.ax_angle_integrand.set_ylabel('|E(ω)/((1-ν²)σ₀)|²')
+            self.ax_angle_integrand.set_ylabel('|E(ω)/((1-ν²)sigma_0)|²')
             self.ax_angle_integrand.grid(True, alpha=0.3)
 
             self.ax_q_integrand.set_title('G(q) 피적분함수: q³C(q)×(각도적분) vs q', fontweight='bold')
@@ -7649,7 +7845,7 @@ $\begin{array}{lcc}
 
             self.ax_mu_integrand.set_title('μ_visc 각도 피적분함수: cosφ × Im[E] vs φ', fontweight='bold')
             self.ax_mu_integrand.set_xlabel('φ (rad)')
-            self.ax_mu_integrand.set_ylabel('cosφ × E\'\'/((1-ν²)σ₀)')
+            self.ax_mu_integrand.set_ylabel('cosφ × E\'\'/((1-ν²)sigma_0)')
             self.ax_mu_integrand.grid(True, alpha=0.3)
 
             self.ax_freq_range.set_title('속도별 주파수 스캔 범위', fontweight='bold')
@@ -7905,13 +8101,13 @@ $\begin{array}{lcc}
 
 【2. 계산 파라미터】
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  σ₀  : 공칭 접촉 압력 [Pa]
+  sigma_0  : 공칭 접촉 압력 [Pa]
   v   : 슬라이딩 속도 [m/s]
   T   : 온도 [°C]
   ν   : 푸아송 비 (일반적으로 0.5)
   γ   : 접촉 보정 인자 (일반적으로 0.5)
 
-  q₀ ~ q₁ : PSD 적분 범위 (파수)
+  q0 ~ q1 : PSD 적분 범위 (파수)
 
 【3. 중간 계산 변수】
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -7922,9 +8118,9 @@ $\begin{array}{lcc}
 │                                                                              │
 │  진동수:       ω = q · v · cos(φ)   (슬라이딩에 의한 진동)                   │
 │                                                                              │
-│  G(q) = (π/4) × (E*/(σ₀(1-ν²)))² × ∫[q₀→q] k³ C(k) ∫[0→2π] cos²φ dφ dk     │
+│  G(q) = (π/4) × (E*/(sigma_0(1-ν²)))² × ∫[q0→q] k³ C(k) ∫[0→2π] cos²φ dφ dk     │
 │                                                                              │
-│       = (π/2) × (|E(q·v)|/(σ₀(1-ν²)))² × ∫[q₀→q] k³ C(k) dk                 │
+│       = (π/2) × (|E(q·v)|/(sigma_0(1-ν²)))² × ∫[q0→q] k³ C(k) dk                 │
 │                                                                              │
 │                                                                              │
 │  [비선형 보정 적용 시]                                                       │
@@ -7957,7 +8153,7 @@ $\begin{array}{lcc}
 
 ┌─ h'rms & Local Strain (Tab 4) ────────────────────────────────────────────────┐
 │                                                                              │
-│  RMS 경사:    ξ²(q) = 2π ∫[q₀→q] k³ C(k) dk                                  │
+│  RMS 경사:    ξ²(q) = 2π ∫[q0→q] k³ C(k) dk                                  │
 │  로컬 변형률: ε(q) = factor × ξ(q)    (factor ≈ 0.5, Persson 권장)           │
 │                                                                              │
 │  ※ 이 ε(q)는 비선형 보정 g(ε)에 사용됨                                       │
@@ -7969,8 +8165,8 @@ $\begin{array}{lcc}
 
 ┌─ μ_visc 공식 ────────────────────────────────────────────────────────────────┐
 │                                                                              │
-│  μ_visc = (1/2) × ∫[q₀→q₁] q³ C(q) P(q) S(q)                                │
-│                   × ∫[0→2π] cosφ × Im[E(qv·cosφ)] / ((1-ν²)σ₀) dφ dq        │
+│  μ_visc = (1/2) × ∫[q0→q1] q³ C(q) P(q) S(q)                                │
+│                   × ∫[0→2π] cosφ × Im[E(qv·cosφ)] / ((1-ν²)sigma_0) dφ dq        │
 │                                                                              │
 │  ┌───────────────────────────────────────────────────────────────┐          │
 │  │ 비선형 보정 적용 시:                                          │          │
@@ -8001,13 +8197,13 @@ $\begin{array}{lcc}
                  ▼                                │
   ┌──────────────────────────────┐                │
   │  Tab 2: 계산 설정            │                │
-  │  - σ₀, v, T, ν 설정          │                │
+  │  - sigma_0, v, T, ν 설정          │                │
   │  - q 범위 설정               │                │
   └──────────────┬───────────────┘                │
                  ▼                                │
   ┌──────────────────────────────┐                │
   │  Tab 3: G(q,v) 계산          │                │
-  │  - G(q) = f(|E*|, C(q), σ₀)  │◄───────────────┤
+  │  - G(q) = f(|E*|, C(q), sigma_0)  │◄───────────────┤
   │  - P(q) = erf(1/(2√G))       │                │
   │  - 다중 속도 G_matrix 생성   │                │
   │                              │                │
@@ -8070,7 +8266,7 @@ $\begin{array}{lcc}
   q                 1/m              파수 (wavenumber)
   C(q)              m⁴               2D 등방성 PSD
   E', E''           Pa               탄성률
-  σ₀                Pa               공칭 압력
+  sigma_0                Pa               공칭 압력
   v                 m/s              슬라이딩 속도
   ω = q·v           rad/s            각진동수
   G(q)              무차원           면적 함수
@@ -8344,7 +8540,7 @@ $\begin{array}{lcc}
 
             if P_max < 0.001:
                 self._log_debug("  ❌ 심각: P(q)가 거의 0! G(q)가 너무 큽니다.")
-                self._log_debug("     → σ₀ (공칭 압력)를 높이거나 PSD를 확인하세요.")
+                self._log_debug("     → sigma_0 (공칭 압력)를 높이거나 PSD를 확인하세요.")
 
         # 4. Check calculation parameters
         self._log_debug("\n\n[4] 계산 파라미터 검사")
@@ -8356,22 +8552,22 @@ $\begin{array}{lcc}
         gamma = float(self.gamma_var.get()) if hasattr(self, 'gamma_var') else 0.5
         n_phi = int(self.n_phi_var.get()) if hasattr(self, 'n_phi_var') else 72
 
-        self._log_debug(f"  • σ₀ (공칭 압력): {sigma_0/1e6:.3f} MPa = {sigma_0:.2e} Pa")
+        self._log_debug(f"  • sigma_0 (공칭 압력): {sigma_0/1e6:.3f} MPa = {sigma_0:.2e} Pa")
         self._log_debug(f"  • T (온도): {temperature:.1f} °C")
         self._log_debug(f"  • ν (푸아송비): {poisson:.2f}")
         self._log_debug(f"  • γ (접촉 보정): {gamma:.2f}")
         self._log_debug(f"  • n_φ (각도 적분점): {n_phi}")
 
         prefactor = 1.0 / ((1 - poisson**2) * sigma_0)
-        self._log_debug(f"  • prefactor = 1/((1-ν²)σ₀) = {prefactor:.4e}")
+        self._log_debug(f"  • prefactor = 1/((1-ν²)sigma_0) = {prefactor:.4e}")
 
         # Check if prefactor is reasonable
         # For E'' ~ 1e7 Pa and prefactor ~ 4e-6, angle_integral ~ 4 * (pi/2) * 1e7 * 4e-6 ~ 0.25
         # This should give non-zero mu_visc
         if prefactor > 1e-4:
-            self._log_debug("  ⚠️ 경고: prefactor가 큼 (σ₀가 너무 작음)")
+            self._log_debug("  ⚠️ 경고: prefactor가 큼 (sigma_0가 너무 작음)")
         elif prefactor < 1e-8:
-            self._log_debug("  ⚠️ 경고: prefactor가 작음 (σ₀가 너무 큼)")
+            self._log_debug("  ⚠️ 경고: prefactor가 작음 (sigma_0가 너무 큼)")
 
         # 5. Test single point calculation
         self._log_debug("\n\n[5] 단일점 계산 테스트")
@@ -8515,7 +8711,7 @@ $\begin{array}{lcc}
         if P_max < 0.01:
             issues_found = True
             self._log_debug("\n  ⚠️ P(q)가 매우 작음 (< 0.01)")
-            self._log_debug("     권장: σ₀ (공칭 압력)를 높이거나 표면 거칠기 확인")
+            self._log_debug("     권장: sigma_0 (공칭 압력)를 높이거나 표면 거칠기 확인")
 
         if abs(angle_integral) < 1e-10:
             issues_found = True
@@ -8569,11 +8765,11 @@ $\begin{array}{lcc}
 【μ_visc 공식】
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  μ_visc = (1/2) × ∫[q₀→q₁] q³ C(q) P(q) S(q) × [∫₀²π cosφ × Im[E(qv·cosφ)] dφ] / ((1-ν²)σ₀) dq
+  μ_visc = (1/2) × ∫[q0→q1] q³ C(q) P(q) S(q) × [∫₀²π cosφ × Im[E(qv·cosφ)] dφ] / ((1-ν²)sigma_0) dq
 
   분해하면:
   ┌─────────────────────────────────────────────────────────────────────────────┐
-  │ μ_visc ∝ q³ × C(q) × P(q) × S(q) × Im[E(ω)] / σ₀                           │
+  │ μ_visc ∝ q³ × C(q) × P(q) × S(q) × Im[E(ω)] / sigma_0                           │
   └─────────────────────────────────────────────────────────────────────────────┘
 
 
@@ -8584,12 +8780,12 @@ $\begin{array}{lcc}
 │                                                                              │
 │  【μ 증가】 C(q) ↑                                                           │
 │  ├─ 표면이 더 거칠면 → C(q) 증가 → μ 증가                                    │
-│  ├─ C(q₀) 값 증가 (PSD 설정에서)                                             │
+│  ├─ C(q0) 값 증가 (PSD 설정에서)                                             │
 │  └─ Hurst 지수 H 감소 → 고주파 성분 증가 → μ 증가                            │
 │                                                                              │
 │  【코드 위치】                                                                │
 │  ├─ Tab 1: PSD 파일 로드                                                     │
-│  └─ Tab 2: PSD 설정 (q₀, C(q₀), H)                                           │
+│  └─ Tab 2: PSD 설정 (q0, C(q0), H)                                           │
 │                                                                              │
 │  ※ 영향도: ★★★★★ (가장 큰 영향)                                              │
 │                                                                              │
@@ -8601,8 +8797,8 @@ $\begin{array}{lcc}
 │                                                                              │
 │  【μ 증가】 P(q) ↑ ← G(q) ↓                                                   │
 │  ├─ G(q)가 작으면 → P(q) ≈ 1 (완전 접촉)                                     │
-│  ├─ σ₀ (압력) ↑ → G(q) ↓ → P(q) ↑ → μ ↑                                      │
-│  │   (단, 분모의 σ₀도 증가하므로 순효과 확인 필요)                            │
+│  ├─ sigma_0 (압력) ↑ → G(q) ↓ → P(q) ↑ → μ ↑                                      │
+│  │   (단, 분모의 sigma_0도 증가하므로 순효과 확인 필요)                            │
 │  └─ |E*| ↓ (더 부드러운 재료) → G(q) ↓ → P(q) ↑                              │
 │                                                                              │
 │  【P(q) = 1로 단순화하면】                                                    │
@@ -8656,13 +8852,13 @@ $\begin{array}{lcc}
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-┌─ 5. σ₀ - 공칭 압력 ──────────────────────────────────────────────────────────┐
+┌─ 5. sigma_0 - 공칭 압력 ──────────────────────────────────────────────────────────┐
 │                                                                              │
-│  μ_visc ∝ 1/σ₀  (분모에 있음)                                                │
+│  μ_visc ∝ 1/sigma_0  (분모에 있음)                                                │
 │                                                                              │
-│  【μ 증가】 σ₀ ↓                                                              │
+│  【μ 증가】 sigma_0 ↓                                                              │
 │  ├─ 압력 감소 → μ 증가 (직접적)                                              │
-│  ├─ 단, G(q) ∝ 1/σ₀² → σ₀↓ 시 G↑ → P↓ (간접적으로 μ 감소)                   │
+│  ├─ 단, G(q) ∝ 1/sigma_0² → sigma_0↓ 시 G↑ → P↓ (간접적으로 μ 감소)                   │
 │  └─ 순효과는 상황에 따라 다름                                                │
 │                                                                              │
 │  【코드 위치】                                                                │
@@ -8672,18 +8868,18 @@ $\begin{array}{lcc}
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 
-┌─ 6. q 적분 범위 (q₀ ~ q₁) ───────────────────────────────────────────────────┐
+┌─ 6. q 적분 범위 (q0 ~ q1) ───────────────────────────────────────────────────┐
 │                                                                              │
 │  【μ 증가】 적분 범위 확대                                                    │
-│  ├─ q₁ ↑ → 더 미세한 거칠기 포함 → μ 증가                                    │
-│  ├─ q₀ ↓ → 더 큰 스케일 거칠기 포함                                          │
-│  └─ q₁은 h'rms(ξ) 목표값으로 결정                                            │
+│  ├─ q1 ↑ → 더 미세한 거칠기 포함 → μ 증가                                    │
+│  ├─ q0 ↓ → 더 큰 스케일 거칠기 포함                                          │
+│  └─ q1은 h'rms(ξ) 목표값으로 결정                                            │
 │                                                                              │
 │  【주의】                                                                     │
-│  └─ q₁이 너무 크면 PSD 데이터 범위 초과 → 외삽 필요                          │
+│  └─ q1이 너무 크면 PSD 데이터 범위 초과 → 외삽 필요                          │
 │                                                                              │
 │  【코드 위치】                                                                │
-│  └─ Tab 2: q_min, q_max 설정 또는 h'rms(ξ)/q₁ 모드                           │
+│  └─ Tab 2: q_min, q_max 설정 또는 h'rms(ξ)/q1 모드                           │
 │                                                                              │
 │  ※ 영향도: ★★★☆☆                                                             │
 │                                                                              │
@@ -8718,7 +8914,7 @@ $\begin{array}{lcc}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
   □ 1. PSD C(q) 증가
-     ├─ C(q₀) 값 증가
+     ├─ C(q0) 값 증가
      ├─ Hurst 지수 H 감소 (0.8 → 0.6)
      └─ 더 거친 표면 데이터 사용
 
@@ -8727,11 +8923,11 @@ $\begin{array}{lcc}
      ├─ E'' 피크가 계산 주파수 범위에 있는지 확인
      └─ 온도 조정으로 E'' 피크 이동
 
-  □ 3. 압력 σ₀ 조정
-     └─ σ₀ 감소 시도 (단, P(q) 영향 고려)
+  □ 3. 압력 sigma_0 조정
+     └─ sigma_0 감소 시도 (단, P(q) 영향 고려)
 
   □ 4. q 범위 확대
-     └─ q₁ (목표 h'rms 또는 직접 입력) 증가
+     └─ q1 (목표 h'rms 또는 직접 입력) 증가
 
   □ 5. γ 값 조정 (고급)
      └─ friction.py에서 gamma=1.0 으로 설정 시 S(q)=1
@@ -8743,7 +8939,7 @@ $\begin{array}{lcc}
 【결론】
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  μ_visc = f(C(q), P(q), S(q), E''(ω), σ₀, q범위)
+  μ_visc = f(C(q), P(q), S(q), E''(ω), sigma_0, q범위)
 
   • C(q)와 E''(ω)가 가장 큰 영향 (재료 및 표면 특성)
   • P(q), S(q) 적용 여부가 구현 간 차이의 주요 원인
