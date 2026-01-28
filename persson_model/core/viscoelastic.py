@@ -249,18 +249,11 @@ class ViscoelasticMaterial:
         log_E_prime = self._E_prime_interp(log_freq)
         log_E_double_prime = self._E_double_prime_interp(log_freq)
 
-        # Validate interpolated values - clip to reasonable range for rubber
-        # E' (storage): 1e3 Pa (rubbery) to 1e12 Pa (glassy)
-        # E'' (loss): 1e4 Pa (typical minimum) to 1e10 Pa (typical maximum)
-        # Note: Edge value hold should prevent extreme extrapolation, but clip for safety
-        log_E_prime = np.clip(log_E_prime, 3, 12)
-        log_E_double_prime = np.clip(log_E_double_prime, 4, 10)  # E'' >= 1e4 Pa
-
-        # Handle any remaining NaN values
+        # Handle NaN values only - no clipping to preserve actual material behavior
         if np.any(~np.isfinite(log_E_prime)):
             log_E_prime = np.nan_to_num(log_E_prime, nan=6.0, posinf=12.0, neginf=3.0)
         if np.any(~np.isfinite(log_E_double_prime)):
-            log_E_double_prime = np.nan_to_num(log_E_double_prime, nan=5.0, posinf=12.0, neginf=0.0)
+            log_E_double_prime = np.nan_to_num(log_E_double_prime, nan=5.0, posinf=10.0, neginf=0.0)
 
         E_prime = 10**log_E_prime
         E_double_prime = 10**log_E_double_prime
