@@ -3846,6 +3846,69 @@ class PerssonModelGUI_V2:
                 integration_method='trapz'
             )
 
+            # =====================================================================
+            # DIAGNOSTIC OUTPUT: Check units and values for G(q) calculation
+            # =====================================================================
+            print("\n" + "="*80)
+            print("G(q) 계산 단위 진단 (Unit Diagnostics)")
+            print("="*80)
+            print(f"σ₀ (nominal pressure) = {sigma_0:.2e} Pa = {sigma_0/1e6:.4f} MPa")
+            print(f"Poisson ratio (ν) = {poisson}")
+            print(f"Prefactor = 1/((1-ν²)σ₀) = {self.g_calculator.prefactor:.2e} (1/Pa)")
+            print()
+
+            # Check E' and E'' at representative frequencies
+            test_omegas = [0.1, 1, 10, 100, 1e3, 1e4, 1e5, 1e6]  # rad/s
+            print("주파수별 E', E'' 값 (Pa):")
+            print("-" * 60)
+            print(f"{'ω (rad/s)':<12} {'E\' (Pa)':<15} {'E\'\' (Pa)':<15} {'|E*| (Pa)':<15}")
+            print("-" * 60)
+            for omega in test_omegas:
+                E_star = self.material.get_modulus(omega, temperature=temperature)
+                E_prime = np.real(E_star)
+                E_loss = np.imag(E_star)
+                E_abs = np.abs(E_star)
+                print(f"{omega:<12.1e} {E_prime:<15.2e} {E_loss:<15.2e} {E_abs:<15.2e}")
+            print()
+
+            # Check PSD values at representative wavenumbers
+            test_qs = [100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]  # 1/m
+            print("파수별 C(q) 값 (m⁴):")
+            print("-" * 40)
+            print(f"{'q (1/m)':<12} {'C(q) (m⁴)':<15}")
+            print("-" * 40)
+            for q_test in test_qs:
+                C_test = self.psd_model(np.array([q_test]))[0]
+                print(f"{q_test:<12.1e} {C_test:<15.2e}")
+            print()
+
+            # Calculate sample G integrand at v = v_min
+            v_test = v_array[0]
+            q_test = 1e6  # 중간 파수값
+            omega_test = q_test * v_test  # ω = q × v
+            E_star_test = self.material.get_modulus(omega_test, temperature=temperature)
+            E_abs_test = np.abs(E_star_test)
+            C_q_test = self.psd_model(np.array([q_test]))[0]
+            prefactor = self.g_calculator.prefactor
+
+            # G_integrand ~ q³ × C(q) × 2π × |E × prefactor|²
+            modulus_term = (E_abs_test * prefactor)**2
+            G_integrand_approx = q_test**3 * C_q_test * 2 * np.pi * modulus_term
+
+            print("G integrand 샘플 계산:")
+            print("-" * 60)
+            print(f"v = {v_test:.4e} m/s")
+            print(f"q = {q_test:.2e} 1/m")
+            print(f"ω = q × v = {omega_test:.2e} rad/s")
+            print(f"|E*(ω)| = {E_abs_test:.2e} Pa")
+            print(f"prefactor = {prefactor:.2e} 1/Pa")
+            print(f"|E × prefactor|² = {modulus_term:.2e} (dimensionless)")
+            print(f"q³ = {q_test**3:.2e} m⁻³")
+            print(f"C(q) = {C_q_test:.2e} m⁴")
+            print(f"q³ × C(q) = {q_test**3 * C_q_test:.2e} m")
+            print(f"G_integrand ≈ q³ × C(q) × 2π × |E×pf|² = {G_integrand_approx:.2e}")
+            print("="*80 + "\n")
+
             # Initialize calculation progress plots (3 subplots)
             try:
                 # Clear all three subplots
