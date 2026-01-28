@@ -347,6 +347,7 @@ def calculate_top_psd(
 
     # Power spectrum
     power = np.abs(h_fft)**2
+    # Same formula as calculate_1d_psd
     C1d = 2.0 * power / (n**2 * L) / w_correction
 
     # Apply 1/phi correction
@@ -368,9 +369,11 @@ def convert_1d_to_2d_isotropic_psd(
     Convert 1D PSD to 2D isotropic PSD.
 
     For an isotropic surface, the 2D PSD C(q) is related to 1D PSD C_1D(q) by:
-    C(q) = C_1D(q) / (pi * q)
+    C(q) = C_1D(q) / (2 * pi * q)
 
-    This assumes the surface is statistically isotropic.
+    This ensures Parseval's theorem is satisfied:
+    - 1D: h_rms² = ∫ C_1D(q) dq
+    - 2D: h_rms² = 2π ∫ q C_2D(q) dq
 
     Parameters
     ----------
@@ -385,7 +388,7 @@ def convert_1d_to_2d_isotropic_psd(
         2D isotropic PSD (m⁴)
     """
     with np.errstate(divide='ignore', invalid='ignore'):
-        C2d = C1d / (np.pi * q)
+        C2d = C1d / (2 * np.pi * q)
         C2d = np.where(np.isfinite(C2d), C2d, 0.0)
 
     return C2d
@@ -846,6 +849,13 @@ class ProfilePSDAnalyzer:
             raise ValueError("No data loaded. Call load_data() or set_data() first.")
 
         self.points_per_decade = points_per_decade
+
+        # Store scan length for reference (important for PSD normalization)
+        n = len(self.h)
+        dx = np.abs(self.x[1] - self.x[0])
+        self.scan_length = n * dx  # Total scan length in meters
+        self.n_points = n
+        self.sample_spacing = dx
 
         # Calculate raw (unbinned) Full PSD
         self.q_raw, self.C_full_1d_raw = calculate_1d_psd(

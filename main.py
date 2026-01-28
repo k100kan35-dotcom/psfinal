@@ -150,6 +150,9 @@ class PerssonModelGUI_V2:
         self.profile_psd_analyzer = None  # ProfilePSDAnalyzer instance
         self.profile_psd_data = None  # Loaded profile data (x, h)
 
+        # Graph data registry for automatic data listing
+        self.graph_data_registry = {}  # {name: {x, y, header, description, timestamp}}
+
         # Reference μ_visc data for comparison (Persson program output)
         self._init_reference_mu_data()
 
@@ -199,21 +202,13 @@ class PerssonModelGUI_V2:
                     reference_temp=20.0
                 )
 
-                # Load PSD data
-                q, C_q = load_psd_from_file(psd_file, skip_header=1)
-                self.psd_model = create_psd_from_data(q, C_q, interpolation_kind='log-log')
-
-                # Update UI
-                self.q_min_var.set(f"{q[0]:.2e}")
-                # Don't overwrite q_max - keep the default value (6.0e+4) for better initial calculations
-                # User can manually adjust if they want to use the full PSD range
-                # self.q_max_var.set(f"{q[-1]:.2e}")
-                self.psd_type_var.set("measured")
+                # PSD is NOT loaded here - must come from Tab 0
+                # User must use Tab 0 (PSD 생성) to set PSD data
 
                 self._update_material_display()
                 self._update_verification_plots()
 
-                self.status_var.set(f"초기 데이터 로드 완료: PSD ({len(q)}개), DMA ({len(omega_raw)}개)")
+                self.status_var.set(f"초기 DMA 데이터 로드 완료 ({len(omega_raw)}개). PSD는 Tab 0에서 설정하세요.")
             else:
                 # Use example material
                 self.material = ViscoelasticMaterial.create_example_sbr()
@@ -556,7 +551,7 @@ class PerssonModelGUI_V2:
         file_menu = tk.Menu(menubar, tearoff=0)
         menubar.add_cascade(label="File", menu=file_menu)
         file_menu.add_command(label="Load DMA Data", command=self._load_material)
-        file_menu.add_command(label="Load PSD Data", command=self._load_psd_data)
+        # PSD loading removed - must use Tab 0 (PSD 생성)
         file_menu.add_separator()
         file_menu.add_command(label="Save Results (CSV)", command=self._save_detailed_csv)
         file_menu.add_command(label="Export All", command=self._export_all_results)
@@ -719,48 +714,50 @@ class PerssonModelGUI_V2:
         ttk.Button(dma_frame, text="Apply DMA", command=self._apply_dma_smoothing_extrapolation, width=12).pack(pady=2)
 
         # Right column: PSD Settings
-        psd_frame = ttk.LabelFrame(settings_container, text="PSD Settings (Power Law)", padding=5)
+        psd_frame = ttk.LabelFrame(settings_container, text="PSD 설정 (Tab 0에서 전송)", padding=5)
         psd_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-        # Load PSD button row (at top of PSD frame)
-        psd_load_row = ttk.Frame(psd_frame)
-        psd_load_row.pack(fill=tk.X, pady=(0, 8))
-        ttk.Button(psd_load_row, text="Load PSD", command=self._load_psd_data, width=10).pack(side=tk.LEFT)
+        # PSD source notice
+        psd_notice = ttk.Label(psd_frame,
+            text="※ PSD는 반드시 '0.PSD 생성' 탭에서\n   확정 후 전송해야 합니다.",
+            font=('Arial', 9, 'bold'), foreground='blue')
+        psd_notice.pack(anchor=tk.W, pady=(0, 5))
 
-        # q0, q1 row
-        q_row = ttk.Frame(psd_frame)
+        # PSD status display (read-only)
+        self.psd_status_var = tk.StringVar(value="PSD 미설정 - Tab 0에서 전송 필요")
+        self.psd_status_label = ttk.Label(psd_frame, textvariable=self.psd_status_var,
+                                          font=('Arial', 8), foreground='red')
+        self.psd_status_label.pack(anchor=tk.W, pady=2)
+
+        # PSD info display (read-only, shows after Tab 0 sends data)
+        psd_info_frame = ttk.Frame(psd_frame)
+        psd_info_frame.pack(fill=tk.X, pady=2)
+
+        # q range display
+        q_row = ttk.Frame(psd_info_frame)
         q_row.pack(fill=tk.X, pady=1)
-        ttk.Label(q_row, text="q0:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.psd_q0_var = tk.StringVar(value="500")
-        ttk.Entry(q_row, textvariable=self.psd_q0_var, width=8).pack(side=tk.LEFT, padx=2)
-        ttk.Label(q_row, text="q1:", font=('Arial', 8)).pack(side=tk.LEFT, padx=(5, 0))
-        self.psd_q1_var = tk.StringVar(value="1e5")
-        ttk.Entry(q_row, textvariable=self.psd_q1_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(q_row, text="q 범위:", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.psd_q_range_var = tk.StringVar(value="- ~ - (1/m)")
+        ttk.Label(q_row, textvariable=self.psd_q_range_var, font=('Arial', 8, 'bold')).pack(side=tk.LEFT, padx=5)
 
-        # H row
-        h_row = ttk.Frame(psd_frame)
+        # H display
+        h_row = ttk.Frame(psd_info_frame)
         h_row.pack(fill=tk.X, pady=1)
         ttk.Label(h_row, text="H (Hurst):", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.psd_H_var = tk.StringVar(value="0.56")
-        ttk.Entry(h_row, textvariable=self.psd_H_var, width=6).pack(side=tk.LEFT, padx=2)
+        self.psd_H_var = tk.StringVar(value="-")
+        ttk.Label(h_row, textvariable=self.psd_H_var, font=('Arial', 8, 'bold')).pack(side=tk.LEFT, padx=5)
 
-        # ξ target row - specify h'rms to auto-calculate C(q0)
-        xi_row = ttk.Frame(psd_frame)
+        # ξ display
+        xi_row = ttk.Frame(psd_info_frame)
         xi_row.pack(fill=tk.X, pady=1)
         ttk.Label(xi_row, text="ξ (h'rms):", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.psd_xi_var = tk.StringVar(value="4.0520")
-        ttk.Entry(xi_row, textvariable=self.psd_xi_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Button(xi_row, text="→ C(q0) 계산", command=self._calc_Cq0_from_xi, width=10).pack(side=tk.LEFT, padx=(5, 0))
+        self.psd_xi_var = tk.StringVar(value="-")
+        ttk.Label(xi_row, textvariable=self.psd_xi_var, font=('Arial', 8, 'bold')).pack(side=tk.LEFT, padx=5)
 
-        # C(q0) row (can be manually overridden)
-        cq_row = ttk.Frame(psd_frame)
-        cq_row.pack(fill=tk.X, pady=1)
-        ttk.Label(cq_row, text="C(q0):", font=('Arial', 8)).pack(side=tk.LEFT)
+        # Hidden variables for backward compatibility
+        self.psd_q0_var = tk.StringVar(value="500")
+        self.psd_q1_var = tk.StringVar(value="1e5")
         self.psd_Cq0_var = tk.StringVar(value="3.5e-13")
-        ttk.Entry(cq_row, textvariable=self.psd_Cq0_var, width=12).pack(side=tk.LEFT, padx=2)
-
-        # Apply PSD button
-        ttk.Button(psd_frame, text="Apply PSD", command=self._apply_psd_settings, width=12).pack(pady=2)
 
         # Plot area
         plot_frame = ttk.Frame(parent)
@@ -1123,14 +1120,14 @@ class PerssonModelGUI_V2:
         self.ax_profile_hist.set_ylabel('Count')
         self.ax_profile_hist.grid(True, alpha=0.3)
 
-        # Bottom-left: 1D PSD
-        self.ax_psd_1d = self.fig_psd_profile.add_subplot(223)
-        self.ax_psd_1d.set_title('1D PSD C_1D(q)', fontweight='bold')
-        self.ax_psd_1d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_1d.set_ylabel('C_1D(q) (m³)')
-        self.ax_psd_1d.set_xscale('log')
-        self.ax_psd_1d.set_yscale('log')
-        self.ax_psd_1d.grid(True, alpha=0.3, which='both')
+        # Bottom-left: h_rms (거칠기) & Parseval 검증
+        self.ax_hrms_parseval = self.fig_psd_profile.add_subplot(223)
+        self.ax_hrms_parseval.set_title('h_rms 거칠기 & Parseval 검증', fontweight='bold')
+        self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)')
+        self.ax_hrms_parseval.set_ylabel('누적 h_rms (m)')
+        self.ax_hrms_parseval.set_xscale('log')
+        self.ax_hrms_parseval.set_yscale('log')
+        self.ax_hrms_parseval.grid(True, alpha=0.3, which='both')
 
         # Bottom-right: 2D isotropic PSD (main result)
         self.ax_psd_2d = self.fig_psd_profile.add_subplot(224)
@@ -1302,18 +1299,48 @@ class PerssonModelGUI_V2:
         C_top_1d = self.profile_psd_analyzer.C_top_1d
         C_top_2d = self.profile_psd_analyzer.C_top_2d
 
-        # Plot 1D PSD
-        self.ax_psd_1d.clear()
-        if C_full_1d is not None:
-            self.ax_psd_1d.loglog(q, C_full_1d, 'b-', linewidth=1.5, label='Full PSD', alpha=0.8)
-        if C_top_1d is not None:
-            self.ax_psd_1d.loglog(q, C_top_1d, 'r-', linewidth=1.5, label='Top PSD', alpha=0.8)
+        # Plot h_rms 거칠기 & Parseval 검증
+        self.ax_hrms_parseval.clear()
 
-        self.ax_psd_1d.set_title('1D PSD C_1D(q)', fontweight='bold')
-        self.ax_psd_1d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_1d.set_ylabel('C_1D(q) (m³)')
-        self.ax_psd_1d.grid(True, alpha=0.3, which='both')
-        self.ax_psd_1d.legend(fontsize=8)
+        # 누적 h_rms 계산: h_rms²(q) = 2π ∫[q0→q] k⋅C(k) dk
+        if C_full_2d is not None and len(q) > 1:
+            # 누적 적분 계산
+            hrms_sq_cumulative = np.zeros(len(q))
+            integrand = q * C_full_2d  # k × C(k)
+            for i in range(1, len(q)):
+                hrms_sq_cumulative[i] = 2 * np.pi * np.trapezoid(integrand[:i+1], q[:i+1])
+            hrms_cumulative = np.sqrt(np.maximum(hrms_sq_cumulative, 0))
+
+            # 유효한 값만 플롯
+            valid = hrms_cumulative > 0
+            if np.any(valid):
+                self.ax_hrms_parseval.loglog(q[valid], hrms_cumulative[valid]*1e6, 'b-',
+                                             linewidth=2, label='Full PSD', alpha=0.8)
+
+            # 프로파일에서 직접 계산한 h_rms 표시 (수평선)
+            if hasattr(self.profile_psd_analyzer, 'surface_params') and self.profile_psd_analyzer.surface_params is not None:
+                h_rms_direct = self.profile_psd_analyzer.surface_params.get('h_rms', None)
+                if h_rms_direct is not None and h_rms_direct > 0:
+                    self.ax_hrms_parseval.axhline(y=h_rms_direct*1e6, color='b', linestyle='--',
+                                                  alpha=0.5, label=f'프로파일 h_rms={h_rms_direct*1e6:.2f}μm')
+
+        if C_top_2d is not None and len(q) > 1:
+            hrms_sq_cumulative_top = np.zeros(len(q))
+            integrand_top = q * C_top_2d
+            for i in range(1, len(q)):
+                hrms_sq_cumulative_top[i] = 2 * np.pi * np.trapezoid(integrand_top[:i+1], q[:i+1])
+            hrms_cumulative_top = np.sqrt(np.maximum(hrms_sq_cumulative_top, 0))
+
+            valid_top = hrms_cumulative_top > 0
+            if np.any(valid_top):
+                self.ax_hrms_parseval.loglog(q[valid_top], hrms_cumulative_top[valid_top]*1e6, 'r-',
+                                             linewidth=2, label='Top PSD', alpha=0.8)
+
+        self.ax_hrms_parseval.set_title('h_rms 거칠기 & Parseval 검증', fontweight='bold')
+        self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)')
+        self.ax_hrms_parseval.set_ylabel('누적 h_rms (μm)')
+        self.ax_hrms_parseval.grid(True, alpha=0.3, which='both')
+        self.ax_hrms_parseval.legend(fontsize=8)
 
         # Plot 2D isotropic PSD
         self.ax_psd_2d.clear()
@@ -1372,6 +1399,21 @@ class PerssonModelGUI_V2:
 
         self.fig_psd_profile.tight_layout()
         self.canvas_psd_profile.draw()
+
+        # Auto-register graph data
+        if C_full_2d is not None:
+            self._register_graph_data(
+                "PSD_Full_2D", q, C_full_2d,
+                "q(1/m)\tC(q)(m^4)", "Full PSD (2D isotropic)")
+        if C_top_2d is not None:
+            self._register_graph_data(
+                "PSD_Top_2D", q, C_top_2d,
+                "q(1/m)\tC(q)(m^4)", "Top PSD (2D isotropic)")
+        if (hasattr(self, 'param_psd_data') and self.param_psd_data is not None):
+            pdata = self.param_psd_data
+            self._register_graph_data(
+                "PSD_Param", pdata['q'], pdata['C'],
+                "q(1/m)\tC(q)(m^4)", f"Param PSD (H={pdata['H']:.3f})")
 
     def _fit_profile_psd(self):
         """Fit PSD to self-affine fractal model."""
@@ -1870,13 +1912,30 @@ class PerssonModelGUI_V2:
 
             # Create PSD model for calculations
             self.psd_model = MeasuredPSD(q, C)
-            self.raw_psd_data = {'q': q, 'C': C}
+            self.raw_psd_data = {'q': q, 'C_q': C}  # Key must be 'C_q' for Tab 3 compatibility
 
-            # Update Tab 3 settings
+            # Register finalized PSD
+            self._register_graph_data(
+                "PSD_Finalized", q, C,
+                "q(1/m)\tC(q)(m^4)", f"Finalized PSD ({psd_type_str})")
+
+            # Update Tab 3 PSD display
+            if hasattr(self, 'psd_status_var'):
+                self.psd_status_var.set(f"✓ PSD 설정됨: {psd_type_str}")
+            if hasattr(self, 'psd_status_label'):
+                self.psd_status_label.config(foreground='green')
+            if hasattr(self, 'psd_q_range_var'):
+                self.psd_q_range_var.set(f"{q[0]:.2e} ~ {q[-1]:.2e} (1/m)")
             if hasattr(self, 'psd_H_var'):
                 self.psd_H_var.set(f"{H:.4f}")
             if hasattr(self, 'psd_xi_var'):
                 self.psd_xi_var.set(f"{xi:.6f}")
+
+            # Update q_min/q_max for calculation
+            if hasattr(self, 'q_min_var'):
+                self.q_min_var.set(f"{q[0]:.2e}")
+            if hasattr(self, 'q_max_var'):
+                self.q_max_var.set(f"{q[-1]:.2e}")
 
             # Mark Tab 0 as finalized
             self.tab0_finalized = True
@@ -1884,12 +1943,48 @@ class PerssonModelGUI_V2:
             # Check if Tab 2 should be disabled
             self._update_tab2_state()
 
+            # Verify PSD normalization: ∫ q×C(q) dq (using 2π factor) should ≈ h_rms²
+            # For 2D isotropic: h_rms² = 2π ∫ q C(q) dq
+            from scipy.integrate import simpson
+            integrand_qC = q * C  # q × C(q) for h_rms² check
+            h_rms_sq_from_psd = 2 * np.pi * simpson(integrand_qC, x=q)
+            h_rms_from_psd = np.sqrt(max(h_rms_sq_from_psd, 0))
+
+            # Also check C(q0) value for typical range
+            C_q0 = C[0]
+            q0 = q[0]
+
+            # Get scan length info if available
+            scan_length_str = ""
+            if hasattr(self.profile_psd_analyzer, 'scan_length'):
+                L = self.profile_psd_analyzer.scan_length
+                n_pts = self.profile_psd_analyzer.n_points
+                dx = self.profile_psd_analyzer.sample_spacing
+                scan_length_str = (
+                    f"\n[프로파일 정보]\n"
+                    f"• 스캔 길이 L: {L*1e3:.4f} mm ({L:.6f} m)\n"
+                    f"• 데이터 포인트: {n_pts}\n"
+                    f"• 샘플 간격 dx: {dx*1e6:.4f} μm\n"
+                )
+
+            # Show verification info
+            verification_msg = (
+                f"[PSD 검증]\n"
+                f"• 원본 h_rms: {h_rms*1e6:.4f} μm\n"
+                f"• PSD 적분 h_rms: {h_rms_from_psd*1e6:.4f} μm\n"
+                f"• C(q₀={q0:.2e}): {C_q0:.2e} m⁴\n"
+            )
+            if abs(h_rms - h_rms_from_psd) / max(h_rms, 1e-12) > 0.5:
+                verification_msg += "⚠ 경고: PSD 적분값과 h_rms 불일치! 정규화 확인 필요\n"
+            verification_msg += scan_length_str
+
             messagebox.showinfo("PSD 확정 완료",
                 f"{psd_type_str} → Tab 3 전송 완료\n\n"
                 f"q range: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
                 f"H = {H:.4f}\n"
                 f"h_rms = {h_rms*1e6:.4f} um\n"
                 f"h'_rms (xi) = {xi:.6f}\n\n"
+                f"{verification_msg}\n"
                 f"Tab 3 (계산 설정)에서 계속하세요."
             )
 
@@ -1922,10 +2017,56 @@ class PerssonModelGUI_V2:
         main_container = ttk.Frame(parent)
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=380)
-        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
-        left_frame.pack_propagate(False)
+        # Left panel container (fixed width) with scrollable canvas
+        left_container = ttk.Frame(main_container, width=400)
+        left_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        left_container.pack_propagate(False)
+
+        # Create canvas and scrollbar for scrolling
+        mc_canvas = tk.Canvas(left_container, highlightthickness=0, bg='#f0f0f0')
+        mc_scrollbar = ttk.Scrollbar(left_container, orient="vertical", command=mc_canvas.yview)
+
+        # Create inner frame for content
+        left_frame = ttk.Frame(mc_canvas)
+
+        # Configure scroll region when frame size changes
+        def _configure_scroll(event):
+            mc_canvas.configure(scrollregion=mc_canvas.bbox("all"))
+        left_frame.bind("<Configure>", _configure_scroll)
+
+        # Create window inside canvas
+        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=375)
+        mc_canvas.configure(yscrollcommand=mc_scrollbar.set)
+
+        # Pack scrollbar and canvas
+        mc_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        mc_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Enable mousewheel scrolling (cross-platform)
+        def _on_mousewheel(event):
+            # Windows
+            if event.delta:
+                mc_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            # Linux scroll up
+            elif event.num == 4:
+                mc_canvas.yview_scroll(-1, "units")
+            # Linux scroll down
+            elif event.num == 5:
+                mc_canvas.yview_scroll(1, "units")
+
+        # Bind mousewheel events
+        def _bind_mousewheel(event):
+            mc_canvas.bind_all("<MouseWheel>", _on_mousewheel)  # Windows
+            mc_canvas.bind_all("<Button-4>", _on_mousewheel)    # Linux scroll up
+            mc_canvas.bind_all("<Button-5>", _on_mousewheel)    # Linux scroll down
+
+        def _unbind_mousewheel(event):
+            mc_canvas.unbind_all("<MouseWheel>")
+            mc_canvas.unbind_all("<Button-4>")
+            mc_canvas.unbind_all("<Button-5>")
+
+        mc_canvas.bind("<Enter>", _bind_mousewheel)
+        mc_canvas.bind("<Leave>", _unbind_mousewheel)
 
         # ============== Left Panel: Controls ==============
 
@@ -2089,19 +2230,25 @@ class PerssonModelGUI_V2:
         self.mc_shift_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # 7. Export buttons
-        export_frame = ttk.LabelFrame(left_frame, text="내보내기", padding=5)
-        export_frame.pack(fill=tk.X, pady=2, padx=3)
+        # 7. Export buttons - IMPORTANT: This must be visible via scrolling
+        export_frame = ttk.LabelFrame(left_frame, text="★ 내보내기 ★", padding=5)
+        export_frame.pack(fill=tk.X, pady=5, padx=3)
 
         ttk.Button(
             export_frame, text="마스터 커브 CSV 내보내기",
             command=self._export_master_curve
-        ).pack(fill=tk.X, pady=1)
+        ).pack(fill=tk.X, pady=2)
 
-        ttk.Button(
-            export_frame, text="마스터 커브 확정 → Tab 3 (계산설정)",
+        # Make this button more prominent
+        finalize_btn = ttk.Button(
+            export_frame, text="▶ 마스터 커브 확정 → Tab 3 (계산설정)",
             command=self._finalize_master_curve_to_tab3
-        ).pack(fill=tk.X, pady=1)
+        )
+        finalize_btn.pack(fill=tk.X, pady=2)
+
+        # Force update of scroll region after all widgets are added
+        left_frame.update_idletasks()
+        mc_canvas.configure(scrollregion=mc_canvas.bbox("all"))
 
         # ============== Right Panel: Plots ==============
 
@@ -2451,6 +2598,19 @@ class PerssonModelGUI_V2:
         self.fig_mc.tight_layout()
         self.canvas_mc.draw()
 
+        # Auto-register graph data for master curve
+        if master_curve is not None and 'f' in master_curve:
+            self._register_graph_data(
+                "MasterCurve_E_storage",
+                master_curve['f'], master_curve['E_storage'],
+                "f(Hz)\tE_storage(MPa)",
+                f"Master Curve E' (Tref={T_ref}C)")
+            self._register_graph_data(
+                "MasterCurve_E_loss",
+                master_curve['f'], master_curve['E_loss'],
+                "f(Hz)\tE_loss(MPa)",
+                f"Master Curve E'' (Tref={T_ref}C)")
+
     def _update_mc_results(self, wlf_result, target='E_storage'):
         """Update master curve results text."""
         self.mc_result_text.delete('1.0', tk.END)
@@ -2754,6 +2914,15 @@ class PerssonModelGUI_V2:
                 'C1': self.master_curve_gen.C1,
                 'C2': self.master_curve_gen.C2
             }
+
+            # Register finalized master curve
+            f = self.master_curve_gen.master_f
+            self._register_graph_data(
+                "MasterCurve_E_storage_Finalized", f, self.master_curve_gen.master_E_storage,
+                "f(Hz)\tE_storage(MPa)", f"Finalized Master Curve E' (Tref={T_ref}C)")
+            self._register_graph_data(
+                "MasterCurve_E_loss_Finalized", f, self.master_curve_gen.master_E_loss,
+                "f(Hz)\tE_loss(MPa)", f"Finalized Master Curve E'' (Tref={T_ref}C)")
 
             # Update temperature in Tab 3
             self.temperature_var.set(str(T_ref))
@@ -3114,33 +3283,55 @@ class PerssonModelGUI_V2:
         try:
             mode = self.hrms_q1_mode_var.get()
 
-            # PSD 데이터에서 q 범위 결정
-            if hasattr(self.psd_model, 'q_data'):
-                q_data = self.psd_model.q_data
-                C_data = self.psd_model.C_data
+            # PSD 데이터에서 q 범위 결정 - 실제 데이터 사용
+            if hasattr(self.psd_model, 'q_data') and self.psd_model.q_data is not None:
+                q_data = self.psd_model.q_data.copy()
+                C_data = self.psd_model.C_data.copy()
+                q_source = "실제 PSD 데이터"
             else:
                 q_min = float(self.q_min_var.get())
                 q_max = float(self.q_max_var.get())
                 q_data = np.logspace(np.log10(q_min), np.log10(q_max), 500)
                 C_data = self.psd_model(q_data)
+                q_source = f"생성된 PSD (q: {q_min:.1e} ~ {q_max:.1e})"
+
+            # 유효한 데이터만 사용
+            valid = (q_data > 0) & (C_data > 0) & np.isfinite(q_data) & np.isfinite(C_data)
+            q_data = q_data[valid]
+            C_data = C_data[valid]
+
+            if len(q_data) < 10:
+                messagebox.showerror("오류", "유효한 PSD 데이터가 부족합니다.")
+                return
 
             # 누적 h'rms(ξ) 계산: ξ²(q) = 2π∫[q0 to q] k³C(k)dk
-            xi_squared_cumulative = np.zeros_like(q_data)
+            xi_squared_cumulative = np.zeros(len(q_data))
             for i in range(len(q_data)):
                 q_int = q_data[:i+1]
                 C_int = C_data[:i+1]
                 xi_squared_cumulative[i] = 2 * np.pi * np.trapezoid(q_int**3 * C_int, q_int)
-            xi_cumulative = np.sqrt(xi_squared_cumulative)  # ξ = h'rms
+            xi_cumulative = np.sqrt(np.maximum(xi_squared_cumulative, 0))
+
+            # 최대 도달 가능한 h'rms
+            max_xi = xi_cumulative[-1]
+            max_q = q_data[-1]
+            min_q = q_data[0]
 
             if mode == "hrms_to_q1":
                 # 모드 1: 주어진 h'rms(ξ)로 q1 계산
                 target_xi = float(self.target_hrms_slope_var.get())
 
                 # ξ 값이 도달 가능한지 확인
-                if target_xi > xi_cumulative[-1]:
+                if target_xi > max_xi:
                     messagebox.showwarning("경고",
-                        f"목표 ξ ({target_xi:.4f})가 최대 도달 가능한 값 ({xi_cumulative[-1]:.4f})보다 큽니다.\n"
+                        f"목표 ξ ({target_xi:.4f})가 최대 도달 가능한 값 ({max_xi:.4f})보다 큽니다.\n"
+                        f"PSD q 범위: {min_q:.2e} ~ {max_q:.2e} (1/m)\n\n"
                         f"q 범위를 늘리거나 목표 ξ를 줄이세요.")
+                    return
+
+                if target_xi < xi_cumulative[0]:
+                    messagebox.showwarning("경고",
+                        f"목표 ξ ({target_xi:.4f})가 최소값 ({xi_cumulative[0]:.4f})보다 작습니다.")
                     return
 
                 # 목표 ξ에 해당하는 q1 찾기 (보간 사용)
@@ -3148,16 +3339,28 @@ class PerssonModelGUI_V2:
                 f_interp = interp1d(xi_cumulative, q_data, kind='linear', fill_value='extrapolate')
                 q1_calculated = float(f_interp(target_xi))
 
-                # 결과 표시
+                # 역검증: 계산된 q1에서 실제 xi 확인
+                f_verify = interp1d(q_data, xi_cumulative, kind='linear', fill_value='extrapolate')
+                xi_verified = float(f_verify(q1_calculated))
+
+                # 결과 표시 - 둘 다 업데이트
                 self.calculated_q1_var.set(f"{q1_calculated:.3e}")
+                self.calculated_hrms_var.set(f"{xi_verified:.4f} (검증)")
                 self.calculated_q1 = q1_calculated
                 self.target_xi = target_xi
 
                 self.status_var.set(f"계산 완료: ξ={target_xi:.4f} → q1={q1_calculated:.3e} (1/m)")
                 messagebox.showinfo("계산 완료",
                     f"모드 1: h'rms (ξ) → q1 계산\n\n"
-                    f"입력 ξ (h'rms): {target_xi:.4f}\n"
-                    f"계산된 q1: {q1_calculated:.3e} (1/m)\n\n"
+                    f"[입력]\n"
+                    f"  목표 ξ (h'rms): {target_xi:.4f}\n\n"
+                    f"[출력]\n"
+                    f"  계산된 q1: {q1_calculated:.3e} (1/m)\n"
+                    f"  검증 ξ: {xi_verified:.4f}\n\n"
+                    f"[PSD 정보]\n"
+                    f"  {q_source}\n"
+                    f"  q 범위: {min_q:.2e} ~ {max_q:.2e}\n"
+                    f"  최대 가능 ξ: {max_xi:.4f}\n\n"
                     f"※ ξ² = 2π∫k³C(k)dk")
 
             else:
@@ -3165,10 +3368,10 @@ class PerssonModelGUI_V2:
                 target_q1 = float(self.input_q1_var.get())
 
                 # q1이 범위 내에 있는지 확인
-                if target_q1 < q_data[0] or target_q1 > q_data[-1]:
+                if target_q1 < min_q or target_q1 > max_q:
                     messagebox.showwarning("경고",
                         f"입력 q1 ({target_q1:.3e})이 PSD 데이터 범위 밖입니다.\n"
-                        f"범위: {q_data[0]:.3e} ~ {q_data[-1]:.3e} (1/m)")
+                        f"범위: {min_q:.3e} ~ {max_q:.3e} (1/m)")
                     return
 
                 # q1에 해당하는 ξ 찾기 (보간 사용)
@@ -3176,8 +3379,9 @@ class PerssonModelGUI_V2:
                 f_interp = interp1d(q_data, xi_cumulative, kind='linear', fill_value='extrapolate')
                 xi_calculated = float(f_interp(target_q1))
 
-                # 결과 표시
+                # 결과 표시 - 둘 다 업데이트
                 self.calculated_hrms_var.set(f"{xi_calculated:.4f}")
+                self.calculated_q1_var.set(f"{target_q1:.3e} (입력)")
                 self.calculated_q1 = target_q1
                 self.target_xi = xi_calculated
 
@@ -3187,8 +3391,14 @@ class PerssonModelGUI_V2:
                 self.status_var.set(f"계산 완료: q1={target_q1:.3e} → ξ={xi_calculated:.4f}")
                 messagebox.showinfo("계산 완료",
                     f"모드 2: q1 → h'rms (ξ) 계산\n\n"
-                    f"입력 q1: {target_q1:.3e} (1/m)\n"
-                    f"계산된 ξ (h'rms): {xi_calculated:.4f}\n\n"
+                    f"[입력]\n"
+                    f"  목표 q1: {target_q1:.3e} (1/m)\n\n"
+                    f"[출력]\n"
+                    f"  계산된 ξ (h'rms): {xi_calculated:.4f}\n\n"
+                    f"[PSD 정보]\n"
+                    f"  {q_source}\n"
+                    f"  q 범위: {min_q:.2e} ~ {max_q:.2e}\n"
+                    f"  최대 가능 ξ: {max_xi:.4f}\n\n"
                     f"※ ξ² = 2π∫k³C(k)dk")
 
         except ValueError as e:
@@ -3875,8 +4085,17 @@ class PerssonModelGUI_V2:
 
     def _run_calculation(self):
         """Run G(q,v) 2D calculation."""
-        if self.material is None or self.psd_model is None:
-            messagebox.showwarning("Warning", "Please load material and PSD data first!")
+        # Check if PSD has been set from Tab 0
+        tab0_ready = getattr(self, 'tab0_finalized', False)
+        if not tab0_ready or self.psd_model is None:
+            messagebox.showwarning("경고",
+                "PSD 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 0 (PSD 생성)에서 PSD를 확정한 후\n"
+                "'PSD 확정 → Tab 3' 버튼을 클릭하세요.")
+            return
+
+        if self.material is None:
+            messagebox.showwarning("경고", "DMA/재료 데이터가 설정되지 않았습니다!")
             return
 
         try:
@@ -4618,6 +4837,147 @@ class PerssonModelGUI_V2:
         if output_dir:
             messagebox.showinfo("Info", "Export functionality to be implemented")
 
+    def _register_graph_data(self, name: str, x_data, y_data, header: str, description: str):
+        """
+        Register graph data to the automatic data list.
+        Called whenever a graph is drawn with significant data.
+
+        Parameters
+        ----------
+        name : str
+            Unique identifier for this data (e.g., 'PSD_Full_2D', 'MasterCurve_E_storage')
+        x_data : array-like
+            X-axis data (q, f, v, etc.)
+        y_data : array-like
+            Y-axis data (C(q), E', mu, etc.)
+        header : str
+            Header line for export file (e.g., 'q(1/m)\\tC(q)(m^4)')
+        description : str
+            Human-readable description (e.g., 'Full PSD (2D isotropic)')
+        """
+        from datetime import datetime
+        import numpy as np
+
+        x_arr = np.asarray(x_data)
+        y_arr = np.asarray(y_data)
+
+        # Create timestamp for tracking
+        timestamp = datetime.now().strftime("%H:%M:%S")
+
+        self.graph_data_registry[name] = {
+            'x': x_arr,
+            'y': y_arr,
+            'header': header,
+            'description': description,
+            'timestamp': timestamp
+        }
+
+        # Update the graph data listbox if it exists and is visible
+        if hasattr(self, 'graph_data_listbox') and self.graph_data_listbox.winfo_exists():
+            self._refresh_graph_data_listbox()
+
+    def _refresh_graph_data_listbox(self):
+        """Refresh the graph data listbox with current registry contents."""
+        if not hasattr(self, 'graph_data_listbox') or not self.graph_data_listbox.winfo_exists():
+            return
+
+        # Store current selection
+        current_selection = self.graph_data_listbox.curselection()
+
+        # Clear and repopulate
+        self.graph_data_listbox.delete(0, tk.END)
+
+        # Combine registry with legacy data
+        combined_data = dict(self.graph_data_registry)  # Start with registry data
+
+        # Add legacy data collection (same as before)
+        self._collect_legacy_graph_data(combined_data)
+
+        self.available_graph_data = combined_data
+
+        for name, data in combined_data.items():
+            timestamp = data.get('timestamp', '')
+            ts_str = f" [{timestamp}]" if timestamp else ""
+            self.graph_data_listbox.insert(tk.END, f"{name} - {data['description']}{ts_str}")
+
+        if not combined_data:
+            self.graph_data_listbox.insert(tk.END, "(No graph data available)")
+
+        # Restore selection if possible
+        for idx in current_selection:
+            if idx < self.graph_data_listbox.size():
+                self.graph_data_listbox.selection_set(idx)
+
+    def _collect_legacy_graph_data(self, data_dict):
+        """Collect graph data from legacy class attributes (backward compatibility)."""
+        # Tab 0: PSD data (if not already in registry)
+        if hasattr(self, 'profile_psd_analyzer') and self.profile_psd_analyzer is not None:
+            if self.profile_psd_analyzer.q is not None and self.profile_psd_analyzer.C_full_2d is not None:
+                if "PSD_Full_2D" not in data_dict:
+                    data_dict["PSD_Full_2D"] = {
+                        'x': self.profile_psd_analyzer.q,
+                        'y': self.profile_psd_analyzer.C_full_2d,
+                        'header': 'q(1/m)\tC(q)(m^4)',
+                        'description': 'Full PSD (2D isotropic)'
+                    }
+            if self.profile_psd_analyzer.C_top_2d is not None:
+                if "PSD_Top_2D" not in data_dict:
+                    data_dict["PSD_Top_2D"] = {
+                        'x': self.profile_psd_analyzer.q,
+                        'y': self.profile_psd_analyzer.C_top_2d,
+                        'header': 'q(1/m)\tC(q)(m^4)',
+                        'description': 'Top PSD (2D isotropic)'
+                    }
+
+        # Parameter PSD
+        if hasattr(self, 'param_psd_data') and self.param_psd_data is not None:
+            if "PSD_Param" not in data_dict:
+                data_dict["PSD_Param"] = {
+                    'x': self.param_psd_data['q'],
+                    'y': self.param_psd_data['C'],
+                    'header': 'q(1/m)\tC(q)(m^4)',
+                    'description': f"Param PSD (H={self.param_psd_data['H']:.4f})"
+                }
+
+        # Finalized PSD
+        if hasattr(self, 'finalized_psd') and self.finalized_psd is not None:
+            if "PSD_Finalized" not in data_dict:
+                data_dict["PSD_Finalized"] = {
+                    'x': self.finalized_psd['q'],
+                    'y': self.finalized_psd['C'],
+                    'header': 'q(1/m)\tC(q)(m^4)',
+                    'description': f"Finalized PSD ({self.finalized_psd['type']})"
+                }
+
+        # Tab 1: Master Curve
+        if hasattr(self, 'master_curve_gen') and self.master_curve_gen is not None:
+            if self.master_curve_gen.master_f is not None:
+                if "MasterCurve_E_storage" not in data_dict:
+                    data_dict["MasterCurve_E_storage"] = {
+                        'x': self.master_curve_gen.master_f,
+                        'y': self.master_curve_gen.master_E_storage,
+                        'header': 'f(Hz)\tE_storage(MPa)',
+                        'description': f"Master Curve E' (Tref={self.master_curve_gen.T_ref}C)"
+                    }
+                if "MasterCurve_E_loss" not in data_dict:
+                    data_dict["MasterCurve_E_loss"] = {
+                        'x': self.master_curve_gen.master_f,
+                        'y': self.master_curve_gen.master_E_loss,
+                        'header': 'f(Hz)\tE_loss(MPa)',
+                        'description': f"Master Curve E'' (Tref={self.master_curve_gen.T_ref}C)"
+                    }
+
+        # Mu_visc results
+        if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
+            if 'v' in self.mu_visc_results and 'mu_visc' in self.mu_visc_results:
+                if "Friction_mu_vs_v" not in data_dict:
+                    data_dict["Friction_mu_vs_v"] = {
+                        'x': self.mu_visc_results['v'],
+                        'y': self.mu_visc_results['mu_visc'],
+                        'header': 'v(m/s)\tmu_visc',
+                        'description': 'Friction coefficient vs velocity'
+                    }
+
     def _show_graph_data_export_popup(self):
         """Show popup window for exporting all graph data to txt files."""
         popup = tk.Toplevel(self.root)
@@ -4645,98 +5005,33 @@ class PerssonModelGUI_V2:
         self.graph_data_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.graph_data_listbox.yview)
 
-        # Collect available data
-        self.available_graph_data = {}
+        # Collect and display available data using the registry system
+        self.available_graph_data = dict(self.graph_data_registry)  # Start with registry
+        self._collect_legacy_graph_data(self.available_graph_data)  # Add legacy sources
 
-        # Tab 0: PSD data
-        if hasattr(self, 'profile_psd_analyzer') and self.profile_psd_analyzer is not None:
-            if self.profile_psd_analyzer.q is not None and self.profile_psd_analyzer.C_full_2d is not None:
-                name = "PSD_Full_2D"
-                self.available_graph_data[name] = {
-                    'q': self.profile_psd_analyzer.q,
-                    'C': self.profile_psd_analyzer.C_full_2d,
-                    'header': 'q(1/m)\tC(q)(m^4)',
-                    'description': 'Full PSD (2D isotropic)'
-                }
-            if self.profile_psd_analyzer.C_top_2d is not None:
-                name = "PSD_Top_2D"
-                self.available_graph_data[name] = {
-                    'q': self.profile_psd_analyzer.q,
-                    'C': self.profile_psd_analyzer.C_top_2d,
-                    'header': 'q(1/m)\tC(q)(m^4)',
-                    'description': 'Top PSD (2D isotropic)'
-                }
-
-        # Parameter PSD
-        if hasattr(self, 'param_psd_data') and self.param_psd_data is not None:
-            name = "PSD_Param"
-            self.available_graph_data[name] = {
-                'q': self.param_psd_data['q'],
-                'C': self.param_psd_data['C'],
-                'header': 'q(1/m)\tC(q)(m^4)',
-                'description': f"Param PSD (H={self.param_psd_data['H']:.4f})"
-            }
-
-        # Finalized PSD
-        if hasattr(self, 'finalized_psd') and self.finalized_psd is not None:
-            name = "PSD_Finalized"
-            self.available_graph_data[name] = {
-                'q': self.finalized_psd['q'],
-                'C': self.finalized_psd['C'],
-                'header': 'q(1/m)\tC(q)(m^4)',
-                'description': f"Finalized PSD ({self.finalized_psd['type']})"
-            }
-
-        # Tab 1: Master Curve
-        if hasattr(self, 'master_curve_gen') and self.master_curve_gen is not None:
-            if self.master_curve_gen.master_f is not None:
-                name = "MasterCurve_E_storage"
-                self.available_graph_data[name] = {
-                    'x': self.master_curve_gen.master_f,
-                    'y': self.master_curve_gen.master_E_storage,
-                    'header': 'f(Hz)\tE_storage(MPa)',
-                    'description': f"Master Curve E' (Tref={self.master_curve_gen.T_ref}C)"
-                }
-                name = "MasterCurve_E_loss"
-                self.available_graph_data[name] = {
-                    'x': self.master_curve_gen.master_f,
-                    'y': self.master_curve_gen.master_E_loss,
-                    'header': 'f(Hz)\tE_loss(MPa)',
-                    'description': f"Master Curve E'' (Tref={self.master_curve_gen.T_ref}C)"
-                }
-
-        # DMA data
+        # Also add DMA raw data if available
         if hasattr(self, 'raw_dma_data') and self.raw_dma_data is not None:
-            name = "DMA_E_storage"
             omega = self.raw_dma_data['omega']
-            self.available_graph_data[name] = {
-                'x': omega,
-                'y': self.raw_dma_data['E_storage'],
-                'header': 'omega(rad/s)\tE_storage(Pa)',
-                'description': 'DMA E_storage'
-            }
-            name = "DMA_E_loss"
-            self.available_graph_data[name] = {
-                'x': omega,
-                'y': self.raw_dma_data['E_loss'],
-                'header': 'omega(rad/s)\tE_loss(Pa)',
-                'description': 'DMA E_loss'
-            }
-
-        # Mu_visc results
-        if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
-            if 'v' in self.mu_visc_results and 'mu_visc' in self.mu_visc_results:
-                name = "Friction_mu_vs_v"
-                self.available_graph_data[name] = {
-                    'x': self.mu_visc_results['v'],
-                    'y': self.mu_visc_results['mu_visc'],
-                    'header': 'v(m/s)\tmu_visc',
-                    'description': 'Friction coefficient vs velocity'
+            if "DMA_E_storage" not in self.available_graph_data:
+                self.available_graph_data["DMA_E_storage"] = {
+                    'x': omega,
+                    'y': self.raw_dma_data['E_storage'],
+                    'header': 'omega(rad/s)\tE_storage(Pa)',
+                    'description': 'DMA E_storage'
+                }
+            if "DMA_E_loss" not in self.available_graph_data:
+                self.available_graph_data["DMA_E_loss"] = {
+                    'x': omega,
+                    'y': self.raw_dma_data['E_loss'],
+                    'header': 'omega(rad/s)\tE_loss(Pa)',
+                    'description': 'DMA E_loss'
                 }
 
-        # Add items to listbox
+        # Add items to listbox with timestamp if available
         for name, data in self.available_graph_data.items():
-            self.graph_data_listbox.insert(tk.END, f"{name} - {data['description']}")
+            timestamp = data.get('timestamp', '')
+            ts_str = f" [{timestamp}]" if timestamp else ""
+            self.graph_data_listbox.insert(tk.END, f"{name} - {data['description']}{ts_str}")
 
         if not self.available_graph_data:
             self.graph_data_listbox.insert(tk.END, "(No graph data available)")
@@ -5255,9 +5550,13 @@ $\begin{array}{lcc}
 
     def _calculate_rms_slope(self):
         """Calculate h'rms and Local Strain from PSD data."""
-        # Check if PSD data is available
-        if self.psd_model is None:
-            messagebox.showwarning("경고", "먼저 PSD 데이터를 로드하세요.")
+        # Check if PSD data is available from Tab 0
+        tab0_ready = getattr(self, 'tab0_finalized', False)
+        if not tab0_ready or self.psd_model is None:
+            messagebox.showwarning("경고",
+                "PSD 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 0 (PSD 생성)에서 PSD를 확정한 후\n"
+                "'PSD 확정 → Tab 3' 버튼을 클릭하세요.")
             return
 
         try:
@@ -6401,8 +6700,20 @@ $\begin{array}{lcc}
         - S(q) = γ + (1-γ)P(q)² : contact correction factor
         - Im[E(ω,T)] : loss modulus (optionally corrected by g(strain))
         """
-        if self.material is None or self.psd_model is None:
-            messagebox.showwarning("경고", "먼저 재료(DMA)와 PSD 데이터를 로드하세요.")
+        # Check if data is from Tab 0 and Tab 1
+        tab0_ready = getattr(self, 'tab0_finalized', False)
+        tab1_ready = getattr(self, 'tab1_finalized', False)
+
+        if not tab0_ready or self.psd_model is None:
+            messagebox.showwarning("경고",
+                "PSD 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 0 (PSD 생성)에서 PSD를 확정하세요.")
+            return
+
+        if not tab1_ready or self.material is None:
+            messagebox.showwarning("경고",
+                "마스터 커브 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하세요.")
             return
 
         if not self.results or '2d_results' not in self.results:
@@ -6758,6 +7069,27 @@ $\begin{array}{lcc}
                     q3CPS = mid_detail['q3CPS']
                     self.mu_result_text.insert(tk.END, f"  q³C(q)P(q)S(q) max: {np.max(q3CPS):.2e}\n")
 
+                # C(q) - PSD values (critical for checking normalization)
+                if 'C_q' in mid_detail:
+                    C_q_diag = mid_detail['C_q']
+                    self.mu_result_text.insert(tk.END, f"  C(q) 범위: {np.min(C_q_diag):.2e} ~ {np.max(C_q_diag):.2e} m⁴\n")
+                    # Check typical values
+                    if np.max(C_q_diag) < 1e-18:
+                        self.mu_result_text.insert(tk.END, f"  ※ 경고: C(q)가 매우 작음 - PSD 정규화 확인 필요!\n")
+                    elif np.max(C_q_diag) > 1e-8:
+                        self.mu_result_text.insert(tk.END, f"  ※ 경고: C(q)가 매우 큼 - PSD 정규화 확인 필요!\n")
+
+                # Loss modulus check - at mid frequency
+                mid_q = mid_detail.get('q', q)[len(mid_detail.get('q', q)) // 2]
+                mid_omega = mid_q * mid_v
+                if hasattr(self, 'material') and self.material is not None:
+                    E_loss_check = self.material.get_loss_modulus(mid_omega, temperature=temperature)
+                    E_store_check = self.material.get_storage_modulus(mid_omega, temperature=temperature)
+                    self.mu_result_text.insert(tk.END, f"\n[재료 특성 @ ω={mid_omega:.2e} rad/s]\n")
+                    self.mu_result_text.insert(tk.END, f"  E'(저장탄성률): {E_store_check:.2e} Pa\n")
+                    self.mu_result_text.insert(tk.END, f"  E''(손실탄성률): {E_loss_check:.2e} Pa\n")
+                    self.mu_result_text.insert(tk.END, f"  tan(δ) = E''/E': {E_loss_check/max(E_store_check,1):.4f}\n")
+
             self.mu_result_text.insert(tk.END, "\n[속도별 μ_visc]\n")
             step = max(1, len(v) // 8)
             for i in range(0, len(v), step):
@@ -6916,6 +7248,14 @@ $\begin{array}{lcc}
 
             self.fig_mu_visc.tight_layout()
             self.canvas_mu_visc.draw()
+
+            # Auto-register graph data for friction results
+            self._register_graph_data(
+                "Friction_mu_vs_v", v, mu_array,
+                "v(m/s)\tmu_visc", "Friction coefficient vs velocity")
+            self._register_graph_data(
+                "ContactArea_A_A0_vs_v", v, P_qmax_array,
+                "v(m/s)\tA/A0", "Real contact area ratio vs velocity")
 
         except Exception as e:
             # Fallback: clear plots and show error message
@@ -7709,8 +8049,20 @@ $\begin{array}{lcc}
 
     def _calculate_strain_map(self):
         """Calculate and visualize local strain map."""
-        if self.material is None or self.psd_model is None:
-            messagebox.showwarning("경고", "먼저 재료(DMA)와 PSD 데이터를 로드하세요.")
+        # Check if data is from Tab 0 and Tab 1
+        tab0_ready = getattr(self, 'tab0_finalized', False)
+        tab1_ready = getattr(self, 'tab1_finalized', False)
+
+        if not tab0_ready or self.psd_model is None:
+            messagebox.showwarning("경고",
+                "PSD 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 0 (PSD 생성)에서 PSD를 확정하세요.")
+            return
+
+        if not tab1_ready or self.material is None:
+            messagebox.showwarning("경고",
+                "마스터 커브 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하세요.")
             return
 
         if not self.results or '2d_results' not in self.results:
