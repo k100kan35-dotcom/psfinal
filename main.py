@@ -3178,33 +3178,55 @@ class PerssonModelGUI_V2:
         try:
             mode = self.hrms_q1_mode_var.get()
 
-            # PSD 데이터에서 q 범위 결정
-            if hasattr(self.psd_model, 'q_data'):
-                q_data = self.psd_model.q_data
-                C_data = self.psd_model.C_data
+            # PSD 데이터에서 q 범위 결정 - 실제 데이터 사용
+            if hasattr(self.psd_model, 'q_data') and self.psd_model.q_data is not None:
+                q_data = self.psd_model.q_data.copy()
+                C_data = self.psd_model.C_data.copy()
+                q_source = "실제 PSD 데이터"
             else:
                 q_min = float(self.q_min_var.get())
                 q_max = float(self.q_max_var.get())
                 q_data = np.logspace(np.log10(q_min), np.log10(q_max), 500)
                 C_data = self.psd_model(q_data)
+                q_source = f"생성된 PSD (q: {q_min:.1e} ~ {q_max:.1e})"
+
+            # 유효한 데이터만 사용
+            valid = (q_data > 0) & (C_data > 0) & np.isfinite(q_data) & np.isfinite(C_data)
+            q_data = q_data[valid]
+            C_data = C_data[valid]
+
+            if len(q_data) < 10:
+                messagebox.showerror("오류", "유효한 PSD 데이터가 부족합니다.")
+                return
 
             # 누적 h'rms(ξ) 계산: ξ²(q) = 2π∫[q0 to q] k³C(k)dk
-            xi_squared_cumulative = np.zeros_like(q_data)
+            xi_squared_cumulative = np.zeros(len(q_data))
             for i in range(len(q_data)):
                 q_int = q_data[:i+1]
                 C_int = C_data[:i+1]
                 xi_squared_cumulative[i] = 2 * np.pi * np.trapezoid(q_int**3 * C_int, q_int)
-            xi_cumulative = np.sqrt(xi_squared_cumulative)  # ξ = h'rms
+            xi_cumulative = np.sqrt(np.maximum(xi_squared_cumulative, 0))
+
+            # 최대 도달 가능한 h'rms
+            max_xi = xi_cumulative[-1]
+            max_q = q_data[-1]
+            min_q = q_data[0]
 
             if mode == "hrms_to_q1":
                 # 모드 1: 주어진 h'rms(ξ)로 q1 계산
                 target_xi = float(self.target_hrms_slope_var.get())
 
                 # ξ 값이 도달 가능한지 확인
-                if target_xi > xi_cumulative[-1]:
+                if target_xi > max_xi:
                     messagebox.showwarning("경고",
-                        f"목표 ξ ({target_xi:.4f})가 최대 도달 가능한 값 ({xi_cumulative[-1]:.4f})보다 큽니다.\n"
+                        f"목표 ξ ({target_xi:.4f})가 최대 도달 가능한 값 ({max_xi:.4f})보다 큽니다.\n"
+                        f"PSD q 범위: {min_q:.2e} ~ {max_q:.2e} (1/m)\n\n"
                         f"q 범위를 늘리거나 목표 ξ를 줄이세요.")
+                    return
+
+                if target_xi < xi_cumulative[0]:
+                    messagebox.showwarning("경고",
+                        f"목표 ξ ({target_xi:.4f})가 최소값 ({xi_cumulative[0]:.4f})보다 작습니다.")
                     return
 
                 # 목표 ξ에 해당하는 q1 찾기 (보간 사용)
@@ -3212,16 +3234,28 @@ class PerssonModelGUI_V2:
                 f_interp = interp1d(xi_cumulative, q_data, kind='linear', fill_value='extrapolate')
                 q1_calculated = float(f_interp(target_xi))
 
-                # 결과 표시
+                # 역검증: 계산된 q1에서 실제 xi 확인
+                f_verify = interp1d(q_data, xi_cumulative, kind='linear', fill_value='extrapolate')
+                xi_verified = float(f_verify(q1_calculated))
+
+                # 결과 표시 - 둘 다 업데이트
                 self.calculated_q1_var.set(f"{q1_calculated:.3e}")
+                self.calculated_hrms_var.set(f"{xi_verified:.4f} (검증)")
                 self.calculated_q1 = q1_calculated
                 self.target_xi = target_xi
 
                 self.status_var.set(f"계산 완료: ξ={target_xi:.4f} → q1={q1_calculated:.3e} (1/m)")
                 messagebox.showinfo("계산 완료",
                     f"모드 1: h'rms (ξ) → q1 계산\n\n"
-                    f"입력 ξ (h'rms): {target_xi:.4f}\n"
-                    f"계산된 q1: {q1_calculated:.3e} (1/m)\n\n"
+                    f"[입력]\n"
+                    f"  목표 ξ (h'rms): {target_xi:.4f}\n\n"
+                    f"[출력]\n"
+                    f"  계산된 q1: {q1_calculated:.3e} (1/m)\n"
+                    f"  검증 ξ: {xi_verified:.4f}\n\n"
+                    f"[PSD 정보]\n"
+                    f"  {q_source}\n"
+                    f"  q 범위: {min_q:.2e} ~ {max_q:.2e}\n"
+                    f"  최대 가능 ξ: {max_xi:.4f}\n\n"
                     f"※ ξ² = 2π∫k³C(k)dk")
 
             else:
@@ -3229,10 +3263,10 @@ class PerssonModelGUI_V2:
                 target_q1 = float(self.input_q1_var.get())
 
                 # q1이 범위 내에 있는지 확인
-                if target_q1 < q_data[0] or target_q1 > q_data[-1]:
+                if target_q1 < min_q or target_q1 > max_q:
                     messagebox.showwarning("경고",
                         f"입력 q1 ({target_q1:.3e})이 PSD 데이터 범위 밖입니다.\n"
-                        f"범위: {q_data[0]:.3e} ~ {q_data[-1]:.3e} (1/m)")
+                        f"범위: {min_q:.3e} ~ {max_q:.3e} (1/m)")
                     return
 
                 # q1에 해당하는 ξ 찾기 (보간 사용)
@@ -3240,8 +3274,9 @@ class PerssonModelGUI_V2:
                 f_interp = interp1d(q_data, xi_cumulative, kind='linear', fill_value='extrapolate')
                 xi_calculated = float(f_interp(target_q1))
 
-                # 결과 표시
+                # 결과 표시 - 둘 다 업데이트
                 self.calculated_hrms_var.set(f"{xi_calculated:.4f}")
+                self.calculated_q1_var.set(f"{target_q1:.3e} (입력)")
                 self.calculated_q1 = target_q1
                 self.target_xi = xi_calculated
 
@@ -3251,8 +3286,14 @@ class PerssonModelGUI_V2:
                 self.status_var.set(f"계산 완료: q1={target_q1:.3e} → ξ={xi_calculated:.4f}")
                 messagebox.showinfo("계산 완료",
                     f"모드 2: q1 → h'rms (ξ) 계산\n\n"
-                    f"입력 q1: {target_q1:.3e} (1/m)\n"
-                    f"계산된 ξ (h'rms): {xi_calculated:.4f}\n\n"
+                    f"[입력]\n"
+                    f"  목표 q1: {target_q1:.3e} (1/m)\n\n"
+                    f"[출력]\n"
+                    f"  계산된 ξ (h'rms): {xi_calculated:.4f}\n\n"
+                    f"[PSD 정보]\n"
+                    f"  {q_source}\n"
+                    f"  q 범위: {min_q:.2e} ~ {max_q:.2e}\n"
+                    f"  최대 가능 ξ: {max_xi:.4f}\n\n"
                     f"※ ξ² = 2π∫k³C(k)dk")
 
         except ValueError as e:
