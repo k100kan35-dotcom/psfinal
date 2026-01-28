@@ -4779,7 +4779,7 @@ class PerssonModelGUI_V2:
                 self.calculated_q1 = q1_determined
 
             ax6.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
-            ax6.set_ylabel("누적 h'rms √(Slope²)", fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+            ax6.set_ylabel("누적 h'rms (기울기)", fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
             ax6.set_title(f"(f) Parseval 정리: q1 자동 결정 (목표 h'rms={target_slope_rms})", fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
 
             # Legend with better positioning
@@ -4789,11 +4789,11 @@ class PerssonModelGUI_V2:
 
             # Add annotation box
             if q1_idx > 0:
-                textstr = (f"파서벌 정리:\nh'rms²(q) = 2π∫k³C(k)dk\n\n"
+                textstr = (f"파서벌 정리:\nh'rms = √(2π∫k³C(k)dk)\n\n"
                           f"결정된 q1 = {q1_determined:.2e} 1/m\n"
                           f"해당 h'rms = {target_slope_rms:.2f}")
             else:
-                textstr = (f"파서벌 정리:\nh'rms²(q) = 2π∫k³C(k)dk\n\n"
+                textstr = (f"파서벌 정리:\nh'rms = √(2π∫k³C(k)dk)\n\n"
                           f"최종 h'rms = {slope_rms_cumulative[-1]:.3f}\n"
                           f"(목표 {target_slope_rms} 미달)")
 
