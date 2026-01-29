@@ -1971,6 +1971,13 @@ class PerssonModelGUI_V2:
             command=self._load_persson_aT
         ).pack(fill=tk.X, pady=2)
 
+        # PSD 직접 로드 버튼
+        ttk.Button(
+            load_frame,
+            text="PSD 직접 로드 (q, C(q))",
+            command=self._load_psd_direct
+        ).pack(fill=tk.X, pady=2)
+
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
                   font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
@@ -1978,6 +1985,11 @@ class PerssonModelGUI_V2:
         # aT 정보 표시
         self.mc_aT_info_var = tk.StringVar(value="aT: 미로드")
         ttk.Label(load_frame, textvariable=self.mc_aT_info_var,
+                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+
+        # PSD 정보 표시
+        self.mc_psd_info_var = tk.StringVar(value="PSD: 미로드")
+        ttk.Label(load_frame, textvariable=self.mc_psd_info_var,
                   font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
 
         # 마스터 커브 비교 버튼
@@ -2587,6 +2599,134 @@ class PerssonModelGUI_V2:
         self.ax_mc_bT.set_title('시프트 팩터 aT (Persson)', fontweight='bold')
         self.ax_mc_bT.legend(loc='upper right', fontsize=8)
         self.ax_mc_bT.grid(True, alpha=0.3)
+
+        self.fig_mc.tight_layout()
+        self.canvas_mc.draw()
+
+    def _load_psd_direct(self):
+        """Load PSD data directly (q, C(q) format)."""
+        filename = filedialog.askopenfilename(
+            title="PSD 파일 선택 (q, C(q))",
+            filetypes=[
+                ("Text files", "*.txt"),
+                ("CSV files", "*.csv"),
+                ("All files", "*.*")
+            ]
+        )
+
+        if not filename:
+            return
+
+        try:
+            import pandas as pd
+
+            # Try different delimiters
+            df = None
+            for sep in ['\t', ',', ' ', ';']:
+                try:
+                    df = pd.read_csv(filename, sep=sep, skipinitialspace=True,
+                                     comment='#', header=None)
+                    if len(df.columns) >= 2:
+                        break
+                except:
+                    continue
+
+            if df is None or len(df.columns) < 2:
+                raise ValueError("파일에서 2개 이상의 컬럼을 찾을 수 없습니다.\n예상 형식: q (1/m), C(q) (m^4)")
+
+            # Drop any header rows (non-numeric)
+            df = df.apply(pd.to_numeric, errors='coerce').dropna()
+
+            if len(df) < 2:
+                raise ValueError("유효한 데이터 행이 부족합니다.")
+
+            q = df.iloc[:, 0].values  # q (1/m)
+            C_q = df.iloc[:, 1].values  # C(q) (m^4)
+
+            # Check if data is in log scale (all values negative or small)
+            if np.all(q < 100) and np.all(C_q < 0):
+                # Likely log10 values
+                q = 10**q
+                C_q = 10**C_q
+                format_str = "log10 형식 → 선형 변환됨"
+            elif np.all(q > 0) and np.all(C_q > 0):
+                format_str = "선형 형식"
+            else:
+                # Mixed - try to use as is
+                format_str = "혼합 형식"
+
+            # Validate
+            if np.any(q <= 0) or np.any(C_q <= 0):
+                raise ValueError("q와 C(q)는 모두 양수여야 합니다.")
+
+            # Sort by q
+            sort_idx = np.argsort(q)
+            q = q[sort_idx]
+            C_q = C_q[sort_idx]
+
+            # Create PSD model
+            from persson_model.utils.data_loader import create_psd_from_data
+            self.psd_model = create_psd_from_data(q, C_q, interpolation_kind='log-log')
+
+            # Store raw data
+            self.psd_direct_data = {
+                'q': q.copy(),
+                'C_q': C_q.copy(),
+                'filename': os.path.basename(filename)
+            }
+
+            # Mark Tab 0 as finalized (PSD ready)
+            self.tab0_finalized = True
+            self.psd_source = f"직접 로드: {os.path.basename(filename)}"
+
+            # Update q range variables
+            self.q_min_var.set(f"{q.min():.2e}")
+            self.q_max_var.set(f"{q.max():.2e}")
+
+            # Update info display
+            self.mc_psd_info_var.set(
+                f"PSD: {len(q)} pts, q={q.min():.1e}~{q.max():.1e} 1/m"
+            )
+
+            # Plot PSD on raw data plot (top-left)
+            self._plot_psd_direct()
+
+            messagebox.showinfo(
+                "성공",
+                f"PSD 직접 로드 완료\n\n"
+                f"파일: {os.path.basename(filename)}\n"
+                f"데이터 포인트: {len(q)}\n"
+                f"q 범위: {q.min():.2e} ~ {q.max():.2e} 1/m\n"
+                f"C(q) 범위: {C_q.min():.2e} ~ {C_q.max():.2e} m⁴\n"
+                f"형식: {format_str}\n\n"
+                f"PSD가 Tab 0 확정 상태로 설정되었습니다."
+            )
+
+            self.status_var.set("PSD 직접 로드 완료")
+
+        except Exception as e:
+            import traceback
+            messagebox.showerror("오류", f"PSD 로드 실패:\n{str(e)}\n\n{traceback.format_exc()}")
+
+    def _plot_psd_direct(self):
+        """Plot directly loaded PSD data."""
+        if not hasattr(self, 'psd_direct_data') or self.psd_direct_data is None:
+            return
+
+        data = self.psd_direct_data
+
+        # Use raw data plot (top-left)
+        self.ax_mc_raw.clear()
+
+        q = data['q']
+        C_q = data['C_q']
+
+        self.ax_mc_raw.loglog(q, C_q, 'k-', linewidth=2, label='C(q)')
+        self.ax_mc_raw.set_xlabel('파수 q (1/m)')
+        self.ax_mc_raw.set_ylabel('C(q) (m⁴)')
+        self.ax_mc_raw.set_title(f"PSD: {data['filename']}", fontweight='bold')
+        self.ax_mc_raw.legend(loc='upper right')
+        self.ax_mc_raw.grid(True, alpha=0.3)
 
         self.fig_mc.tight_layout()
         self.canvas_mc.draw()
@@ -7257,16 +7397,28 @@ $\begin{array}{lcc}
             self.g_calc_status_var.set("오류 발생")
 
     def _recalculate_G_with_temperature(self):
-        """Recalculate G(q,v) after temperature shift."""
+        """Recalculate G(q,v) after temperature shift.
+
+        Uses:
+        - Tab 0 (PSD): self.psd_model - C(q) 데이터
+        - Tab 1 (Master Curve): self.material - E*(ω) 데이터
+        """
         try:
-            # Check required data
+            # Check required data from Tab 0 (PSD)
             if self.psd_model is None:
-                self.g_calc_status_var.set("PSD 데이터 없음")
+                self.g_calc_status_var.set("PSD 데이터 없음 (Tab 0 확정 필요)")
                 return
 
+            # Check required data from Tab 1 (Master Curve)
             if self.material is None:
-                self.g_calc_status_var.set("마스터 커브 없음")
+                self.g_calc_status_var.set("마스터 커브 없음 (Tab 1 확정 필요)")
                 return
+
+            # Display data sources
+            psd_src = getattr(self, 'psd_source', 'Unknown')
+            mat_src = getattr(self, 'material_source', 'Unknown')
+            print(f"\n[G 계산] PSD: {psd_src}")
+            print(f"[G 계산] Master Curve: {mat_src}")
 
             # Get parameters from Tab 3 settings
             sigma_0 = float(self.sigma_0_var.get()) * 1e6  # MPa to Pa
@@ -7274,7 +7426,7 @@ $\begin{array}{lcc}
             n_q = int(self.n_q_var.get())
             n_phi = int(self.n_phi_var.get())
 
-            # Get q range
+            # Get q range from Tab 0/1 settings
             if self.auto_q_range_var.get():
                 q_min = float(self.q_min_var.get())
                 q_max = float(self.q_max_var.get())
@@ -7369,10 +7521,17 @@ $\begin{array}{lcc}
         T = data['T']
         aT = data['aT']
 
+        # Get data sources
+        psd_src = getattr(self, 'psd_source', 'Unknown')
+        mat_src = getattr(self, 'material_source', 'Unknown')
+
         # Update status text if Tab 3 result text exists
         if hasattr(self, 'g_result_text'):
             self.g_result_text.delete(1.0, tk.END)
             self.g_result_text.insert(tk.END, f"=== G(q,v) 온도 시프트 결과 ===\n\n")
+            self.g_result_text.insert(tk.END, f"[데이터 소스]\n")
+            self.g_result_text.insert(tk.END, f"  PSD (Tab 0): {psd_src}\n")
+            self.g_result_text.insert(tk.END, f"  Master Curve (Tab 1): {mat_src}\n\n")
             self.g_result_text.insert(tk.END, f"계산 온도: T = {T}°C\n")
             self.g_result_text.insert(tk.END, f"시프트 팩터: aT = {aT:.4e}\n\n")
 
