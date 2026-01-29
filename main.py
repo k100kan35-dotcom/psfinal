@@ -133,6 +133,10 @@ class PerssonModelGUI_V2:
         self.raw_psd_data = None  # Store raw PSD data for comparison plotting
         self.target_xi = None  # Target h'rms from Tab 2 PSD settings
 
+        # Data source tracking
+        self.material_source = None  # 마스터 커브 출처: "기본 파일", "예제 SBR", "Tab 1 확정", etc.
+        self.psd_source = None  # PSD 출처: "Tab 0 확정", etc.
+
         # Strain/mu_visc related variables
         self.strain_data = None  # Strain sweep raw data by temperature
         self.fg_by_T = None  # f,g curves by temperature
@@ -217,6 +221,7 @@ class PerssonModelGUI_V2:
                     material_name="Measured Rubber (smoothed)",
                     reference_temp=20.0
                 )
+                self.material_source = f"기본 파일 ({os.path.basename(dma_file)})"
 
                 # PSD is NOT loaded here - must come from Tab 0
                 # User must use Tab 0 (PSD 생성) to set PSD data
@@ -227,6 +232,7 @@ class PerssonModelGUI_V2:
             else:
                 # Use example material
                 self.material = ViscoelasticMaterial.create_example_sbr()
+                self.material_source = "내장 예제 (SBR)"
                 self._update_material_display()
                 self.status_var.set("예제 재료 (SBR) 로드됨")
 
@@ -236,6 +242,7 @@ class PerssonModelGUI_V2:
             traceback.print_exc()
             # Fallback to example material
             self.material = ViscoelasticMaterial.create_example_sbr()
+            self.material_source = "내장 예제 (SBR)"
             self.status_var.set("예제 재료 (SBR) 로드됨")
 
     def _init_reference_mu_data(self):
@@ -1796,6 +1803,7 @@ class PerssonModelGUI_V2:
 
             # Mark Tab 0 as finalized
             self.tab0_finalized = True
+            self.psd_source = f"Tab 0 PSD 생성 ({psd_type_str})"
 
             # Check if Tab 2 should be disabled
             self._update_tab2_state()
@@ -2781,6 +2789,7 @@ class PerssonModelGUI_V2:
 
             # Mark Tab 1 as finalized
             self.tab1_finalized = True
+            self.material_source = f"Tab 1 마스터 커브 (Tref={T_ref}°C)"
 
             # Update Tab 2 state
             self._update_tab2_state()
@@ -3857,6 +3866,18 @@ class PerssonModelGUI_V2:
             print("\n" + "="*80)
             print("G(q) 계산 단위 진단 (Unit Diagnostics)")
             print("="*80)
+
+            # Data source information
+            psd_src = getattr(self, 'psd_source', 'Unknown')
+            mat_src = getattr(self, 'material_source', 'Unknown')
+            tab1_ready = getattr(self, 'tab1_finalized', False)
+            print("[데이터 출처]")
+            print(f"  PSD: {psd_src}")
+            print(f"  마스터 커브: {mat_src}")
+            if not tab1_ready:
+                print("  ⚠ 주의: Tab 1에서 확정하지 않은 기본/예제 마스터 커브 사용 중")
+            print()
+
             print(f"σ₀ (nominal pressure) = {sigma_0:.2e} Pa = {sigma_0/1e6:.4f} MPa")
             print(f"Poisson ratio (ν) = {poisson}")
             print(f"Prefactor = 1/((1-ν²)σ₀) = {self.g_calculator.prefactor:.2e} (1/Pa)")
@@ -6496,14 +6517,25 @@ $\begin{array}{lcc}
                 "Tab 0 (PSD 생성)에서 PSD를 확정하세요.")
             return
 
-        if not tab1_ready or self.material is None:
+        # 마스터 커브: Tab 1 확정 또는 기본/예제 재료 허용
+        if self.material is None:
             messagebox.showwarning("경고",
-                "마스터 커브 데이터가 설정되지 않았습니다!\n\n"
-                "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하세요.")
+                "마스터 커브 데이터가 없습니다!\n\n"
+                "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하거나\n"
+                "프로그램을 재시작하여 기본 재료를 로드하세요.")
             return
 
+        # 데이터 출처 정보 저장 (결과 표시에 사용)
+        psd_src = getattr(self, 'psd_source', 'Unknown')
+        mat_src = getattr(self, 'material_source', 'Unknown')
+        self._current_calc_sources = {
+            'psd': psd_src,
+            'material': mat_src,
+            'tab1_finalized': tab1_ready
+        }
+
         if not self.results or '2d_results' not in self.results:
-            messagebox.showwarning("경고", "먼저 G(q,v) 계산을 실행하세요 (탭 2).")
+            messagebox.showwarning("경고", "먼저 G(q,v) 계산을 실행하세요 (탭 3).")
             return
 
         try:
@@ -6757,6 +6789,15 @@ $\begin{array}{lcc}
             self.mu_result_text.insert(tk.END, "=" * 40 + "\n")
             self.mu_result_text.insert(tk.END, "μ_visc 계산 결과 (Persson 이론)\n")
             self.mu_result_text.insert(tk.END, "=" * 40 + "\n\n")
+
+            # Display data sources
+            sources = getattr(self, '_current_calc_sources', {})
+            self.mu_result_text.insert(tk.END, "[데이터 출처]\n")
+            self.mu_result_text.insert(tk.END, f"  PSD: {sources.get('psd', 'Unknown')}\n")
+            self.mu_result_text.insert(tk.END, f"  마스터 커브: {sources.get('material', 'Unknown')}\n")
+            if not sources.get('tab1_finalized', True):
+                self.mu_result_text.insert(tk.END, "  ⚠ 주의: 기본/예제 마스터 커브 사용 중\n")
+            self.mu_result_text.insert(tk.END, "\n")
 
             # Parameters used
             self.mu_result_text.insert(tk.END, "[계산 파라미터]\n")
