@@ -9079,10 +9079,25 @@ $\begin{array}{lcc}
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # === Row 2 ===
+        # G Integrand 공통 vmin/vmax 계산 (두 플롯 비교 가능하도록 동일 범위)
+        g_vmin, g_vmax = None, None
+        if G_int_lin is not None:
+            log_G_lin = np.log10(np.maximum(G_int_lin, 1e-30))
+            g_vmax = np.max(log_G_lin)
+            if G_int_nl is not None:
+                log_G_nl = np.log10(np.maximum(G_int_nl, 1e-30))
+                g_vmax = max(g_vmax, np.max(log_G_nl))
+            # vmin: 유효 범위만 표시 (상위 95% 구간, 최대 15 orders 이내)
+            all_log_G = log_G_lin.ravel()
+            if G_int_nl is not None:
+                all_log_G = np.concatenate([all_log_G, log_G_nl.ravel()])
+            g_vmin = max(np.percentile(all_log_G, 5), g_vmax - 15)
+
         # Plot 5: G Integrand (linear)
         if G_int_lin is not None:
-            G_lin_safe = np.maximum(G_int_lin, 1e-30)
-            im5 = self.ax_G_integrand_linear.pcolormesh(V, Q, np.log10(G_lin_safe), cmap='inferno_r', shading='auto')
+            log_G_lin_data = np.log10(np.maximum(G_int_lin, 1e-30))
+            im5 = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_data, cmap='inferno_r', shading='auto',
+                                                         vmin=g_vmin, vmax=g_vmax)
             self.ax_G_integrand_linear.set_title('G Integrand (linear)', fontweight='bold', fontsize=9)
             self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=8)
             self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
@@ -9091,8 +9106,9 @@ $\begin{array}{lcc}
 
         # Plot 6: G Integrand (nonlinear with f applied)
         if G_int_nl is not None:
-            G_nl_safe = np.maximum(G_int_nl, 1e-30)
-            im6 = self.ax_G_integrand_nonlinear.pcolormesh(V, Q, np.log10(G_nl_safe), cmap='inferno_r', shading='auto')
+            log_G_nl_data = np.log10(np.maximum(G_int_nl, 1e-30))
+            im6 = self.ax_G_integrand_nonlinear.pcolormesh(V, Q, log_G_nl_data, cmap='inferno_r', shading='auto',
+                                                            vmin=g_vmin, vmax=g_vmax)
             self.ax_G_integrand_nonlinear.set_title('G Integrand (f applied)', fontweight='bold', fontsize=9)
             self.ax_G_integrand_nonlinear.set_xlabel('log10(v)', fontsize=8)
             self.ax_G_integrand_nonlinear.set_ylabel('log10(q)', fontsize=8)
