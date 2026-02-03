@@ -28,8 +28,8 @@ EXCLUDES = [
     'debugpy', 'black', 'flake8', 'mypy', 'pylint',
     'pytest', 'coverage',
     'sphinx',
-    # 이미지/미디어 (프로젝트 미사용)
-    'PIL', 'pillow', 'cv2', 'opencv',
+    # 이미지/미디어 (프로젝트 미사용) - PIL은 matplotlib가 사용하므로 제외 금지
+    'cv2', 'opencv',
     'imageio', 'skimage',
     # 기타 대형 패키지
     'sympy',
