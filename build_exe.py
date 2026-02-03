@@ -29,6 +29,9 @@ def build():
         '--noconfirm',
         '--noconsole',
         '--log-level', 'WARN',
+        # matplotlib 폰트/스타일 데이터 번들 (한글 깨짐 방지)
+        '--collect-data', 'matplotlib',
+        '--hidden-import', 'matplotlib.backends.backend_tkagg',
     ]
 
     for exc in EXCLUDES:
