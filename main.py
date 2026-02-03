@@ -417,10 +417,15 @@ class PerssonModelGUI_V2:
         left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Enable mousewheel scrolling
-        def _on_mousewheel(event):
+        # Enable mousewheel scrolling (local only - not bind_all)
+        def _on_mousewheel_tab0(event):
             left_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        left_canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        def _bind_mousewheel_tab0(event):
+            left_canvas.bind_all("<MouseWheel>", _on_mousewheel_tab0)
+        def _unbind_mousewheel_tab0(event):
+            left_canvas.unbind_all("<MouseWheel>")
+        left_canvas.bind("<Enter>", _bind_mousewheel_tab0)
+        left_canvas.bind("<Leave>", _unbind_mousewheel_tab0)
 
         # ============== Left Panel: Controls ==============
 
@@ -461,6 +466,23 @@ class PerssonModelGUI_V2:
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
                   font=('Arial', 8), foreground='gray').pack(fill=tk.X)
+
+        # PSD 확정 버튼 (직접 로드 바로 아래)
+        ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
+        apply_frame_top = ttk.Frame(load_frame)
+        apply_frame_top.pack(fill=tk.X, pady=2)
+        self.apply_psd_type_var = tk.StringVar(value="full")
+        ttk.Label(apply_frame_top, text="적용할 PSD:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Radiobutton(apply_frame_top, text="Full", variable=self.apply_psd_type_var,
+                        value="full").pack(side=tk.LEFT)
+        ttk.Radiobutton(apply_frame_top, text="Top", variable=self.apply_psd_type_var,
+                        value="top").pack(side=tk.LEFT)
+        ttk.Radiobutton(apply_frame_top, text="Param", variable=self.apply_psd_type_var,
+                        value="param").pack(side=tk.LEFT)
+        ttk.Radiobutton(apply_frame_top, text="직접로드", variable=self.apply_psd_type_var,
+                        value="direct").pack(side=tk.LEFT)
+        ttk.Button(load_frame, text="▶ PSD 확정 → 계산에 사용",
+                   command=self._apply_profile_psd_to_tab3).pack(fill=tk.X, pady=2)
 
         # Column settings
         col_frame = ttk.Frame(load_frame)
@@ -692,23 +714,7 @@ class PerssonModelGUI_V2:
         ttk.Button(export_btn_row, text="그래프 저장",
                    command=self._save_profile_psd_plot).pack(side=tk.LEFT, padx=2)
 
-        # Apply to calculation
-        apply_frame = ttk.Frame(export_frame)
-        apply_frame.pack(fill=tk.X, pady=5)
-
-        self.apply_psd_type_var = tk.StringVar(value="full")
-        ttk.Label(apply_frame, text="적용할 PSD:", font=('Arial', 9)).pack(side=tk.LEFT)
-        ttk.Radiobutton(apply_frame, text="Full", variable=self.apply_psd_type_var,
-                        value="full").pack(side=tk.LEFT)
-        ttk.Radiobutton(apply_frame, text="Top", variable=self.apply_psd_type_var,
-                        value="top").pack(side=tk.LEFT)
-        ttk.Radiobutton(apply_frame, text="Param", variable=self.apply_psd_type_var,
-                        value="param").pack(side=tk.LEFT)
-        ttk.Radiobutton(apply_frame, text="직접로드", variable=self.apply_psd_type_var,
-                        value="direct").pack(side=tk.LEFT)
-
-        ttk.Button(export_frame, text="▶ PSD 확정 → 계산에 사용",
-                   command=self._apply_profile_psd_to_tab3).pack(fill=tk.X, pady=2)
+        # (PSD 확정 버튼은 '데이터 로드' 섹션으로 이동됨)
 
         # ============== Right Panel: Plots ==============
         right_frame = ttk.Frame(main_container)
@@ -1741,6 +1747,13 @@ class PerssonModelGUI_V2:
             command=self._load_persson_aT
         ).pack(fill=tk.X, pady=2)
 
+        # Persson 정품 마스터 커브 확정 버튼 (aT 로드 바로 아래)
+        ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=3)
+        ttk.Button(
+            load_frame, text="★ Persson 정품 마스터 커브 확정 → Tab 3",
+            command=self._use_persson_master_curve_for_calc
+        ).pack(fill=tk.X, pady=2)
+
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
                   font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
@@ -1933,13 +1946,7 @@ class PerssonModelGUI_V2:
         )
         finalize_btn.pack(fill=tk.X, pady=2)
 
-        # Persson 정품 마스터 커브 확정 버튼
-        ttk.Separator(export_frame, orient='horizontal').pack(fill=tk.X, pady=3)
-        persson_finalize_btn = ttk.Button(
-            export_frame, text="★ Persson 정품 마스터 커브 확정 → Tab 3",
-            command=self._use_persson_master_curve_for_calc
-        )
-        persson_finalize_btn.pack(fill=tk.X, pady=2)
+        # (Persson 확정 버튼은 '데이터 로드' 섹션으로 이동됨)
 
         # Force update of scroll region after all widgets are added
         left_frame.update_idletasks()
@@ -3425,6 +3432,26 @@ class PerssonModelGUI_V2:
         right_panel = ttk.Frame(main_container)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
+        # ===== G(q,v) 계산 버튼 (공칭압력 위) =====
+        calc_section = ttk.Frame(left_panel)
+        calc_section.pack(fill=tk.X, pady=(0, 5))
+
+        self.calc_button = ttk.Button(
+            calc_section,
+            text="▶ G(q,v) 계산 실행",
+            command=self._run_calculation
+        )
+        self.calc_button.pack(fill=tk.X, pady=2)
+
+        # Progress bar
+        self.progress_var = tk.IntVar()
+        self.progress_bar = ttk.Progressbar(
+            calc_section,
+            variable=self.progress_var,
+            maximum=100
+        )
+        self.progress_bar.pack(fill=tk.X, pady=2)
+
         # Input panel in left column
         input_frame = ttk.LabelFrame(left_panel, text="계산 매개변수", padding=10)
         input_frame.pack(fill=tk.X, pady=(0, 5))
@@ -3591,27 +3618,6 @@ class PerssonModelGUI_V2:
             state="readonly",
             width=12
         ).grid(row=row, column=1, pady=5)
-
-        # ===== G(q,v) 계산 버튼 (input_frame 내부) =====
-        row += 1
-        calc_section = ttk.Frame(input_frame)
-        calc_section.grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=10)
-
-        self.calc_button = ttk.Button(
-            calc_section,
-            text="▶ G(q,v) 계산 실행",
-            command=self._run_calculation
-        )
-        self.calc_button.pack(fill=tk.X, pady=2)
-
-        # Progress bar
-        self.progress_var = tk.IntVar()
-        self.progress_bar = ttk.Progressbar(
-            calc_section,
-            variable=self.progress_var,
-            maximum=100
-        )
-        self.progress_bar.pack(fill=tk.X, pady=2)
 
         # Calculation visualization area in right panel
         viz_frame = ttk.LabelFrame(right_panel, text="계산 과정 시각화", padding=10)
@@ -4768,6 +4774,12 @@ class PerssonModelGUI_V2:
             self.status_var.set("Calculation complete!")
             self.calc_button.config(state='normal')
             messagebox.showinfo("Success", f"G(q,v) calculated for {n_v} velocities and {n_q} wavenumbers")
+
+            # G(q,v) 계산 완료 후 Tab 4의 h'rms slope 자동 계산
+            try:
+                self._calculate_rms_slope()
+            except Exception as e_rms:
+                print(f"Auto h'rms calculation skipped: {e_rms}")
 
         except Exception as e:
             self.calc_button.config(state='normal')
@@ -6450,10 +6462,10 @@ $\begin{array}{lcc}
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.6")
+        self.gamma_var = tk.StringVar(value="0.75")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.n_phi_var = tk.StringVar(value="144")
+        self.n_phi_var = tk.StringVar(value="36")
         ttk.Entry(integ_row, textvariable=self.n_phi_var, width=5).pack(side=tk.LEFT, padx=2)
 
         # Smoothing in single row
