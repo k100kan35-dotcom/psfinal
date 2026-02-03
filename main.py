@@ -3440,16 +3440,16 @@ class PerssonModelGUI_V2:
         # Velocity range
         row += 1
         ttk.Label(input_frame, text="속도 범위:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        ttk.Label(input_frame, text="로그 스케일: 0.0001~10 m/s").grid(row=row, column=1, sticky=tk.W, pady=5)
+        ttk.Label(input_frame, text="로그 스케일: 1e-7~10000 m/s").grid(row=row, column=1, sticky=tk.W, pady=5)
 
         row += 1
         ttk.Label(input_frame, text="  최소 속도 v_min (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.v_min_var = tk.StringVar(value="0.0001")
+        self.v_min_var = tk.StringVar(value="0.0000001")
         ttk.Entry(input_frame, textvariable=self.v_min_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
         ttk.Label(input_frame, text="  최대 속도 v_max (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.v_max_var = tk.StringVar(value="10.0")
+        self.v_max_var = tk.StringVar(value="10000")
         ttk.Entry(input_frame, textvariable=self.v_max_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
@@ -3466,7 +3466,7 @@ class PerssonModelGUI_V2:
         # Poisson ratio
         row += 1
         ttk.Label(input_frame, text="푸아송 비:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.poisson_var = tk.StringVar(value="0.5")
+        self.poisson_var = tk.StringVar(value="0.49")
         ttk.Entry(input_frame, textvariable=self.poisson_var, width=15).grid(row=row, column=1, pady=5)
 
         # Wavenumber range
@@ -3477,13 +3477,19 @@ class PerssonModelGUI_V2:
 
         row += 1
         ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.q_max_var = tk.StringVar(value="6.0e+4")
+        self.q_max_var = tk.StringVar(value="1.0e+6")
         ttk.Entry(input_frame, textvariable=self.q_max_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
         ttk.Label(input_frame, text="파수 포인트 수:").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.n_q_var = tk.StringVar(value="100")
         ttk.Entry(input_frame, textvariable=self.n_q_var, width=15).grid(row=row, column=1, pady=5)
+
+        # Phi integration points for G(q) calculation
+        row += 1
+        ttk.Label(input_frame, text="G(q) φ 적분 포인트:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.n_phi_gq_var = tk.StringVar(value="36")
+        ttk.Entry(input_frame, textvariable=self.n_phi_gq_var, width=15).grid(row=row, column=1, pady=5)
 
         # ===== h'rms (ξ) / q1 모드 선택 섹션 =====
         # h'rms = ξ = RMS slope (경사), NOT h_rms (height)
@@ -3852,9 +3858,9 @@ class PerssonModelGUI_V2:
     def _send_hrms_q1_to_tab4(self):
         """계산된 h'rms(ξ)와 q1을 Tab 4로 전달."""
         try:
-            # 계산된 q1이 있으면 Tab 4의 q_max에 전달
-            if hasattr(self, 'calculated_q1') and self.calculated_q1 is not None:
-                self.rms_q_max_var.set(f"{self.calculated_q1:.3e}")
+            # 계산된 q1이 있으면 표시만 (q_max는 사용자가 직접 설정하므로 덮어쓰지 않음)
+            # if hasattr(self, 'calculated_q1') and self.calculated_q1 is not None:
+            #     self.rms_q_max_var.set(f"{self.calculated_q1:.3e}")
 
             # target_xi를 Tab 4에 전달
             if self.target_xi is not None:
@@ -3989,8 +3995,8 @@ class PerssonModelGUI_V2:
 
                 self.psd_model = create_psd_from_data(q, C_q, interpolation_kind='log-log')
 
-                self.q_min_var.set(f"{q[0]:.2e}")
-                self.q_max_var.set(f"{q[-1]:.2e}")
+                # q_min/q_max는 사용자가 의도적으로 설정할 수 있으므로 자동 덮어쓰기 하지 않음
+                # (초기값이 기본값인 경우에만 업데이트)
                 self.psd_type_var.set("measured")
 
                 # Show info about loaded data
@@ -4323,9 +4329,9 @@ class PerssonModelGUI_V2:
             self.psd_model.q0 = q0
             self.psd_model.C_q0 = C_q0
 
-            # Store q range for calculations
-            self.q_min_var.set(str(q0))
-            self.q_max_var.set(str(q1))
+            # q_min/q_max는 사용자가 의도적으로 설정할 수 있으므로 자동 덮어쓰기 하지 않음
+            # self.q_min_var.set(str(q0))
+            # self.q_max_var.set(str(q1))
 
             # Calculate actual RMS slope from the PSD for verification
             # ξ² = 2π ∫ q³ C(q) dq
@@ -4429,14 +4435,15 @@ class PerssonModelGUI_V2:
             v_array = np.logspace(np.log10(v_min), np.log10(v_max), n_v)
             q_array = np.logspace(np.log10(q_min), np.log10(q_max), n_q)
 
-            # Create G calculator
+            # Create G calculator (φ 적분 포인트는 계산 설정 탭에서 가져옴)
+            n_phi_gq = int(self.n_phi_gq_var.get()) if hasattr(self, 'n_phi_gq_var') else 36
             self.g_calculator = GCalculator(
                 psd_func=self.psd_model,
                 modulus_func=lambda w: self.material.get_modulus(w, temperature=temperature),
                 sigma_0=sigma_0,
                 velocity=v_array[0],  # Initial velocity
                 poisson_ratio=poisson,
-                n_angle_points=36,
+                n_angle_points=n_phi_gq,
                 integration_method='trapz'
             )
 
@@ -5166,8 +5173,8 @@ class PerssonModelGUI_V2:
                 # Update calculated q1 display in Tab 3
                 self.calculated_q1_var.set(f"{q1_determined:.3e}")
 
-                # Pass q1 and hrms_slope to Tab 4 (RMS Slope tab)
-                self.rms_q_max_var.set(f"{q1_determined:.3e}")
+                # q_max는 사용자가 직접 설정하므로 자동 덮어쓰기 하지 않음
+                # self.rms_q_max_var.set(f"{q1_determined:.3e}")
 
                 # Store calculated q1 for other uses
                 self.calculated_q1 = q1_determined
@@ -7921,12 +7928,12 @@ $\begin{array}{lcc}
             self.ax_mu_cumulative.legend(loc='best', fontsize=7)
             self.ax_mu_cumulative.grid(True, alpha=0.3)
 
-            # Set y-axis to show data with padding
+            # Set y-axis to show data with padding (auto-scale based on actual data)
             y_max_calc = np.max(P_qmax_array) * 1.2
             # Include reference data in y-axis range
             if self.reference_area_data is not None:
                 y_max_calc = max(y_max_calc, np.max(self.reference_area_data['area']) * 1.2)
-            y_max = max(y_max_calc, 0.05)
+            y_max = y_max_calc if y_max_calc > 0 else 0.05
             if not np.isfinite(y_max):
                 y_max = 1.0
             self.ax_mu_cumulative.set_ylim(0, y_max)
