@@ -7164,9 +7164,11 @@ $\begin{array}{lcc}
             E_loss_ref = mc_data['E_loss'].copy()
 
             # Apply temperature shift:
-            # Horizontal (frequency) shift: ω(T) = ω(Tref) × aT(T)
-            # At higher T, aT < 1, so effective frequency decreases
-            omega_shifted = omega_ref * aT
+            # Time-Temperature Superposition: E*(ω, T) = E*(ω·aT, T_ref)
+            # To create shifted master curve: ω_shifted = ω_ref / aT
+            # At higher T, aT < 1, so ω_shifted > ω_ref (frequency axis shifts UP)
+            # → same ω maps to lower modulus on shifted curve → softer material ✓
+            omega_shifted = omega_ref / aT
 
             # NOTE: bT (vertical shift) is NOT applied to modulus for friction calculation
             # bT is used only for master curve construction, not for subsequent friction calc
