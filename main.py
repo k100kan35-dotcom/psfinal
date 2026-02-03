@@ -4939,22 +4939,21 @@ class PerssonModelGUI_V2:
         print(f"sigma_max (for x-axis) = {sigma_max:.2f} MPa")
         print(f"X-axis range: [{sigma_min:.2f}, {sigma_max:.2f}] MPa (±6σ from σ0)")
 
-        # Select 3 wavenumbers to plot (first, middle, last)
-        n_q_selected = 3
+        # Select 10 wavenumbers to plot (uniformly spaced in log)
+        n_q_selected = min(10, len(q_stress))
         q_indices = np.linspace(0, len(q_stress)-1, n_q_selected, dtype=int)
 
-        # Create color map for wavenumbers
-        cmap_q = plt.get_cmap('plasma')
-        colors_q = [cmap_q(i / (n_q_selected-1)) for i in range(n_q_selected)]
+        # Create color map for wavenumbers (viridis - 같은 탭 다른 그래프와 색조 통일)
+        cmap_q = plt.get_cmap('viridis')
+        colors_q = [cmap_q(i / max(n_q_selected-1, 1)) for i in range(n_q_selected)]
 
         print(f"\nPlotting P(σ) for {n_q_selected} wavenumbers:")
         print("="*80)
 
         # Track maximum values for axis scaling
         max_P_sigma = 0
-        max_term = 0
 
-        # Plot stress distributions for selected wavenumbers
+        # Plot stress distributions for selected wavenumbers (순수 P(σ)만)
         for i, q_idx in enumerate(q_indices):
             color = colors_q[i]
             q_val = q_stress[q_idx]
@@ -4965,53 +4964,30 @@ class PerssonModelGUI_V2:
                 # Normalize σ by sigma_0 for calculation
                 sigma_norm = sigma_array / sigma_0_MPa
 
-                # Calculate individual terms to show mirror image
+                # Calculate P(σ) = term1 - term2
                 normalization = 1 / (sigma_0_MPa * np.sqrt(4 * np.pi * G_norm_q))
-                term1 = normalization * np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q))  # Main peak at sigma_0
-                term2 = normalization * np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q))  # Mirror at -sigma_0
+                term1 = normalization * np.exp(-(sigma_norm - 1)**2 / (4 * G_norm_q))
+                term2 = normalization * np.exp(-(sigma_norm + 1)**2 / (4 * G_norm_q))
 
-                # Final P(σ) is difference - clip to ensure non-negative (probability cannot be negative)
+                # Final P(σ) - clip to ensure non-negative
                 P_sigma = np.maximum(0, term1 - term2)
 
                 # Track maximum values for axis scaling
                 max_P_sigma = max(max_P_sigma, np.max(P_sigma))
-                max_term = max(max_term, np.max(term1), np.max(term2))
 
                 # Calculate P(σ > 0): probability of positive stress
                 positive_indices = sigma_array > 0
                 P_positive = np.trapezoid(P_sigma[positive_indices], sigma_array[positive_indices])
-                P_positive_percent = P_positive * 100  # Convert to percentage
+                P_positive_percent = P_positive * 100
 
-                # Total integral for verification
-                integral_total = np.trapezoid(P_sigma, sigma_array)
-
-                # Plot the final distribution (solid line) with P(σ>0) in label
-                label_name = ['최소 q', '중간 q', '최대 q'][i]
-                ax2.plot(sigma_array, P_sigma, color=color, linewidth=2.5,
-                        label=f'{label_name}: P(σ>0)={P_positive_percent:.1f}%', alpha=0.9)
-
-                # Plot individual terms (term1, term2) for all 3 curves
-                # Use shared labels for clarity
-                if i == 0:
-                    ax2.plot(sigma_array, term1, color=color, linewidth=1.3,
-                            linestyle='--', alpha=0.6, label=f'term1: exp[-(σ-sigma_0)²/4G]')
-                    ax2.plot(sigma_array, term2, color=color, linewidth=1.3,
-                            linestyle=':', alpha=0.6, label=f'term2: exp[-(σ+sigma_0)²/4G] 거울상')
-                else:
-                    ax2.plot(sigma_array, term1, color=color, linewidth=1.3,
-                            linestyle='--', alpha=0.6)
-                    ax2.plot(sigma_array, term2, color=color, linewidth=1.3,
-                            linestyle=':', alpha=0.6)
+                # Plot only pure P(σ) solid line
+                ax2.plot(sigma_array, P_sigma, color=color, linewidth=1.8,
+                        label=f'q={q_val:.1e}', alpha=0.9)
 
                 # Print debug information
                 print(f"\n[q = {q_val:.2e} 1/m]")
                 print(f"  G = {G_norm_q:.4e} (무차원)")
-                print(f"  √G = {np.sqrt(G_norm_q):.4f}")
-                print(f"  분포 폭 (√G × sigma_0) = {np.sqrt(G_norm_q) * sigma_0_MPa:.4f} MPa")
-                print(f"  피크 위치: σ = {sigma_array[np.argmax(P_sigma)]:.4f} MPa")
-                print(f"  ∫P(σ)dσ (전체) = {integral_total:.4f}")
-                print(f"  P(σ > 0) = {P_positive_percent:.2f}% ← 양의 응력 확률")
-                print(f"  P(σ ≤ 0) = {(1 - P_positive)*100:.2f}%")
+                print(f"  P(σ > 0) = {P_positive_percent:.2f}%")
 
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
@@ -5022,11 +4998,8 @@ class PerssonModelGUI_V2:
         ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.2f} m/s 고정)', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
         ax2.legend(fontsize=LEGEND_FONT, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        # Set axis limits to show FULL Gaussian distribution shapes
-        # X-axis: show full calculated range to capture complete Gaussian tails
         ax2.set_xlim(sigma_min, sigma_max)
-        # Y-axis: use maximum value from all curves with some headroom
-        ax2.set_ylim(0, max(max_P_sigma, max_term) * 1.15)
+        ax2.set_ylim(0, max_P_sigma * 1.15 if max_P_sigma > 0 else 1.0)
 
         print("="*80)
 
@@ -8830,8 +8803,11 @@ $\begin{array}{lcc}
             v_orig = results_2d['v']
             G_matrix_orig = results_2d['G_matrix']  # Tab 3에서 계산된 G(q,v)
 
-            q_min = q_orig.min()
-            q_max = q_orig.max()
+            # Tab 2 설정의 유효 파수 범위 사용 (results 범위와 교집합)
+            q_min_setting = float(self.q_min_var.get())
+            q_max_setting = float(self.q_max_var.get())
+            q_min = max(q_min_setting, q_orig.min())
+            q_max = min(q_max_setting, q_orig.max())
             v_min = v_orig.min()
             v_max = v_orig.max()
 
@@ -9037,10 +9013,10 @@ $\begin{array}{lcc}
         for ax in all_axes:
             ax.clear()
 
-        # Color maps
-        strain_cmap = 'YlOrRd'
-        modulus_cmap = 'viridis'
-        contact_cmap = 'plasma'
+        # Color maps (강한값=진한색, 약한값=밝은색으로 통일)
+        strain_cmap = 'YlOrRd'          # Yellow(약)→Red(강) - 이미 올바름
+        modulus_cmap = 'viridis_r'      # Yellow(약)→Dark(강)
+        contact_cmap = 'plasma_r'       # Yellow(약)→Dark(강)
 
         # Fix NaN in strain for statistics
         strain_valid = np.nan_to_num(strain, nan=0.0)
@@ -9106,7 +9082,7 @@ $\begin{array}{lcc}
         # Plot 5: G Integrand (linear)
         if G_int_lin is not None:
             G_lin_safe = np.maximum(G_int_lin, 1e-30)
-            im5 = self.ax_G_integrand_linear.pcolormesh(V, Q, np.log10(G_lin_safe), cmap='inferno', shading='auto')
+            im5 = self.ax_G_integrand_linear.pcolormesh(V, Q, np.log10(G_lin_safe), cmap='inferno_r', shading='auto')
             self.ax_G_integrand_linear.set_title('G Integrand (linear)', fontweight='bold', fontsize=9)
             self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=8)
             self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
@@ -9116,7 +9092,7 @@ $\begin{array}{lcc}
         # Plot 6: G Integrand (nonlinear with f applied)
         if G_int_nl is not None:
             G_nl_safe = np.maximum(G_int_nl, 1e-30)
-            im6 = self.ax_G_integrand_nonlinear.pcolormesh(V, Q, np.log10(G_nl_safe), cmap='inferno', shading='auto')
+            im6 = self.ax_G_integrand_nonlinear.pcolormesh(V, Q, np.log10(G_nl_safe), cmap='inferno_r', shading='auto')
             self.ax_G_integrand_nonlinear.set_title('G Integrand (f applied)', fontweight='bold', fontsize=9)
             self.ax_G_integrand_nonlinear.set_xlabel('log10(v)', fontsize=8)
             self.ax_G_integrand_nonlinear.set_ylabel('log10(q)', fontsize=8)
