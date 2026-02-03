@@ -14,6 +14,17 @@ Work Instruction v3.0 Implementation:
 - Default measured data loading
 """
 
+import sys
+import os
+
+# PyInstaller frozen exe: matplotlib 폰트 캐시 디렉토리를 쓰기 가능한 임시 경로로 설정
+# (반드시 import matplotlib 전에 실행해야 함)
+if getattr(sys, 'frozen', False):
+    import tempfile
+    _mpl_cfg = os.path.join(tempfile.gettempdir(), 'mpl_persson')
+    os.makedirs(_mpl_cfg, exist_ok=True)
+    os.environ['MPLCONFIGDIR'] = _mpl_cfg
+
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import numpy as np
@@ -39,8 +50,6 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolb
 from matplotlib.figure import Figure
 from scipy.signal import savgol_filter
 from typing import Optional
-import sys
-import os
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -84,9 +93,16 @@ from persson_model.core.psd_from_profile import ProfilePSDAnalyzer, self_affine_
 # IMPORTANT: Set unicode_minus FIRST to avoid minus sign warnings
 matplotlib.rcParams['axes.unicode_minus'] = False
 
-# Configure fonts
+# Configure fonts (PyInstaller 호환)
 try:
     import matplotlib.font_manager as fm
+
+    # Frozen exe: 폰트 캐시 강제 재생성 (경로 불일치 방지)
+    if getattr(sys, 'frozen', False):
+        try:
+            fm._load_fontmanager(try_read_cache=False)
+        except Exception:
+            pass
 
     # Try to find Korean fonts on the system
     korean_fonts = []
@@ -102,10 +118,10 @@ try:
         matplotlib.rcParams['font.family'] = 'sans-serif'
         matplotlib.rcParams['font.sans-serif'] = korean_fonts + ['DejaVu Sans', 'Arial', 'Helvetica']
     else:
-        # Fallback to common fonts
+        # Fallback: Windows에서는 Malgun Gothic 우선
         matplotlib.rcParams['font.family'] = 'sans-serif'
         matplotlib.rcParams['font.sans-serif'] = ['Malgun Gothic', 'DejaVu Sans', 'Arial']
-except:
+except Exception:
     matplotlib.rcParams['font.family'] = 'sans-serif'
     matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
 
