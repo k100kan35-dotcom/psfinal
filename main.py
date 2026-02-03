@@ -4947,7 +4947,20 @@ class PerssonModelGUI_V2:
         cmap_q = plt.get_cmap('viridis')
         colors_q = [cmap_q(i / max(n_q_selected-1, 1)) for i in range(n_q_selected)]
 
+        # σ0 주변으로 확대할 범위 계산 (최소 5개 파수가 보이도록)
+        G_valid_sorted = sorted([G_stress_array[idx] for idx in q_indices if G_stress_array[idx] > 1e-10])
+        if len(G_valid_sorted) >= 5:
+            # 5번째로 작은 G 기준 → 상위 5개 좁은 분포가 보임
+            G_zoom = G_valid_sorted[4]
+        elif G_valid_sorted:
+            G_zoom = G_valid_sorted[-1]
+        else:
+            G_zoom = G_max
+        std_zoom = np.sqrt(G_zoom) * sigma_0_MPa
+        half_range = max(4 * std_zoom, sigma_0_MPa * 0.5)
+
         print(f"\nPlotting P(σ) for {n_q_selected} wavenumbers:")
+        print(f"Zoom: σ0 ± {half_range:.4f} MPa (G_zoom={G_zoom:.2e})")
         print("="*80)
 
         # Track maximum values for axis scaling
@@ -4998,7 +5011,8 @@ class PerssonModelGUI_V2:
         ax2.set_title(f'(b) 파수별 국소 응력 확률 분포 (v={v_fixed:.2f} m/s 고정)', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
         ax2.legend(fontsize=LEGEND_FONT, ncol=2, loc='upper right')
         ax2.grid(True, alpha=0.3)
-        ax2.set_xlim(sigma_min, sigma_max)
+        # X축: σ0 주변 확대 (5개+ 파수 분포 경향 확인용)
+        ax2.set_xlim(sigma_0_MPa - half_range, sigma_0_MPa + half_range)
         ax2.set_ylim(0, max_P_sigma * 1.15 if max_P_sigma > 0 else 1.0)
 
         print("="*80)
@@ -7366,6 +7380,14 @@ $\begin{array}{lcc}
             messagebox.showwarning("경고", "먼저 G(q,v) 계산을 실행하세요 (탭 3).")
             return
 
+        # 자동 온도 시프트 & G 재계산 (aT 데이터가 있을 때)
+        if hasattr(self, 'persson_aT_interp') and self.persson_aT_interp is not None:
+            if hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None:
+                try:
+                    self._apply_temperature_shift()
+                except Exception as e_shift:
+                    print(f"Auto temperature shift skipped: {e_shift}")
+
         try:
             self.status_var.set("μ_visc 계산 중...")
             self.mu_calc_button.config(state='disabled')
@@ -9018,6 +9040,9 @@ $\begin{array}{lcc}
         modulus_cmap = 'viridis_r'      # Yellow(약)→Dark(강)
         contact_cmap = 'plasma_r'       # Yellow(약)→Dark(강)
 
+        # v=1 m/s 인덱스 찾기 (모든 그래프 주석에 사용)
+        v_1ms_idx = int(np.argmin(np.abs(v - 1.0)))
+
         # Fix NaN in strain for statistics
         strain_valid = np.nan_to_num(strain, nan=0.0)
 
@@ -9048,6 +9073,10 @@ $\begin{array}{lcc}
         self.ax_E_storage.set_ylabel('log10(q)', fontsize=8)
         cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage)
         self._strain_map_colorbars.append(cbar2)
+        E_s_at1 = np.log10(np.maximum(E_storage[:, v_1ms_idx], 1e-10))
+        self.ax_E_storage.text(0.02, 0.98, f"v=1: {E_s_at1.min():.1f}~{E_s_at1.max():.1f}",
+            transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
+            bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 3: E''*g Loss Modulus
         E_l_safe = np.maximum(E_loss_nl, 1e-10)
@@ -9057,12 +9086,10 @@ $\begin{array}{lcc}
         self.ax_E_loss_nonlinear.set_ylabel('log10(q)', fontsize=8)
         cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_nonlinear)
         self._strain_map_colorbars.append(cbar3)
-        if self.g_interpolator is not None:
-            E_loss_lin = self.strain_map_results['E_loss_linear']
-            avg_g = np.mean(E_loss_nl / np.maximum(E_loss_lin, 1e-10))
-            self.ax_E_loss_nonlinear.text(0.02, 0.98, f'Avg g:{avg_g:.1%}',
-                transform=self.ax_E_loss_nonlinear.transAxes, fontsize=7, va='top',
-                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+        E_l_at1 = np.log10(np.maximum(E_loss_nl[:, v_1ms_idx], 1e-10))
+        self.ax_E_loss_nonlinear.text(0.02, 0.98, f"v=1: {E_l_at1.min():.1f}~{E_l_at1.max():.1f}",
+            transform=self.ax_E_loss_nonlinear.transAxes, fontsize=7, va='top',
+            bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 4: E'*f Storage Modulus
         E_snl_safe = np.maximum(E_storage_nl, 1e-10)
@@ -9072,11 +9099,10 @@ $\begin{array}{lcc}
         self.ax_E_storage_nonlinear.set_ylabel('log10(q)', fontsize=8)
         cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_storage_nonlinear)
         self._strain_map_colorbars.append(cbar4)
-        if self.f_interpolator is not None:
-            avg_f = np.mean(E_storage_nl / np.maximum(E_storage, 1e-10))
-            self.ax_E_storage_nonlinear.text(0.02, 0.98, f'Avg f:{avg_f:.1%}',
-                transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
-                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+        E_snl_at1 = np.log10(np.maximum(E_storage_nl[:, v_1ms_idx], 1e-10))
+        self.ax_E_storage_nonlinear.text(0.02, 0.98, f"v=1: {E_snl_at1.min():.1f}~{E_snl_at1.max():.1f}",
+            transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
+            bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # === Row 2 ===
         # G Integrand 공통 vmin/vmax 계산 (두 플롯 비교 가능하도록 동일 범위)
@@ -9103,6 +9129,12 @@ $\begin{array}{lcc}
             self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
             cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_G_integrand_linear)
             self._strain_map_colorbars.append(cbar5)
+            G_lin_at1 = log_G_lin_data[:, v_1ms_idx]
+            G_lin_valid = G_lin_at1[G_lin_at1 > -29]  # 유효값만
+            if len(G_lin_valid) > 0:
+                self.ax_G_integrand_linear.text(0.02, 0.98, f"v=1: {G_lin_valid.min():.1f}~{G_lin_valid.max():.1f}",
+                    transform=self.ax_G_integrand_linear.transAxes, fontsize=7, va='top',
+                    bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 6: G Integrand (nonlinear with f applied)
         if G_int_nl is not None:
@@ -9114,9 +9146,10 @@ $\begin{array}{lcc}
             self.ax_G_integrand_nonlinear.set_ylabel('log10(q)', fontsize=8)
             cbar6 = self.fig_strain_map.colorbar(im6, ax=self.ax_G_integrand_nonlinear)
             self._strain_map_colorbars.append(cbar6)
-            if G_int_lin is not None:
-                ratio = np.mean(G_int_nl / np.maximum(G_int_lin, 1e-30))
-                self.ax_G_integrand_nonlinear.text(0.02, 0.98, f'Ratio:{ratio:.1%}',
+            G_nl_at1 = log_G_nl_data[:, v_1ms_idx]
+            G_nl_valid = G_nl_at1[G_nl_at1 > -29]
+            if len(G_nl_valid) > 0:
+                self.ax_G_integrand_nonlinear.text(0.02, 0.98, f"v=1: {G_nl_valid.min():.1f}~{G_nl_valid.max():.1f}",
                     transform=self.ax_G_integrand_nonlinear.transAxes, fontsize=7, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
@@ -9128,8 +9161,8 @@ $\begin{array}{lcc}
             self.ax_contact_linear.set_ylabel('log10(q)', fontsize=8)
             cbar7 = self.fig_strain_map.colorbar(im7, ax=self.ax_contact_linear)
             self._strain_map_colorbars.append(cbar7)
-            avg_P = np.mean(contact_lin)
-            self.ax_contact_linear.text(0.02, 0.98, f'Avg P:{avg_P:.2f}',
+            P_lin_at1 = contact_lin[:, v_1ms_idx]
+            self.ax_contact_linear.text(0.02, 0.98, f'v=1: {P_lin_at1.min():.2f}~{P_lin_at1.max():.2f}',
                 transform=self.ax_contact_linear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
@@ -9141,8 +9174,8 @@ $\begin{array}{lcc}
             self.ax_contact_nonlinear.set_ylabel('log10(q)', fontsize=8)
             cbar8 = self.fig_strain_map.colorbar(im8, ax=self.ax_contact_nonlinear)
             self._strain_map_colorbars.append(cbar8)
-            avg_P_nl = np.mean(contact_nl)
-            self.ax_contact_nonlinear.text(0.02, 0.98, f'Avg P:{avg_P_nl:.2f}',
+            P_nl_at1 = contact_nl[:, v_1ms_idx]
+            self.ax_contact_nonlinear.text(0.02, 0.98, f'v=1: {P_nl_at1.min():.2f}~{P_nl_at1.max():.2f}',
                 transform=self.ax_contact_nonlinear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
