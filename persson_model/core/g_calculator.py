@@ -672,13 +672,17 @@ class GCalculator:
 
         # Calculate for each velocity
         for j, v in enumerate(v_values):
+            # Update velocity
             self.velocity = v
 
+            # Calculate G(q) for this velocity
             results = self.calculate_G_with_details(q_values, q_min=q_min)
 
+            # Store results
             G_matrix[:, j] = results['G']
             P_matrix[:, j] = results['contact_area_ratio']
 
+            # Progress callback
             if progress_callback:
                 progress = int((j + 1) / n_v * 100)
                 progress_callback(progress)
