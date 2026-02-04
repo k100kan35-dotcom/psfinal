@@ -24,28 +24,35 @@ if getattr(sys, 'frozen', False):
     _mpl_cfg = os.path.join(tempfile.gettempdir(), 'mpl_persson')
     os.makedirs(_mpl_cfg, exist_ok=True)
     os.environ['MPLCONFIGDIR'] = _mpl_cfg
+    # 빌드 머신 경로가 담긴 stale 캐시 삭제 → 실행 환경에서 재생성
+    for _f in os.listdir(_mpl_cfg):
+        if _f.startswith('fontlist') and _f.endswith('.json'):
+            try:
+                os.remove(os.path.join(_mpl_cfg, _f))
+            except OSError:
+                pass
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
 import numpy as np
 import matplotlib
 matplotlib.use('TkAgg')
-# Configure matplotlib to handle mathematical symbols properly
 import matplotlib.pyplot as plt
 import warnings
 warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
-# Font configuration: Times New Roman for English, fallback to DejaVu Sans
-matplotlib.rcParams['font.family'] = ['Times New Roman', 'DejaVu Sans']
-matplotlib.rcParams['axes.unicode_minus'] = False  # Fix minus sign issue
-matplotlib.rcParams['text.usetex'] = False  # Disable LaTeX to avoid font issues
-matplotlib.rcParams['mathtext.fontset'] = 'stix'  # Use STIX fonts for math
-# Standardize font sizes across all plots
-matplotlib.rcParams['font.size'] = 9
-matplotlib.rcParams['axes.titlesize'] = 9
-matplotlib.rcParams['axes.labelsize'] = 9
-matplotlib.rcParams['xtick.labelsize'] = 8
-matplotlib.rcParams['ytick.labelsize'] = 8
-matplotlib.rcParams['legend.fontsize'] = 7
+
+# === 기본 폰트/수식 설정 (모든 환경에서 안전) ===
+matplotlib.rcParams.update({
+    'axes.unicode_minus': False,       # ASCII 마이너스 (유니코드 − 깨짐 방지)
+    'text.usetex': False,              # LaTeX 비활성화
+    'mathtext.fontset': 'dejavusans',  # 수식 폰트: DejaVu Sans (matplotlib 내장, 항상 존재)
+    'font.size': 9,
+    'axes.titlesize': 9,
+    'axes.labelsize': 9,
+    'xtick.labelsize': 8,
+    'ytick.labelsize': 8,
+    'legend.fontsize': 7,
+})
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
 from scipy.signal import savgol_filter
@@ -89,36 +96,55 @@ from persson_model.core.friction import (
 from persson_model.core.master_curve import MasterCurveGenerator, load_multi_temp_dma
 from persson_model.core.psd_from_profile import ProfilePSDAnalyzer, self_affine_psd_model
 
-# Configure matplotlib for better Korean font support
-# IMPORTANT: Set unicode_minus FIRST to avoid minus sign warnings
-matplotlib.rcParams['axes.unicode_minus'] = False
-
-# Configure fonts (PyInstaller 호환)
+# === 한글 폰트 설정 (PyInstaller frozen exe 호환) ===
 try:
     import matplotlib.font_manager as fm
+    import platform
 
-    # Frozen exe: 폰트 캐시 강제 재생성 (경로 불일치 방지)
+    # Frozen exe: 시스템 폰트 디렉토리에서 직접 등록 (캐시 우회)
     if getattr(sys, 'frozen', False):
-        try:
-            fm._load_fontmanager(try_read_cache=False)
-        except Exception:
-            pass
+        _font_dirs = []
+        if platform.system() == 'Windows':
+            _windir = os.environ.get('WINDIR', r'C:\Windows')
+            _font_dirs.append(os.path.join(_windir, 'Fonts'))
+            # 사용자별 폰트 디렉토리
+            _localappdata = os.environ.get('LOCALAPPDATA', '')
+            if _localappdata:
+                _font_dirs.append(os.path.join(_localappdata, r'Microsoft\Windows\Fonts'))
+        elif platform.system() == 'Darwin':
+            _font_dirs.extend(['/Library/Fonts', os.path.expanduser('~/Library/Fonts')])
+        else:
+            _font_dirs.extend(['/usr/share/fonts', os.path.expanduser('~/.local/share/fonts')])
 
-    # Try to find Korean fonts on the system
+        _korean_ttfs = ['malgun.ttf', 'malgunbd.ttf', 'malgunsl.ttf',
+                        'NanumGothic.ttf', 'NanumGothicBold.ttf',
+                        'gulim.ttc', 'batang.ttc']
+        for _fdir in _font_dirs:
+            if os.path.isdir(_fdir):
+                for _fname in _korean_ttfs:
+                    _fpath = os.path.join(_fdir, _fname)
+                    if os.path.exists(_fpath):
+                        try:
+                            if hasattr(fm.fontManager, 'addfont'):
+                                fm.fontManager.addfont(_fpath)
+                            else:
+                                fm.fontManager.ttflist.append(
+                                    fm.FontEntry(fname=_fpath, name=_fname.split('.')[0]))
+                        except Exception:
+                            pass
+
+    # 시스템에서 한글 폰트 검색
     korean_fonts = []
     for font in fm.fontManager.ttflist:
-        font_name = font.name
-        # Check for common Korean font names
-        if any(name in font_name for name in ['Malgun', 'NanumGothic', 'NanumBarun',
+        if any(name in font.name for name in ['Malgun', 'NanumGothic', 'NanumBarun',
                                                 'AppleGothic', 'Gulim', 'Dotum']):
-            if font_name not in korean_fonts:
-                korean_fonts.append(font_name)
+            if font.name not in korean_fonts:
+                korean_fonts.append(font.name)
 
     if korean_fonts:
         matplotlib.rcParams['font.family'] = 'sans-serif'
-        matplotlib.rcParams['font.sans-serif'] = korean_fonts + ['DejaVu Sans', 'Arial', 'Helvetica']
+        matplotlib.rcParams['font.sans-serif'] = korean_fonts + ['DejaVu Sans', 'Arial']
     else:
-        # Fallback: Windows에서는 Malgun Gothic 우선
         matplotlib.rcParams['font.family'] = 'sans-serif'
         matplotlib.rcParams['font.sans-serif'] = ['Malgun Gothic', 'DejaVu Sans', 'Arial']
 except Exception:
@@ -5596,18 +5622,9 @@ Rubber friction theory
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
         import platform
 
-        # Set Korean font based on OS
-        system = platform.system()
-        if system == 'Windows':
-            korean_font = 'Malgun Gothic'
-        elif system == 'Darwin':  # macOS
-            korean_font = 'AppleGothic'
-        else:  # Linux
-            korean_font = 'NanumGothic'
-
+        # 전역 rcParams에서 설정된 sans-serif 폰트 사용 (한글 폰트 자동 적용)
         fig = Figure(figsize=(12, 20), facecolor='white')
-        fig.suptitle('Persson 마찰 이론 - 계산 수식 정리', fontsize=18, fontweight='bold', y=0.985,
-                    fontproperties={'family': korean_font})
+        fig.suptitle('Persson 마찰 이론 - 계산 수식 정리', fontsize=18, fontweight='bold', y=0.985)
 
         # Single axis for all equations
         ax = fig.add_subplot(111)
