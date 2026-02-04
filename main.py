@@ -3560,27 +3560,6 @@ class PerssonModelGUI_V2:
         self.n_phi_gq_var = tk.StringVar(value="36")
         ttk.Entry(input_frame, textvariable=self.n_phi_gq_var, width=15).grid(row=row, column=1, pady=5)
 
-        # ===== Yield Stress (σ_Y) Cutoff 섹션 =====
-        row += 1
-        yield_frame = ttk.LabelFrame(input_frame, text="항복응력 (σ_Y) Cutoff", padding=5)
-        yield_frame.grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=5)
-
-        yield_desc = ttk.Label(yield_frame,
-            text="※ σ₀/P(q) ≥ σ_Y 이면 G 적분 중단 (실접촉 면적 보정)",
-            font=('Arial', 7), foreground='gray')
-        yield_desc.pack(fill=tk.X, pady=(0, 3))
-
-        yield_row = ttk.Frame(yield_frame)
-        yield_row.pack(fill=tk.X, pady=2)
-
-        self.yield_stop_var = tk.BooleanVar(value=True)
-        ttk.Checkbutton(yield_row, text="σ_Y cutoff 적용",
-                        variable=self.yield_stop_var).pack(side=tk.LEFT, padx=(0, 10))
-
-        ttk.Label(yield_row, text="σ_Y (MPa):").pack(side=tk.LEFT)
-        self.stress_y_var = tk.StringVar(value="100")
-        ttk.Entry(yield_row, textvariable=self.stress_y_var, width=8).pack(side=tk.LEFT, padx=2)
-
         # ===== h'rms (ξ) / q1 모드 선택 섹션 =====
         # h'rms = ξ = RMS slope (경사), NOT h_rms (height)
         row += 1
@@ -4500,11 +4479,6 @@ class PerssonModelGUI_V2:
             poisson = float(self.poisson_var.get())
             temperature = float(self.temperature_var.get())
 
-            # Yield stress cutoff parameters
-            yield_stop = self.yield_stop_var.get()
-            stress_y_mpa = float(self.stress_y_var.get())
-            stress_y_pa = stress_y_mpa * 1e6  # MPa to Pa
-
             # Create arrays
             v_array = np.logspace(np.log10(v_min), np.log10(v_max), n_v)
             q_array = np.logspace(np.log10(q_min), np.log10(q_max), n_q)
@@ -4542,8 +4516,6 @@ class PerssonModelGUI_V2:
             print(f"σ₀ (nominal pressure) = {sigma_0:.2e} Pa = {sigma_0/1e6:.4f} MPa")
             print(f"Poisson ratio (ν) = {poisson}")
             print(f"Prefactor = 1/((1-ν²)σ₀) = {self.g_calculator.prefactor:.2e} (1/Pa)")
-            print(f"σ_Y cutoff = {'ON' if yield_stop else 'OFF'}"
-                  f"{f', σ_Y = {stress_y_mpa} MPa = {stress_y_pa:.2e} Pa' if yield_stop else ''}")
             print()
 
             # Check E' and E'' at representative frequencies
@@ -4788,30 +4760,8 @@ class PerssonModelGUI_V2:
                 self.root.update()
 
             results_2d = self.g_calculator.calculate_G_multi_velocity(
-                q_array, v_array, q_min=q_min, progress_callback=progress_callback,
-                stress_y_pa=stress_y_pa, yield_stop=yield_stop
+                q_array, v_array, q_min=q_min, progress_callback=progress_callback
             )
-
-            # Log yield stress cutoff info
-            if yield_stop:
-                eq1 = results_2d.get('effective_q1_per_v', None)
-                ys_idx = results_2d.get('yield_stop_indices', None)
-                max_rp = results_2d.get('max_real_pressure_per_v', None)
-                P_final = results_2d['P_matrix'][-1, :]
-                print(f"\n[σ_Y Cutoff] σ_Y={stress_y_mpa} MPa, σ₀={sigma_0/1e6:.2f} MPa")
-                if ys_idx is not None:
-                    n_stopped = int(np.sum(ys_idx >= 0))
-                    print(f"  {n_stopped}/{len(v_array)} velocities hit σ_Y")
-                sample_idx = np.linspace(0, len(v_array)-1, min(10, len(v_array)), dtype=int)
-                print(f"  {'v (m/s)':>12} {'eff q₁':>12} {'P(q₁)':>10} {'A/A0':>8} "
-                      f"{'σ₀/P max':>10} {'σ_real':>10} {'yield?':>6}")
-                for idx in sample_idx:
-                    p_val = P_final[idx]
-                    real_p = (sigma_0 / p_val) if p_val > 1e-15 else float('inf')
-                    stopped = '  YES' if (ys_idx is not None and ys_idx[idx] >= 0) else '   no'
-                    print(f"  {v_array[idx]:>12.2e} {eq1[idx]:>12.2e} "
-                          f"{p_val:>10.4f} {p_val*100:>7.3f}% "
-                          f"{max_rp[idx]/1e6:>9.1f}M {real_p/1e6:>9.1f}M {stopped}")
 
             # Clear highlights after calculation and show completion message
             try:
@@ -4847,8 +4797,7 @@ class PerssonModelGUI_V2:
             for v_idx in detail_v_indices:
                 self.g_calculator.velocity = v_array[v_idx]
                 detailed = self.g_calculator.calculate_G_with_details(
-                    q_array, q_min=q_min, store_inner_integral=False,
-                    stress_y_pa=stress_y_pa, yield_stop=yield_stop
+                    q_array, q_min=q_min, store_inner_integral=False
                 )
                 detailed['velocity'] = v_array[v_idx]
                 detailed_results_multi_v.append(detailed)
@@ -7370,14 +7319,9 @@ $\begin{array}{lcc}
                 self.g_calc_status_var.set(f"G(q,v) 재계산 중... {percent}%")
                 self.root.update_idletasks()
 
-            # Yield stress cutoff parameters (from Tab 2 UI)
-            yield_stop = self.yield_stop_var.get() if hasattr(self, 'yield_stop_var') else False
-            stress_y_pa = float(self.stress_y_var.get()) * 1e6 if hasattr(self, 'stress_y_var') else None
-
             # Use the same calculation method as Tab 3
             results_2d = self.g_calculator.calculate_G_multi_velocity(
-                q_array, v_array, q_min=q_min, progress_callback=progress_callback,
-                stress_y_pa=stress_y_pa, yield_stop=yield_stop
+                q_array, v_array, q_min=q_min, progress_callback=progress_callback
             )
 
             # Update self.results so mu_visc calculation uses new data
