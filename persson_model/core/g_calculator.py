@@ -684,15 +684,12 @@ class GCalculator:
         """
         Calculate G(q,v) for multiple velocities - 2D matrix calculation.
 
-        When yield_stop=True, uses a 2-pass approach:
-        1) Determine effective q₁ from the HIGHEST velocity (where G grows
-           fastest and σ₀/P(q) reaches σ_Y first)
-        2) Apply this FIXED q₁ uniformly to ALL velocities
-
-        This ensures the yield stress cutoff affects all velocities equally,
-        producing MORE contact area correction at low velocities (where the
-        erf function is more sensitive) and consistent correction at high
-        velocities.
+        When yield_stop=True, each velocity independently checks
+        σ₀/P(q) ≥ σ_Y during G accumulation. If the condition is met,
+        integration stops at that q (effective q₁) for THAT velocity only.
+        At low velocities where rubber is soft, the condition may never
+        trigger — this is physically correct (low modulus → good conformity
+        → low local pressure).
 
         Parameters
         ----------
@@ -719,9 +716,8 @@ class GCalculator:
             - 'P_matrix': 2D array P(q,v) contact area ratio
             - 'log_q': log10(q)
             - 'log_v': log10(v)
-            - 'effective_q1_global': the single q₁ applied to all velocities
             - 'effective_q1_per_v': effective q1 for each velocity
-            - 'yield_stop_indices': yield stop index for each velocity
+            - 'yield_stop_indices': yield stop index for each velocity (-1 if not triggered)
             - 'max_real_pressure_per_v': max σ₀/P(q) at each velocity (Pa)
         """
         q_values = np.asarray(q_values)
@@ -733,65 +729,25 @@ class GCalculator:
         n_q = len(q_values)
         n_v = len(v_values)
 
-        # Store original velocity
-        original_velocity = self.velocity
-
-        # =====================================================================
-        # PASS 1: Determine effective q₁ from highest velocity
-        # At the highest velocity, E* is largest (glassy regime) → G grows
-        # fastest → σ₀/P(q) reaches σ_Y at the LOWEST q → most conservative q₁
-        # This q₁ is then used for ALL velocities.
-        # =====================================================================
-        q1_global = q_values[-1]  # default: full range (no cutoff)
-
-        if yield_stop and stress_y_pa is not None:
-            v_max = v_values.max()
-            self.velocity = v_max
-            ref_result = self.calculate_G_with_details(
-                q_values, q_min=q_min,
-                stress_y_pa=stress_y_pa, yield_stop=True
-            )
-            if ref_result['yield_stop_index'] is not None:
-                q1_global = ref_result['effective_q1']
-                print(f"  [σ_Y Pass 1] v_max={v_max:.2e} m/s → "
-                      f"q₁={q1_global:.3e} (1/m), "
-                      f"P(q₁)={ref_result['contact_area_ratio'][ref_result['yield_stop_index']]:.4f}, "
-                      f"max σ₀/P={ref_result['max_real_pressure']/1e6:.1f} MPa")
-            else:
-                print(f"  [σ_Y Pass 1] v_max={v_max:.2e} m/s → "
-                      f"σ₀/P never reached σ_Y={stress_y_pa/1e6:.1f} MPa "
-                      f"(max σ₀/P={ref_result['max_real_pressure']/1e6:.1f} MPa)")
-
-            if progress_callback:
-                progress_callback(5)  # 5% for pass 1
-
-        # =====================================================================
-        # PASS 2: Calculate G(q,v) for all velocities with fixed q₁
-        # =====================================================================
+        # Initialize output matrices
         G_matrix = np.zeros((n_q, n_v))
         P_matrix = np.zeros((n_q, n_v))
-        effective_q1_arr = np.full(n_v, q1_global)
+        effective_q1_arr = np.full(n_v, q_values[-1])
         yield_stop_idx_arr = np.full(n_v, -1, dtype=int)
         max_rp_arr = np.zeros(n_v)
 
-        # Determine cutoff to pass
-        use_fixed_cutoff = (yield_stop and stress_y_pa is not None and
-                            q1_global < q_values[-1])
+        # Store original velocity
+        original_velocity = self.velocity
 
+        # Calculate for each velocity independently
         for j, v in enumerate(v_values):
             self.velocity = v
 
-            if use_fixed_cutoff:
-                # Apply the globally determined q₁ as a hard cutoff
-                results = self.calculate_G_with_details(
-                    q_values, q_min=q_min,
-                    q_max_cutoff=q1_global
-                )
-            else:
-                # No yield cutoff
-                results = self.calculate_G_with_details(
-                    q_values, q_min=q_min
-                )
+            # Each velocity gets its own independent yield stress check
+            results = self.calculate_G_with_details(
+                q_values, q_min=q_min,
+                stress_y_pa=stress_y_pa, yield_stop=yield_stop
+            )
 
             G_matrix[:, j] = results['G']
             P_matrix[:, j] = results['contact_area_ratio']
@@ -801,8 +757,7 @@ class GCalculator:
             max_rp_arr[j] = results['max_real_pressure']
 
             if progress_callback:
-                base = 5 if (yield_stop and stress_y_pa is not None) else 0
-                progress = base + int((j + 1) / n_v * (100 - base))
+                progress = int((j + 1) / n_v * 100)
                 progress_callback(progress)
 
         # Restore original velocity
@@ -815,7 +770,6 @@ class GCalculator:
             'P_matrix': P_matrix,
             'log_q': np.log10(q_values),
             'log_v': np.log10(v_values),
-            'effective_q1_global': q1_global,
             'effective_q1_per_v': effective_q1_arr,
             'yield_stop_indices': yield_stop_idx_arr,
             'max_real_pressure_per_v': max_rp_arr

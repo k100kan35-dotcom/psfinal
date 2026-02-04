@@ -4794,19 +4794,24 @@ class PerssonModelGUI_V2:
 
             # Log yield stress cutoff info
             if yield_stop:
-                q1g = results_2d.get('effective_q1_global', q_array[-1])
+                eq1 = results_2d.get('effective_q1_per_v', None)
+                ys_idx = results_2d.get('yield_stop_indices', None)
                 max_rp = results_2d.get('max_real_pressure_per_v', None)
-                P_final = results_2d['P_matrix'][-1, :]  # P at highest q for each v
+                P_final = results_2d['P_matrix'][-1, :]
                 print(f"\n[σ_Y Cutoff] σ_Y={stress_y_mpa} MPa, σ₀={sigma_0/1e6:.2f} MPa")
-                print(f"  effective q₁ (global) = {q1g:.3e} (1/m)"
-                      f"{'  ← cutoff 적용됨' if q1g < q_array[-1] else '  ← cutoff 미발동 (q_max 도달)'}")
-                if max_rp is not None:
-                    sample_idx = np.linspace(0, len(v_array)-1, min(8, len(v_array)), dtype=int)
-                    print(f"  {'v (m/s)':>12} {'P(q₁)':>10} {'A/A0 (%)':>10} {'max σ₀/P':>12}")
-                    for idx in sample_idx:
-                        print(f"  {v_array[idx]:>12.2e} {P_final[idx]:>10.4f} "
-                              f"{P_final[idx]*100:>10.2f}% "
-                              f"{max_rp[idx]/1e6:>10.1f} MPa")
+                if ys_idx is not None:
+                    n_stopped = int(np.sum(ys_idx >= 0))
+                    print(f"  {n_stopped}/{len(v_array)} velocities hit σ_Y")
+                sample_idx = np.linspace(0, len(v_array)-1, min(10, len(v_array)), dtype=int)
+                print(f"  {'v (m/s)':>12} {'eff q₁':>12} {'P(q₁)':>10} {'A/A0':>8} "
+                      f"{'σ₀/P max':>10} {'σ_real':>10} {'yield?':>6}")
+                for idx in sample_idx:
+                    p_val = P_final[idx]
+                    real_p = (sigma_0 / p_val) if p_val > 1e-15 else float('inf')
+                    stopped = '  YES' if (ys_idx is not None and ys_idx[idx] >= 0) else '   no'
+                    print(f"  {v_array[idx]:>12.2e} {eq1[idx]:>12.2e} "
+                          f"{p_val:>10.4f} {p_val*100:>7.3f}% "
+                          f"{max_rp[idx]/1e6:>9.1f}M {real_p/1e6:>9.1f}M {stopped}")
 
             # Clear highlights after calculation and show completion message
             try:
@@ -4839,21 +4844,12 @@ class PerssonModelGUI_V2:
             detail_v_indices = np.linspace(0, len(v_array)-1, n_detail_v, dtype=int)
             detailed_results_multi_v = []
 
-            # Use the globally determined q₁ from the 2D calculation
-            q1_global = results_2d.get('effective_q1_global', q_array[-1])
-            use_q1_cutoff = (yield_stop and q1_global < q_array[-1])
-
             for v_idx in detail_v_indices:
                 self.g_calculator.velocity = v_array[v_idx]
-                if use_q1_cutoff:
-                    detailed = self.g_calculator.calculate_G_with_details(
-                        q_array, q_min=q_min, store_inner_integral=False,
-                        q_max_cutoff=q1_global
-                    )
-                else:
-                    detailed = self.g_calculator.calculate_G_with_details(
-                        q_array, q_min=q_min, store_inner_integral=False
-                    )
+                detailed = self.g_calculator.calculate_G_with_details(
+                    q_array, q_min=q_min, store_inner_integral=False,
+                    stress_y_pa=stress_y_pa, yield_stop=yield_stop
+                )
                 detailed['velocity'] = v_array[v_idx]
                 detailed_results_multi_v.append(detailed)
 
