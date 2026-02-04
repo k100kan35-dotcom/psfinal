@@ -5806,12 +5806,12 @@ $\begin{array}{lcc}
                     # For simplicity, render whole line and let matplotlib handle it
                     ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
                            fontsize=12, verticalalignment='top', horizontalalignment='left',
-                           family=korean_font, usetex=False)
+                           usetex=False)
                 else:
-                    # Plain text - use Korean font
+                    # Plain text - use Korean font (from global rcParams)
                     ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
                            fontsize=12, verticalalignment='top', horizontalalignment='left',
-                           family=korean_font, usetex=False)
+                           usetex=False)
                 y_position -= line_spacing
             else:
                 y_position -= line_spacing * 0.5  # Half spacing for empty lines
