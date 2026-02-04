@@ -510,10 +510,7 @@ class GCalculator:
         self,
         q_values: np.ndarray,
         q_min: Optional[float] = None,
-        store_inner_integral: bool = False,
-        stress_y_pa: Optional[float] = None,
-        yield_stop: bool = False,
-        q_max_cutoff: Optional[float] = None
+        store_inner_integral: bool = False
     ) -> dict:
         """
         Calculate G(q) with detailed intermediate values for analysis.
@@ -530,16 +527,6 @@ class GCalculator:
         store_inner_integral : bool, optional
             If True, stores detailed inner integral values for visualization
             (default: False)
-        stress_y_pa : float, optional
-            Yield stress in Pa. When yield_stop=True, G integration stops
-            when local contact pressure (sigma_0/P(q)) reaches this value.
-        yield_stop : bool, optional
-            If True and stress_y_pa is provided, stop G integration when
-            real_pressure >= stress_y_pa (default: False)
-        q_max_cutoff : float, optional
-            If provided, stop G integration at this wavenumber (hard cutoff).
-            Used to apply a pre-determined effective q₁ uniformly across
-            all velocities.
 
         Returns
         -------
@@ -553,9 +540,6 @@ class GCalculator:
             - 'delta_G': incremental G contributions
             - 'G': cumulative G(q) values
             - 'contact_area_ratio': P(q) = erf(1/(2√G))
-            - 'effective_q1': effective cutoff wavenumber (if yield_stop applied)
-            - 'yield_stop_index': index where yield stop occurred (if applied)
-            - 'max_real_pressure': maximum σ₀/P(q) reached (Pa)
             - 'inner_integral_details': (if store_inner_integral=True)
                 List of dicts with 'phi', 'omega', 'integrand' for each q
         """
@@ -593,26 +577,9 @@ class GCalculator:
             G_integrand_arr[i] = self._integrand_q(q)
 
         # Calculate cumulative G using trapezoidal integration
-        # Two cutoff modes:
-        #   1) q_max_cutoff: fixed upper q limit (pre-determined, velocity-independent)
-        #   2) yield_stop + stress_y_pa: dynamic check σ₀/P(q) ≥ σ_Y (used to find q₁)
-        from scipy.special import erf
-        yield_stop_index = None
-        effective_q1 = q_values[-1]  # default: full range
-        max_real_pressure = 0.0  # track max σ₀/P(q) for diagnostics
-
         for i in range(1, n):
             if q_values[i] <= q_min:
                 continue
-
-            # Fixed q₁ cutoff: stop integration beyond pre-determined q_max_cutoff
-            if q_max_cutoff is not None and q_values[i] > q_max_cutoff:
-                yield_stop_index = i
-                effective_q1 = q_max_cutoff
-                for j in range(i, n):
-                    G_arr[j] = G_arr[i-1]
-                    delta_G_arr[j] = 0.0
-                break
 
             # Trapezoidal rule: (f(i-1) + f(i)) / 2 * Δq
             delta_G = 0.5 * (G_integrand_arr[i-1] + G_integrand_arr[i]) * \
@@ -621,28 +588,10 @@ class GCalculator:
             delta_G_arr[i] = delta_G / 8.0  # Apply 1/8 factor
             G_arr[i] = G_arr[i-1] + delta_G_arr[i]
 
-            # Track max real pressure and dynamic yield stress check
-            if G_arr[i] > 1e-10:
-                sqrt_G_i = np.sqrt(G_arr[i])
-                arg_i = min(1.0 / (2.0 * sqrt_G_i), 10.0)
-                P_i = erf(arg_i)
-                if P_i > 1e-15:
-                    real_pressure_i = self.sigma_0 / P_i
-                    max_real_pressure = max(max_real_pressure, real_pressure_i)
-
-                    # Dynamic yield stress cutoff (used for q₁ determination)
-                    if yield_stop and stress_y_pa is not None:
-                        if real_pressure_i >= stress_y_pa:
-                            yield_stop_index = i
-                            effective_q1 = q_values[i]
-                            for j in range(i + 1, n):
-                                G_arr[j] = G_arr[i]
-                                delta_G_arr[j] = 0.0
-                            break
-
         # Calculate contact area ratio P(q) = erf(1 / (2√G))
         # When G → 0: P → erf(∞) = 1.0 (full contact)
         # When G → ∞: P → erf(0) = 0.0 (no contact)
+        from scipy.special import erf
         for i in range(n):
             if G_arr[i] > 1e-10:
                 sqrt_G = np.sqrt(G_arr[i])
@@ -660,10 +609,7 @@ class GCalculator:
             'G_integrand': G_integrand_arr,
             'delta_G': delta_G_arr,
             'G': G_arr,
-            'contact_area_ratio': P_arr,
-            'effective_q1': effective_q1,
-            'yield_stop_index': yield_stop_index,
-            'max_real_pressure': max_real_pressure
+            'contact_area_ratio': P_arr
         }
 
         # Add inner integral details if stored
@@ -677,19 +623,13 @@ class GCalculator:
         q_values: np.ndarray,
         v_values: np.ndarray,
         q_min: Optional[float] = None,
-        progress_callback: Optional[Callable] = None,
-        stress_y_pa: Optional[float] = None,
-        yield_stop: bool = False
+        progress_callback: Optional[Callable] = None
     ) -> dict:
         """
         Calculate G(q,v) for multiple velocities - 2D matrix calculation.
 
-        When yield_stop=True, each velocity independently checks
-        σ₀/P(q) ≥ σ_Y during G accumulation. If the condition is met,
-        integration stops at that q (effective q₁) for THAT velocity only.
-        At low velocities where rubber is soft, the condition may never
-        trigger — this is physically correct (low modulus → good conformity
-        → low local pressure).
+        This creates a 2D matrix G(q,v) where G depends on both
+        wavenumber and sliding velocity, as required by work instruction v2.1.
 
         Parameters
         ----------
@@ -697,14 +637,11 @@ class GCalculator:
             Array of wavenumbers (1/m) in ascending order
         v_values : np.ndarray
             Array of sliding velocities (m/s)
+            Recommended: np.logspace(-4, 1, 30) for 0.0001~10 m/s
         q_min : float, optional
             Lower integration limit (default: first value in q_values)
         progress_callback : callable, optional
             Function to call with progress updates (0-100)
-        stress_y_pa : float, optional
-            Yield stress in Pa for cutoff
-        yield_stop : bool, optional
-            If True, apply yield stress cutoff (default: False)
 
         Returns
         -------
@@ -716,9 +653,6 @@ class GCalculator:
             - 'P_matrix': 2D array P(q,v) contact area ratio
             - 'log_q': log10(q)
             - 'log_v': log10(v)
-            - 'effective_q1_per_v': effective q1 for each velocity
-            - 'yield_stop_indices': yield stop index for each velocity (-1 if not triggered)
-            - 'max_real_pressure_per_v': max σ₀/P(q) at each velocity (Pa)
         """
         q_values = np.asarray(q_values)
         v_values = np.asarray(v_values)
@@ -732,29 +666,18 @@ class GCalculator:
         # Initialize output matrices
         G_matrix = np.zeros((n_q, n_v))
         P_matrix = np.zeros((n_q, n_v))
-        effective_q1_arr = np.full(n_v, q_values[-1])
-        yield_stop_idx_arr = np.full(n_v, -1, dtype=int)
-        max_rp_arr = np.zeros(n_v)
 
         # Store original velocity
         original_velocity = self.velocity
 
-        # Calculate for each velocity independently
+        # Calculate for each velocity
         for j, v in enumerate(v_values):
             self.velocity = v
 
-            # Each velocity gets its own independent yield stress check
-            results = self.calculate_G_with_details(
-                q_values, q_min=q_min,
-                stress_y_pa=stress_y_pa, yield_stop=yield_stop
-            )
+            results = self.calculate_G_with_details(q_values, q_min=q_min)
 
             G_matrix[:, j] = results['G']
             P_matrix[:, j] = results['contact_area_ratio']
-            effective_q1_arr[j] = results['effective_q1']
-            if results['yield_stop_index'] is not None:
-                yield_stop_idx_arr[j] = results['yield_stop_index']
-            max_rp_arr[j] = results['max_real_pressure']
 
             if progress_callback:
                 progress = int((j + 1) / n_v * 100)
@@ -769,10 +692,7 @@ class GCalculator:
             'G_matrix': G_matrix,
             'P_matrix': P_matrix,
             'log_q': np.log10(q_values),
-            'log_v': np.log10(v_values),
-            'effective_q1_per_v': effective_q1_arr,
-            'yield_stop_indices': yield_stop_idx_arr,
-            'max_real_pressure_per_v': max_rp_arr
+            'log_v': np.log10(v_values)
         }
 
     def update_parameters(
