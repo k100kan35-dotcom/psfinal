@@ -750,15 +750,15 @@ def calculate_surface_parameters(
         return {'h_rms': 0, 'h_rms_slope': 0, 'h_rms_curvature': 0}
 
     # RMS height: h_rms² = 2π ∫ q C(q) dq
-    h_rms_sq = 2 * np.pi * np.trapz(q_filt * C_filt, q_filt)
+    h_rms_sq = 2 * np.pi * np.trapezoid(q_filt * C_filt, q_filt)
     h_rms = np.sqrt(max(h_rms_sq, 0))
 
     # RMS slope (h'rms): (h'rms)² = 2π ∫ q³ C(q) dq
-    slope_sq = 2 * np.pi * np.trapz(q_filt**3 * C_filt, q_filt)
+    slope_sq = 2 * np.pi * np.trapezoid(q_filt**3 * C_filt, q_filt)
     h_rms_slope = np.sqrt(max(slope_sq, 0))
 
     # RMS curvature: (h''rms)² = 2π ∫ q⁵ C(q) dq
-    curv_sq = 2 * np.pi * np.trapz(q_filt**5 * C_filt, q_filt)
+    curv_sq = 2 * np.pi * np.trapezoid(q_filt**5 * C_filt, q_filt)
     h_rms_curvature = np.sqrt(max(curv_sq, 0))
 
     return {
