@@ -129,21 +129,23 @@ class ViscoelasticMaterial:
         self._log_freq_min = log_freq.min()
         self._log_freq_max = log_freq.max()
 
-        # Use edge values for out-of-range frequencies (hold extrapolation)
-        # This is more physically reasonable than polynomial extrapolation
+        # E': 저주파 기울기 유지 외삽 (rubbery plateau 쪽으로 자연 감소)
+        # 고주파 끝은 glassy plateau → 기울기 ≈ 0이므로 외삽해도 hold와 동일
         self._E_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_prime,
             kind=interp_kind,
-            fill_value=(log_E_prime[0], log_E_prime[-1]),  # Hold edge values
+            fill_value='extrapolate',
             bounds_error=False
         )
 
+        # E'': 저주파는 hold (외삽 시 비물리적 증가 방지, rubbery에서 E''→0)
+        # 고주파는 hold (glassy plateau)
         self._E_double_prime_interp = interpolate.interp1d(
             log_freq,
             log_E_double_prime,
             kind=interp_kind,
-            fill_value=(log_E_double_prime[0], log_E_double_prime[-1]),  # Hold edge values
+            fill_value=(log_E_double_prime[0], log_E_double_prime[-1]),
             bounds_error=False
         )
 
@@ -244,11 +246,16 @@ class ViscoelasticMaterial:
         log_E_prime = self._E_prime_interp(log_freq)
         log_E_double_prime = self._E_double_prime_interp(log_freq)
 
-        # Handle NaN values only - no clipping to preserve actual material behavior
+        # Safety clamp: 저주파 외삽 시 비물리적 값 방지
+        # E' >= 0.01 MPa (10^4 Pa), E'' >= 0.001 MPa (10^3 Pa)
+        log_E_prime = np.clip(log_E_prime, 4.0, None)
+        log_E_double_prime = np.clip(log_E_double_prime, 3.0, None)
+
+        # Handle NaN/Inf
         if np.any(~np.isfinite(log_E_prime)):
-            log_E_prime = np.nan_to_num(log_E_prime, nan=6.0, posinf=12.0, neginf=3.0)
+            log_E_prime = np.nan_to_num(log_E_prime, nan=6.0, posinf=12.0, neginf=4.0)
         if np.any(~np.isfinite(log_E_double_prime)):
-            log_E_double_prime = np.nan_to_num(log_E_double_prime, nan=5.0, posinf=10.0, neginf=0.0)
+            log_E_double_prime = np.nan_to_num(log_E_double_prime, nan=5.0, posinf=10.0, neginf=3.0)
 
         E_prime = 10**log_E_prime
         E_double_prime = 10**log_E_double_prime

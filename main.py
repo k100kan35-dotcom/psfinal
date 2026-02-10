@@ -6551,6 +6551,7 @@ $\begin{array}{lcc}
 
         ttk.Button(export_btn_frame, text="μ CSV", command=self._export_mu_visc_results, width=10).pack(side=tk.LEFT, padx=1)
         ttk.Button(export_btn_frame, text="f,g CSV", command=self._export_fg_curves, width=10).pack(side=tk.LEFT, padx=1)
+        ttk.Button(export_btn_frame, text="μ+A/A0 CSV", command=self._export_mu_and_area_csv, width=12).pack(side=tk.LEFT, padx=1)
 
         # Reference data comparison section
         ref_frame = ttk.LabelFrame(results_frame, text="참조 데이터 비교", padding=3)
@@ -6563,8 +6564,15 @@ $\begin{array}{lcc}
         ttk.Checkbutton(ref_row1, text="참조 μ_visc 표시", variable=self.show_ref_mu_var,
                        command=self._toggle_reference_mu).pack(side=tk.LEFT)
 
+        ttk.Button(ref_row1, text="참조 편집", command=self._edit_reference_data,
+                  width=8).pack(side=tk.LEFT, padx=2)
         ttk.Button(ref_row1, text="비교 분석", command=self._analyze_mu_comparison,
                   width=10).pack(side=tk.RIGHT, padx=2)
+
+        # Gap display (A/A0 계산값 vs 참조값 차이)
+        self.area_gap_var = tk.StringVar(value="A/A0 Gap: 계산 후 표시")
+        ttk.Label(ref_frame, textvariable=self.area_gap_var,
+                  font=('Arial', 8), foreground='blue').pack(anchor=tk.W, pady=2)
 
         # ============== Right Panel: Plots ==============
 
@@ -7937,6 +7945,13 @@ $\begin{array}{lcc}
             # Sanitize P_qmax_array
             P_qmax_array = np.nan_to_num(P_qmax_array, nan=0.0, posinf=1.0, neginf=0.0)
 
+            # Store P_qmax_array in mu_visc_results for later export
+            if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
+                self.mu_visc_results['P_qmax'] = P_qmax_array
+
+            # Calculate and display A/A0 gap with reference data
+            self._update_area_gap_display(v, P_qmax_array)
+
             # Color based on nonlinear correction
             if use_nonlinear:
                 label_str = 'A/A0 - 비선형 G(q)'
@@ -8703,6 +8718,256 @@ $\begin{array}{lcc}
 
         ttk.Button(export_frame, text="내보내기", command=do_export).pack(side=tk.RIGHT, padx=5)
         ttk.Button(export_frame, text="취소", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
+
+    def _update_area_gap_display(self, v, P_qmax_array):
+        """Calculate and display A/A0 gap between calculated and reference values."""
+        try:
+            if not hasattr(self, 'area_gap_var'):
+                return
+
+            if self.reference_area_data is None:
+                self.area_gap_var.set("A/A0 Gap: 참조 데이터 없음")
+                return
+
+            ref_v = self.reference_area_data['v']
+            ref_area = self.reference_area_data['area']
+
+            if len(v) < 2 or len(ref_v) < 2:
+                self.area_gap_var.set("A/A0 Gap: 데이터 부족")
+                return
+
+            # Interpolate reference data to calculated velocities
+            from scipy.interpolate import interp1d
+            ref_interp = interp1d(np.log10(ref_v), ref_area, kind='linear',
+                                  bounds_error=False, fill_value='extrapolate')
+
+            # Find lowest and middle velocity indices
+            low_idx = 0
+            mid_idx = len(v) // 2
+
+            # Get calculated and reference values
+            calc_low = P_qmax_array[low_idx]
+            calc_mid = P_qmax_array[mid_idx]
+
+            ref_low = ref_interp(np.log10(v[low_idx]))
+            ref_mid = ref_interp(np.log10(v[mid_idx]))
+
+            # Calculate percentage gap: (calc - ref) / ref * 100
+            if ref_low > 0:
+                gap_low = (calc_low - ref_low) / ref_low * 100
+            else:
+                gap_low = 0
+
+            if ref_mid > 0:
+                gap_mid = (calc_mid - ref_mid) / ref_mid * 100
+            else:
+                gap_mid = 0
+
+            # Format display
+            v_low_str = f"{v[low_idx]:.2e}"
+            v_mid_str = f"{v[mid_idx]:.2e}"
+            self.area_gap_var.set(
+                f"A/A0 Gap: v={v_low_str}에서 {gap_low:+.1f}%, v={v_mid_str}에서 {gap_mid:+.1f}%"
+            )
+
+        except Exception as e:
+            print(f"[DEBUG] A/A0 gap 계산 오류: {e}")
+            self.area_gap_var.set("A/A0 Gap: 계산 오류")
+
+    def _export_mu_and_area_csv(self):
+        """Export mu_visc and A/A0 data to a single CSV file with log10(v)."""
+        if self.mu_visc_results is None:
+            messagebox.showwarning("경고", "먼저 μ_visc를 계산하세요.")
+            return
+
+        v = self.mu_visc_results.get('v')
+        mu = self.mu_visc_results.get('mu')
+        P_qmax = self.mu_visc_results.get('P_qmax')
+
+        if v is None or mu is None:
+            messagebox.showwarning("경고", "계산 결과가 없습니다.")
+            return
+
+        if P_qmax is None:
+            messagebox.showwarning("경고", "A/A0 데이터가 없습니다. 먼저 μ_visc를 계산하세요.")
+            return
+
+        # File dialog
+        file_path = filedialog.asksaveasfilename(
+            title="μ_visc + A/A0 데이터 내보내기",
+            defaultextension=".csv",
+            filetypes=[("CSV 파일", "*.csv"), ("텍스트 파일", "*.txt"), ("모든 파일", "*.*")],
+            initialfile="mu_visc_and_area.csv"
+        )
+
+        if not file_path:
+            return
+
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                # Header
+                f.write("# mu_visc and A/A0 data\n")
+                f.write("# Column 1: log10(v) [m/s]\n")
+                f.write("# Column 2: mu_visc (friction coefficient)\n")
+                f.write("# Column 3: A/A0 (real contact area ratio)\n")
+                f.write("log10_v\tmu_visc\tA_A0\n")
+
+                # Data
+                for i in range(len(v)):
+                    log_v = np.log10(v[i])
+                    f.write(f"{log_v:.6e}\t{mu[i]:.6e}\t{P_qmax[i]:.6e}\n")
+
+            messagebox.showinfo("완료", f"파일 저장 완료:\n{file_path}")
+            self.status_var.set(f"CSV 내보내기 완료: {file_path}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"파일 저장 실패:\n{str(e)}")
+
+    def _edit_reference_data(self):
+        """Open dialog for editing reference mu_visc and A/A0 data."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("참조 데이터 편집")
+        dialog.geometry("700x600")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        # Center the dialog
+        dialog.update_idletasks()
+        x = self.root.winfo_x() + (self.root.winfo_width() - 700) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 600) // 2
+        dialog.geometry(f"+{x}+{y}")
+
+        # Instructions
+        inst_frame = ttk.Frame(dialog, padding=10)
+        inst_frame.pack(fill=tk.X)
+        ttk.Label(inst_frame,
+                  text="참조 데이터를 복사하여 붙여넣기 하세요.\n형식: 각 줄에 'log10(v) [탭 or 공백] 값' (예: -5.0  0.59)",
+                  font=('Arial', 9)).pack(anchor=tk.W)
+
+        # Create notebook for tabs
+        notebook = ttk.Notebook(dialog)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        # Tab 1: mu_visc reference
+        mu_frame = ttk.Frame(notebook, padding=5)
+        notebook.add(mu_frame, text="μ_visc 참조 데이터")
+
+        ttk.Label(mu_frame, text="μ_visc 참조 데이터 (log10(v) \\t mu_visc):",
+                  font=('Arial', 9, 'bold')).pack(anchor=tk.W)
+        mu_text = tk.Text(mu_frame, height=20, font=("Courier", 9), wrap=tk.NONE)
+        mu_scroll = ttk.Scrollbar(mu_frame, orient=tk.VERTICAL, command=mu_text.yview)
+        mu_text.configure(yscrollcommand=mu_scroll.set)
+        mu_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        mu_text.pack(fill=tk.BOTH, expand=True)
+
+        # Pre-fill with existing data
+        if hasattr(self, 'reference_mu_data') and self.reference_mu_data is not None:
+            log_v = self.reference_mu_data.get('log_v')
+            mu = self.reference_mu_data.get('mu')
+            if log_v is not None and mu is not None:
+                for lv, m in zip(log_v, mu):
+                    mu_text.insert(tk.END, f"{lv:.6e}\t{m:.6e}\n")
+
+        # Tab 2: A/A0 reference
+        area_frame = ttk.Frame(notebook, padding=5)
+        notebook.add(area_frame, text="A/A0 참조 데이터")
+
+        ttk.Label(area_frame, text="A/A0 참조 데이터 (log10(v) \\t A/A0):",
+                  font=('Arial', 9, 'bold')).pack(anchor=tk.W)
+        area_text = tk.Text(area_frame, height=20, font=("Courier", 9), wrap=tk.NONE)
+        area_scroll = ttk.Scrollbar(area_frame, orient=tk.VERTICAL, command=area_text.yview)
+        area_text.configure(yscrollcommand=area_scroll.set)
+        area_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        area_text.pack(fill=tk.BOTH, expand=True)
+
+        # Pre-fill with existing data
+        if hasattr(self, 'reference_area_data') and self.reference_area_data is not None:
+            log_v = self.reference_area_data.get('log_v')
+            area = self.reference_area_data.get('area')
+            if log_v is not None and area is not None:
+                for lv, a in zip(log_v, area):
+                    area_text.insert(tk.END, f"{lv:.6e}\t{a:.6e}\n")
+
+        # Button frame
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(fill=tk.X)
+
+        def apply_data():
+            """Parse and apply the reference data."""
+            try:
+                # Parse mu_visc data
+                mu_content = mu_text.get("1.0", tk.END).strip()
+                if mu_content:
+                    mu_lines = [l.strip() for l in mu_content.split('\n') if l.strip() and not l.startswith('#')]
+                    if mu_lines:
+                        mu_data = []
+                        for line in mu_lines:
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                try:
+                                    log_v = float(parts[0])
+                                    mu_val = float(parts[1])
+                                    mu_data.append((log_v, mu_val))
+                                except ValueError:
+                                    continue
+                        if mu_data:
+                            mu_data = np.array(mu_data)
+                            log_v = mu_data[:, 0]
+                            mu = mu_data[:, 1]
+                            self.reference_mu_data = {
+                                'v': 10**log_v,
+                                'mu': mu,
+                                'log_v': log_v,
+                                'show': True
+                            }
+                            print(f"[참조 데이터] μ_visc 업데이트: {len(mu)} points")
+
+                # Parse A/A0 data
+                area_content = area_text.get("1.0", tk.END).strip()
+                if area_content:
+                    area_lines = [l.strip() for l in area_content.split('\n') if l.strip() and not l.startswith('#')]
+                    if area_lines:
+                        area_data = []
+                        for line in area_lines:
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                try:
+                                    log_v = float(parts[0])
+                                    area_val = float(parts[1])
+                                    area_data.append((log_v, area_val))
+                                except ValueError:
+                                    continue
+                        if area_data:
+                            area_data = np.array(area_data)
+                            log_v = area_data[:, 0]
+                            area = area_data[:, 1]
+                            self.reference_area_data = {
+                                'v': 10**log_v,
+                                'area': area,
+                                'log_v': log_v,
+                                'show': True
+                            }
+                            print(f"[참조 데이터] A/A0 업데이트: {len(area)} points")
+
+                # Refresh plots if mu_visc results exist
+                if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
+                    v = self.mu_visc_results.get('v')
+                    mu = self.mu_visc_results.get('mu')
+                    details = self.mu_visc_results.get('details')
+                    if v is not None and mu is not None and details is not None:
+                        use_nonlinear = self.mu_use_fg_var.get() if hasattr(self, 'mu_use_fg_var') else False
+                        self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
+
+                dialog.destroy()
+                messagebox.showinfo("완료", "참조 데이터가 업데이트되었습니다.")
+
+            except Exception as e:
+                import traceback
+                messagebox.showerror("오류", f"데이터 파싱 실패:\n{str(e)}\n\n{traceback.format_exc()}")
+
+        ttk.Button(btn_frame, text="적용", command=apply_data, width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
 
     def _create_strain_map_tab(self, parent):
         """Create Local Strain Map visualization tab."""
