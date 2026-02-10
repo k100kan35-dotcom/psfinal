@@ -497,13 +497,34 @@ class PerssonModelGUI_V2:
         ttk.Button(load_frame, text="프로파일 데이터 로드 (.txt, .csv)",
                    command=self._load_profile_data).pack(fill=tk.X, pady=2)
 
+        # ===== 내장 PSD 선택 섹션 =====
+        ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
+        ttk.Label(load_frame, text="─ 내장 PSD 데이터 선택 ─",
+                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+
+        preset_psd_frame = ttk.Frame(load_frame)
+        preset_psd_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.preset_psd_var = tk.StringVar(value="(선택...)")
+        self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
+                                              state='readonly', width=25)
+        self.preset_psd_combo.pack(side=tk.LEFT, padx=5)
+        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=6).pack(side=tk.LEFT)
+        ttk.Button(preset_psd_frame, text="추가", command=self._add_preset_psd, width=6).pack(side=tk.LEFT, padx=2)
+
+        # 프로그램 시작 시 내장 PSD 목록 로드
+        self._refresh_preset_psd_list()
+
         # Direct PSD loading section
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 또는: PSD 파일 직접 로드 ─",
                   font=('Arial', 8), foreground='blue').pack(anchor=tk.CENTER)
 
-        ttk.Button(load_frame, text="★ PSD 직접 로드 (q, C(q))",
-                   command=self._load_psd_direct).pack(fill=tk.X, pady=2)
+        # PSD 직접 로드 버튼 (빨간 테두리)
+        btn_frame_psd_load = tk.Frame(load_frame, bg='red', padx=2, pady=2)
+        btn_frame_psd_load.pack(fill=tk.X, pady=2)
+        ttk.Button(btn_frame_psd_load, text="★ PSD 직접 로드 (q, C(q))",
+                   command=self._load_psd_direct).pack(fill=tk.X)
 
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
@@ -523,8 +544,11 @@ class PerssonModelGUI_V2:
                         value="param").pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="직접로드", variable=self.apply_psd_type_var,
                         value="direct").pack(side=tk.LEFT)
-        ttk.Button(load_frame, text="▶ PSD 확정 → 계산에 사용",
-                   command=self._apply_profile_psd_to_tab3).pack(fill=tk.X, pady=2)
+        # PSD 확정 버튼 (빨간 테두리)
+        btn_frame_psd_apply = tk.Frame(load_frame, bg='red', padx=2, pady=2)
+        btn_frame_psd_apply.pack(fill=tk.X, pady=2)
+        ttk.Button(btn_frame_psd_apply, text="▶ PSD 확정 → 계산에 사용",
+                   command=self._apply_profile_psd_to_tab3).pack(fill=tk.X)
 
         # Column settings
         col_frame = ttk.Frame(load_frame)
@@ -1771,30 +1795,68 @@ class PerssonModelGUI_V2:
             command=self._load_multi_temp_dma
         ).pack(fill=tk.X, pady=2)
 
+        # ===== 내장 마스터 커브/aT 선택 섹션 =====
+        ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
+        ttk.Label(load_frame, text="─ 내장 데이터 선택 ─",
+                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+
+        # 내장 마스터 커브 선택
+        preset_mc_frame = ttk.Frame(load_frame)
+        preset_mc_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(preset_mc_frame, text="마스터커브:", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.preset_mc_var = tk.StringVar(value="(선택...)")
+        self.preset_mc_combo = ttk.Combobox(preset_mc_frame, textvariable=self.preset_mc_var,
+                                             state='readonly', width=20)
+        self.preset_mc_combo.pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=5).pack(side=tk.LEFT)
+        ttk.Button(preset_mc_frame, text="추가", command=self._add_preset_mastercurve, width=5).pack(side=tk.LEFT, padx=2)
+
+        # 내장 aT 선택
+        preset_aT_frame = ttk.Frame(load_frame)
+        preset_aT_frame.pack(fill=tk.X, pady=2)
+        ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Arial', 8)).pack(side=tk.LEFT)
+        self.preset_aT_var = tk.StringVar(value="(선택...)")
+        self.preset_aT_combo = ttk.Combobox(preset_aT_frame, textvariable=self.preset_aT_var,
+                                             state='readonly', width=20)
+        self.preset_aT_combo.pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=5).pack(side=tk.LEFT)
+        ttk.Button(preset_aT_frame, text="추가", command=self._add_preset_aT, width=5).pack(side=tk.LEFT, padx=2)
+
+        # 프로그램 시작 시 내장 데이터 목록 로드
+        self._refresh_preset_mastercurve_list()
+        self._refresh_preset_aT_list()
+
         # Persson 정품 마스터 커브 직접 로드 버튼
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 또는: 완성된 마스터 커브 직접 로드 ─",
                   font=('Arial', 8), foreground='blue').pack(anchor=tk.CENTER)
 
+        # Persson 정품 마스터 커브 로드 버튼 (빨간 테두리)
+        btn_frame_mc_load = tk.Frame(load_frame, bg='red', padx=2, pady=2)
+        btn_frame_mc_load.pack(fill=tk.X, pady=2)
         ttk.Button(
-            load_frame,
+            btn_frame_mc_load,
             text="★ Persson 정품 마스터 커브 로드 (f, E', E'')",
             command=self._load_persson_master_curve
-        ).pack(fill=tk.X, pady=2)
+        ).pack(fill=tk.X)
 
-        # aT 시프트 팩터 로드 버튼
+        # aT 시프트 팩터 로드 버튼 (빨간 테두리)
+        btn_frame_aT_load = tk.Frame(load_frame, bg='red', padx=2, pady=2)
+        btn_frame_aT_load.pack(fill=tk.X, pady=2)
         ttk.Button(
-            load_frame,
+            btn_frame_aT_load,
             text="aT 시프트 팩터 로드 (T, aT)",
             command=self._load_persson_aT
-        ).pack(fill=tk.X, pady=2)
+        ).pack(fill=tk.X)
 
-        # Persson 정품 마스터 커브 확정 버튼 (aT 로드 바로 아래)
+        # Persson 정품 마스터 커브 확정 버튼 (빨간 테두리)
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=3)
+        btn_frame_mc_apply = tk.Frame(load_frame, bg='red', padx=2, pady=2)
+        btn_frame_mc_apply.pack(fill=tk.X, pady=2)
         ttk.Button(
-            load_frame, text="★ Persson 정품 마스터 커브 확정 → Tab 3",
+            btn_frame_mc_apply, text="★ Persson 정품 마스터 커브 확정 → Tab 3",
             command=self._use_persson_master_curve_for_calc
-        ).pack(fill=tk.X, pady=2)
+        ).pack(fill=tk.X)
 
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
@@ -3478,12 +3540,15 @@ class PerssonModelGUI_V2:
         calc_section = ttk.Frame(left_panel)
         calc_section.pack(fill=tk.X, pady=(0, 5))
 
+        # G(q,v) 계산 실행 버튼 (빨간 테두리)
+        calc_btn_wrapper = tk.Frame(calc_section, bg='red', padx=2, pady=2)
+        calc_btn_wrapper.pack(fill=tk.X, pady=2)
         self.calc_button = ttk.Button(
-            calc_section,
+            calc_btn_wrapper,
             text="▶ G(q,v) 계산 실행",
             command=self._run_calculation
         )
-        self.calc_button.pack(fill=tk.X, pady=2)
+        self.calc_button.pack(fill=tk.X)
 
         # Progress bar
         self.progress_var = tk.IntVar()
@@ -3547,7 +3612,10 @@ class PerssonModelGUI_V2:
         row += 1
         ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.q_max_var = tk.StringVar(value="1.0e+6")
-        ttk.Entry(input_frame, textvariable=self.q_max_var, width=15).grid(row=row, column=1, pady=5)
+        # q_max 입력 필드 (빨간 테두리)
+        qmax_entry_frame = tk.Frame(input_frame, bg='red', padx=2, pady=2)
+        qmax_entry_frame.grid(row=row, column=1, pady=5)
+        ttk.Entry(qmax_entry_frame, textvariable=self.q_max_var, width=15).pack()
 
         row += 1
         ttk.Label(input_frame, text="파수 포인트 수:").grid(row=row, column=0, sticky=tk.W, pady=5)
@@ -3563,8 +3631,11 @@ class PerssonModelGUI_V2:
         # ===== h'rms (ξ) / q1 모드 선택 섹션 =====
         # h'rms = ξ = RMS slope (경사), NOT h_rms (height)
         row += 1
-        mode_frame = ttk.LabelFrame(input_frame, text="h'rms (ξ, slope) / q1 결정 모드", padding=5)
-        mode_frame.grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=10)
+        # 모드 선택 섹션 (빨간 테두리)
+        mode_wrapper = tk.Frame(input_frame, bg='red', padx=2, pady=2)
+        mode_wrapper.grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=10)
+        mode_frame = ttk.LabelFrame(mode_wrapper, text="h'rms (ξ, slope) / q1 결정 모드", padding=5)
+        mode_frame.pack(fill=tk.X)
 
         # 설명 라벨
         desc_label = ttk.Label(mode_frame,
@@ -3612,9 +3683,12 @@ class PerssonModelGUI_V2:
         # 계산 버튼
         calc_btn_frame = ttk.Frame(mode_frame)
         calc_btn_frame.pack(fill=tk.X, pady=5)
-        self.hrms_q1_calc_btn = ttk.Button(calc_btn_frame, text="h'rms/q1 계산",
+        # h'rms/q1 계산 버튼 (빨간 테두리)
+        hrms_calc_wrapper = tk.Frame(calc_btn_frame, bg='red', padx=2, pady=2)
+        hrms_calc_wrapper.pack(side=tk.LEFT, padx=5)
+        self.hrms_q1_calc_btn = ttk.Button(hrms_calc_wrapper, text="h'rms/q1 계산",
                                            command=self._calculate_hrms_q1)
-        self.hrms_q1_calc_btn.pack(side=tk.LEFT, padx=5)
+        self.hrms_q1_calc_btn.pack()
 
         ttk.Button(calc_btn_frame, text="Tab 4로 전달",
                   command=self._send_hrms_q1_to_tab4).pack(side=tk.LEFT, padx=5)
@@ -5816,7 +5890,7 @@ $\begin{array}{lcc}
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
         ttk.Label(row1, text="Strain Factor:", font=('Arial', 9)).pack(side=tk.LEFT)
-        self.strain_factor_var = tk.StringVar(value="0.67")
+        self.strain_factor_var = tk.StringVar(value="0.5")
         ttk.Entry(row1, textvariable=self.strain_factor_var, width=8).pack(side=tk.RIGHT)
 
         ttk.Label(settings_frame, text="(ε = factor × ξ, Persson 권장: 0.5~1.0)",
@@ -6321,12 +6395,15 @@ $\begin{array}{lcc}
         strain_frame = ttk.LabelFrame(left_panel, text="1) Strain 데이터", padding=5)
         strain_frame.pack(fill=tk.X, pady=2, padx=3)
 
+        # Strain Sweep 로드 버튼 (빨간 테두리)
+        strain_load_wrapper = tk.Frame(strain_frame, bg='red', padx=2, pady=2)
+        strain_load_wrapper.pack(anchor=tk.W, pady=1)
         ttk.Button(
-            strain_frame,
+            strain_load_wrapper,
             text="Strain Sweep 로드",
             command=self._load_strain_sweep_data,
             width=20
-        ).pack(anchor=tk.W, pady=1)
+        ).pack()
 
         self.strain_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Arial', 8))
         self.strain_file_label.pack(anchor=tk.W)
@@ -6352,7 +6429,7 @@ $\begin{array}{lcc}
         self.fg_target_freq_var = tk.StringVar(value="1.0")
         ttk.Entry(row1, textvariable=self.fg_target_freq_var, width=6).pack(side=tk.LEFT, padx=2)
         ttk.Label(row1, text="Hz  E0점:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.e0_points_var = tk.StringVar(value="5")
+        self.e0_points_var = tk.StringVar(value="1")
         ttk.Entry(row1, textvariable=self.e0_points_var, width=4).pack(side=tk.LEFT, padx=2)
 
         # Strain is percent and clip checkboxes
@@ -6372,13 +6449,15 @@ $\begin{array}{lcc}
         self.use_persson_grid_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(row2, text="Persson Grid", variable=self.use_persson_grid_var).pack(side=tk.LEFT)
 
-        # Compute f,g button
+        # Compute f,g button (빨간 테두리)
+        fg_calc_wrapper = tk.Frame(fg_settings_frame, bg='red', padx=2, pady=2)
+        fg_calc_wrapper.pack(anchor=tk.W, pady=2)
         ttk.Button(
-            fg_settings_frame,
+            fg_calc_wrapper,
             text="f,g 계산",
             command=self._compute_fg_curves,
             width=15
-        ).pack(anchor=tk.W, pady=2)
+        ).pack()
 
         # 3. Piecewise Temperature Selection (Group A / Group B)
         piecewise_frame = ttk.LabelFrame(left_panel, text="3) Piecewise 온도", padding=5)
@@ -6429,7 +6508,10 @@ $\begin{array}{lcc}
         temp_btn_frame.pack(fill=tk.X, pady=2)
 
         ttk.Button(temp_btn_frame, text="전체 선택", command=self._select_all_temps, width=10).pack(side=tk.LEFT, padx=1)
-        ttk.Button(temp_btn_frame, text="Piecewise 평균", command=self._piecewise_average_fg_curves, width=15).pack(side=tk.LEFT, padx=1)
+        # Piecewise 평균 버튼 (빨간 테두리)
+        piecewise_wrapper = tk.Frame(temp_btn_frame, bg='red', padx=2, pady=2)
+        piecewise_wrapper.pack(side=tk.LEFT, padx=1)
+        ttk.Button(piecewise_wrapper, text="Piecewise 평균", command=self._piecewise_average_fg_curves, width=15).pack()
 
         # Legacy simple averaging (keep for compatibility)
         self.temp_listbox_frame = ttk.Frame(left_panel)
@@ -6444,9 +6526,11 @@ $\begin{array}{lcc}
         mu_settings_frame = ttk.LabelFrame(left_panel, text="4) μ_visc 계산", padding=5)
         mu_settings_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        # Nonlinear correction - single row
-        nonlinear_row = ttk.Frame(mu_settings_frame)
-        nonlinear_row.pack(fill=tk.X, pady=1)
+        # Nonlinear correction - single row (빨간 테두리)
+        nonlinear_wrapper = tk.Frame(mu_settings_frame, bg='red', padx=2, pady=2)
+        nonlinear_wrapper.pack(fill=tk.X, pady=1)
+        nonlinear_row = ttk.Frame(nonlinear_wrapper)
+        nonlinear_row.pack(fill=tk.X)
         self.use_fg_correction_var = tk.BooleanVar(value=False)
         ttk.Checkbutton(nonlinear_row, text="비선형 f,g 보정", variable=self.use_fg_correction_var).pack(side=tk.LEFT)
 
@@ -6502,9 +6586,11 @@ $\begin{array}{lcc}
         temp_frame = ttk.LabelFrame(mu_settings_frame, text="온도 시프트 (aT 적용)", padding=3)
         temp_frame.pack(fill=tk.X, pady=2)
 
-        # Temperature input row
-        temp_row1 = ttk.Frame(temp_frame)
-        temp_row1.pack(fill=tk.X, pady=1)
+        # Temperature input row (빨간 테두리)
+        temp_row1_wrapper = tk.Frame(temp_frame, bg='red', padx=2, pady=2)
+        temp_row1_wrapper.pack(fill=tk.X, pady=1)
+        temp_row1 = ttk.Frame(temp_row1_wrapper)
+        temp_row1.pack(fill=tk.X)
         ttk.Label(temp_row1, text="계산 온도:", font=('Arial', 9)).pack(side=tk.LEFT)
         self.mu_calc_temp_var = tk.StringVar(value="20.0")
         self.mu_calc_temp_entry = ttk.Entry(temp_row1, textvariable=self.mu_calc_temp_var, width=8)
@@ -6531,8 +6617,11 @@ $\begin{array}{lcc}
         # Calculate button and progress bar
         calc_row = ttk.Frame(mu_settings_frame)
         calc_row.pack(fill=tk.X, pady=2)
-        self.mu_calc_button = ttk.Button(calc_row, text="μ_visc 계산", command=self._calculate_mu_visc, width=15)
-        self.mu_calc_button.pack(side=tk.LEFT, padx=2)
+        # μ_visc 계산 버튼 (빨간 테두리)
+        mu_calc_wrapper = tk.Frame(calc_row, bg='red', padx=2, pady=2)
+        mu_calc_wrapper.pack(side=tk.LEFT, padx=2)
+        self.mu_calc_button = ttk.Button(mu_calc_wrapper, text="μ_visc 계산", command=self._calculate_mu_visc, width=15)
+        self.mu_calc_button.pack()
 
         self.mu_progress_var = tk.IntVar()
         self.mu_progress_bar = ttk.Progressbar(calc_row, variable=self.mu_progress_var, maximum=100, length=150)
@@ -6868,7 +6957,7 @@ $\begin{array}{lcc}
         self.canvas_mu_visc.draw()
 
     def _export_fg_curves(self):
-        """Export f,g curves to CSV file."""
+        """Export f,g curves to CSV file with proper column separation."""
         if self.fg_averaged is None and self.piecewise_result is None:
             messagebox.showwarning("경고", "먼저 f,g 곡선을 계산하세요.")
             return
@@ -6886,15 +6975,33 @@ $\begin{array}{lcc}
 
         try:
             import csv
+            from datetime import datetime
 
-            with open(filename, 'w', newline='', encoding='utf-8') as f:
-                writer = csv.writer(f)
+            # 평가 정보 수집
+            try:
+                load_mpa = float(self.sigma_0_var.get())
+            except:
+                load_mpa = 0.0
+            try:
+                calc_temp = float(self.mu_calc_temp_var.get())
+            except:
+                calc_temp = 20.0
+            nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
+
+            with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
+                writer = csv.writer(f, delimiter='\t')
+                # 헤더 정보
                 writer.writerow(['# f,g 곡선 데이터'])
+                writer.writerow(['# 생성일시', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
+                writer.writerow(['# 공칭하중(MPa)', f'{load_mpa:.3f}'])
+                writer.writerow(['# 계산온도(°C)', f'{calc_temp:.1f}'])
+                writer.writerow(['# 비선형보정적용', '예' if nonlinear_applied else '아니오'])
                 if self.piecewise_result is not None:
                     split = self.piecewise_result['split']
-                    writer.writerow([f'# Split Strain: {split*100:.2f}%'])
-                    writer.writerow([f'# Group A temps: {self.piecewise_result["temps_A"]}'])
-                    writer.writerow([f'# Group B temps: {self.piecewise_result["temps_B"]}'])
+                    writer.writerow(['# Split Strain(%)', f'{split*100:.2f}'])
+                    writer.writerow(['# Group A temps', str(self.piecewise_result["temps_A"])])
+                    writer.writerow(['# Group B temps', str(self.piecewise_result["temps_B"])])
+                writer.writerow([])  # 빈 줄
                 writer.writerow(['strain_fraction', 'f_value', 'g_value', 'n_eff'])
 
                 for i in range(len(result['strain'])):
@@ -8694,24 +8801,46 @@ $\begin{array}{lcc}
 
                 exported_files = []
 
+                # 평가 정보 수집
+                from datetime import datetime
+                try:
+                    load_mpa = float(self.sigma_0_var.get())
+                except:
+                    load_mpa = 0.0
+                try:
+                    calc_temp = float(self.mu_calc_temp_var.get())
+                except:
+                    calc_temp = 20.0
+                nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
+
+                # 공통 헤더 정보
+                def get_header_lines():
+                    return [
+                        f"# 생성일시\t{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                        f"# 공칭하중(MPa)\t{load_mpa:.3f}",
+                        f"# 계산온도(°C)\t{calc_temp:.1f}",
+                        f"# 비선형보정적용\t{'예' if nonlinear_applied else '아니오'}",
+                        "#"
+                    ]
+
                 # Export main results (v vs value)
                 if check_vars['mu_v'].get():
                     filename = "mu_visc_vs_velocity.csv"
                     filepath = os.path.join(save_dir, filename)
-                    lines = ["velocity [m/s],mu_visc"]
+                    lines = get_header_lines() + ["velocity [m/s]\tmu_visc"]
                     for vi, mui in zip(v, mu):
-                        lines.append(f"{vi:.6e},{mui:.6f}")
-                    with open(filepath, 'w', encoding='utf-8') as f:
+                        lines.append(f"{vi:.6e}\t{mui:.6f}")
+                    with open(filepath, 'w', encoding='utf-8-sig') as f:
                         f.write("\n".join(lines))
                     exported_files.append(filename)
 
                 if check_vars['mu_raw_v'].get():
                     filename = "mu_visc_raw_vs_velocity.csv"
                     filepath = os.path.join(save_dir, filename)
-                    lines = ["velocity [m/s],mu_visc_raw"]
+                    lines = get_header_lines() + ["velocity [m/s]\tmu_visc_raw"]
                     for vi, mui in zip(v, mu_raw):
-                        lines.append(f"{vi:.6e},{mui:.6f}")
-                    with open(filepath, 'w', encoding='utf-8') as f:
+                        lines.append(f"{vi:.6e}\t{mui:.6f}")
+                    with open(filepath, 'w', encoding='utf-8-sig') as f:
                         f.write("\n".join(lines))
                     exported_files.append(filename)
 
@@ -8839,12 +8968,31 @@ $\begin{array}{lcc}
             return
 
         try:
-            with open(file_path, 'w', encoding='utf-8') as f:
-                # Header
+            from datetime import datetime
+
+            # 평가 정보 수집
+            try:
+                load_mpa = float(self.sigma_0_var.get())
+            except:
+                load_mpa = 0.0
+            try:
+                calc_temp = float(self.mu_calc_temp_var.get())
+            except:
+                calc_temp = 20.0
+            nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
+
+            with open(file_path, 'w', encoding='utf-8-sig') as f:
+                # 헤더 정보
                 f.write("# mu_visc and A/A0 data\n")
+                f.write(f"# 생성일시\t{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# 공칭하중(MPa)\t{load_mpa:.3f}\n")
+                f.write(f"# 계산온도(°C)\t{calc_temp:.1f}\n")
+                f.write(f"# 비선형보정적용\t{'예' if nonlinear_applied else '아니오'}\n")
+                f.write("#\n")
                 f.write("# Column 1: log10(v) [m/s]\n")
                 f.write("# Column 2: mu_visc (friction coefficient)\n")
                 f.write("# Column 3: A/A0 (real contact area ratio)\n")
+                f.write("#\n")
                 f.write("log10_v\tmu_visc\tA_A0\n")
 
                 # Data
@@ -10960,6 +11108,239 @@ $\begin{array}{lcc}
         text_widget.insert(tk.END, content)
         text_widget.config(state='disabled')  # Read-only
         text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+    # ===== 내장 데이터 관리 메서드들 =====
+
+    def _get_preset_data_dir(self, data_type):
+        """Get the preset data directory for a given data type."""
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        preset_dir = os.path.join(base_dir, 'preset_data', data_type)
+        os.makedirs(preset_dir, exist_ok=True)
+        return preset_dir
+
+    def _refresh_preset_psd_list(self):
+        """Refresh the preset PSD list in the combobox."""
+        try:
+            preset_dir = self._get_preset_data_dir('psd')
+            files = [f for f in os.listdir(preset_dir) if f.endswith(('.txt', '.csv'))]
+            if files:
+                self.preset_psd_combo['values'] = files
+            else:
+                self.preset_psd_combo['values'] = ['(데이터 없음)']
+        except Exception as e:
+            print(f"[내장 PSD] 목록 로드 오류: {e}")
+            self.preset_psd_combo['values'] = ['(오류)']
+
+    def _load_preset_psd(self):
+        """Load a preset PSD file."""
+        selected = self.preset_psd_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "내장 PSD 파일을 선택하세요.")
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('psd')
+            filepath = os.path.join(preset_dir, selected)
+
+            # 기존 _load_psd_direct 로직 활용
+            psd_data = np.loadtxt(filepath, comments='#', encoding='utf-8')
+            q_data = psd_data[:, 0]
+            C_data = psd_data[:, 1]
+
+            # Store for later use
+            self.loaded_psd_direct = {
+                'q': q_data,
+                'C': C_data,
+                'source': f'내장: {selected}'
+            }
+
+            self.psd_direct_info_var.set(f"내장 PSD: {selected} ({len(q_data)}pts)")
+            self.apply_psd_type_var.set("direct")
+            self.status_var.set(f"내장 PSD 로드 완료: {selected}")
+            messagebox.showinfo("성공", f"내장 PSD 로드 완료:\n{selected}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 PSD 로드 실패:\n{str(e)}")
+
+    def _add_preset_psd(self):
+        """Add current PSD to preset list."""
+        # 현재 로드된 PSD가 있는지 확인
+        if not hasattr(self, 'loaded_psd_direct') or self.loaded_psd_direct is None:
+            messagebox.showwarning("경고", "먼저 PSD 파일을 로드하세요.")
+            return
+
+        # 파일 이름 입력 받기
+        from tkinter import simpledialog
+        name = simpledialog.askstring("내장 PSD 추가", "저장할 이름을 입력하세요:")
+        if not name:
+            return
+
+        # 확장자 추가
+        if not name.endswith('.txt'):
+            name += '.txt'
+
+        try:
+            preset_dir = self._get_preset_data_dir('psd')
+            filepath = os.path.join(preset_dir, name)
+
+            # 데이터 저장
+            q = self.loaded_psd_direct['q']
+            C = self.loaded_psd_direct['C']
+            header = f"# 내장 PSD 데이터\n# 원본: {self.loaded_psd_direct.get('source', 'unknown')}\n# q (1/m)\tC(q) (m^4)"
+            np.savetxt(filepath, np.column_stack([q, C]), header=header, comments='', delimiter='\t')
+
+            self._refresh_preset_psd_list()
+            messagebox.showinfo("성공", f"내장 PSD 추가 완료:\n{name}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 PSD 추가 실패:\n{str(e)}")
+
+    def _refresh_preset_mastercurve_list(self):
+        """Refresh the preset master curve list in the combobox."""
+        try:
+            preset_dir = self._get_preset_data_dir('mastercurve')
+            files = [f for f in os.listdir(preset_dir) if f.endswith(('.txt', '.csv'))]
+            if files:
+                self.preset_mc_combo['values'] = files
+            else:
+                self.preset_mc_combo['values'] = ['(데이터 없음)']
+        except Exception as e:
+            print(f"[내장 마스터커브] 목록 로드 오류: {e}")
+            self.preset_mc_combo['values'] = ['(오류)']
+
+    def _load_preset_mastercurve(self):
+        """Load a preset master curve file."""
+        selected = self.preset_mc_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "내장 마스터 커브 파일을 선택하세요.")
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('mastercurve')
+            filepath = os.path.join(preset_dir, selected)
+
+            # 마스터 커브 데이터 로드
+            data = np.loadtxt(filepath, comments='#', encoding='utf-8')
+            freq = data[:, 0]
+            E_storage = data[:, 1]
+            E_loss = data[:, 2]
+
+            # 저장
+            self.persson_master_curve = {
+                'freq': freq,
+                'E_storage': E_storage,
+                'E_loss': E_loss,
+                'source': f'내장: {selected}'
+            }
+
+            self.mc_data_info_var.set(f"내장: {selected} ({len(freq)}pts)")
+            self.status_var.set(f"내장 마스터 커브 로드 완료: {selected}")
+            messagebox.showinfo("성공", f"내장 마스터 커브 로드 완료:\n{selected}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 마스터 커브 로드 실패:\n{str(e)}")
+
+    def _add_preset_mastercurve(self):
+        """Add current master curve to preset list."""
+        if not hasattr(self, 'persson_master_curve') or self.persson_master_curve is None:
+            messagebox.showwarning("경고", "먼저 마스터 커브를 로드하세요.")
+            return
+
+        from tkinter import simpledialog
+        name = simpledialog.askstring("내장 마스터 커브 추가", "저장할 이름을 입력하세요:")
+        if not name:
+            return
+
+        if not name.endswith('.txt'):
+            name += '.txt'
+
+        try:
+            preset_dir = self._get_preset_data_dir('mastercurve')
+            filepath = os.path.join(preset_dir, name)
+
+            freq = self.persson_master_curve['freq']
+            E_storage = self.persson_master_curve['E_storage']
+            E_loss = self.persson_master_curve['E_loss']
+            header = f"# 내장 마스터 커브 데이터\n# 원본: {self.persson_master_curve.get('source', 'unknown')}\n# freq (Hz)\tE' (Pa)\tE'' (Pa)"
+            np.savetxt(filepath, np.column_stack([freq, E_storage, E_loss]), header=header, comments='', delimiter='\t')
+
+            self._refresh_preset_mastercurve_list()
+            messagebox.showinfo("성공", f"내장 마스터 커브 추가 완료:\n{name}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 마스터 커브 추가 실패:\n{str(e)}")
+
+    def _refresh_preset_aT_list(self):
+        """Refresh the preset aT shift factor list in the combobox."""
+        try:
+            preset_dir = self._get_preset_data_dir('aT')
+            files = [f for f in os.listdir(preset_dir) if f.endswith(('.txt', '.csv'))]
+            if files:
+                self.preset_aT_combo['values'] = files
+            else:
+                self.preset_aT_combo['values'] = ['(데이터 없음)']
+        except Exception as e:
+            print(f"[내장 aT] 목록 로드 오류: {e}")
+            self.preset_aT_combo['values'] = ['(오류)']
+
+    def _load_preset_aT(self):
+        """Load a preset aT shift factor file."""
+        selected = self.preset_aT_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "내장 aT 시프트 팩터 파일을 선택하세요.")
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('aT')
+            filepath = os.path.join(preset_dir, selected)
+
+            # aT 데이터 로드
+            data = np.loadtxt(filepath, comments='#', encoding='utf-8')
+            T = data[:, 0]
+            aT = data[:, 1]
+
+            # 저장
+            self.persson_aT = {
+                'T': T,
+                'aT': aT,
+                'source': f'내장: {selected}'
+            }
+
+            self.mc_aT_info_var.set(f"내장 aT: {selected} ({len(T)}pts)")
+            self.status_var.set(f"내장 aT 시프트 팩터 로드 완료: {selected}")
+            messagebox.showinfo("성공", f"내장 aT 시프트 팩터 로드 완료:\n{selected}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 aT 시프트 팩터 로드 실패:\n{str(e)}")
+
+    def _add_preset_aT(self):
+        """Add current aT shift factor to preset list."""
+        if not hasattr(self, 'persson_aT') or self.persson_aT is None:
+            messagebox.showwarning("경고", "먼저 aT 시프트 팩터를 로드하세요.")
+            return
+
+        from tkinter import simpledialog
+        name = simpledialog.askstring("내장 aT 추가", "저장할 이름을 입력하세요:")
+        if not name:
+            return
+
+        if not name.endswith('.txt'):
+            name += '.txt'
+
+        try:
+            preset_dir = self._get_preset_data_dir('aT')
+            filepath = os.path.join(preset_dir, name)
+
+            T = self.persson_aT['T']
+            aT = self.persson_aT['aT']
+            header = f"# 내장 aT 시프트 팩터 데이터\n# 원본: {self.persson_aT.get('source', 'unknown')}\n# T (°C)\taT"
+            np.savetxt(filepath, np.column_stack([T, aT]), header=header, comments='', delimiter='\t')
+
+            self._refresh_preset_aT_list()
+            messagebox.showinfo("성공", f"내장 aT 시프트 팩터 추가 완료:\n{name}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 aT 시프트 팩터 추가 실패:\n{str(e)}")
 
 
 def main():
