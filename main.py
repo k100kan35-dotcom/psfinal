@@ -8720,7 +8720,10 @@ $\begin{array}{lcc}
         ttk.Button(export_frame, text="취소", command=dialog.destroy).pack(side=tk.RIGHT, padx=5)
 
     def _update_area_gap_display(self, v, P_qmax_array):
-        """Calculate and display A/A0 gap between calculated and reference values."""
+        """Calculate and display A/A0 gap between calculated and reference values.
+
+        Compares at v = 10^-4, 10^-2, 10^0 m/s as requested.
+        """
         try:
             if not hasattr(self, 'area_gap_var'):
                 return
@@ -8741,34 +8744,29 @@ $\begin{array}{lcc}
             ref_interp = interp1d(np.log10(ref_v), ref_area, kind='linear',
                                   bounds_error=False, fill_value='extrapolate')
 
-            # Find lowest and middle velocity indices
-            low_idx = 0
-            mid_idx = len(v) // 2
+            # Target velocities: 10^-4, 10^-2, 10^0 m/s
+            target_velocities = [1e-4, 1e-2, 1e0]
+            gaps = []
 
-            # Get calculated and reference values
-            calc_low = P_qmax_array[low_idx]
-            calc_mid = P_qmax_array[mid_idx]
+            for target_v in target_velocities:
+                # Find closest velocity index
+                idx = np.argmin(np.abs(np.log10(v) - np.log10(target_v)))
+                actual_v = v[idx]
 
-            ref_low = ref_interp(np.log10(v[low_idx]))
-            ref_mid = ref_interp(np.log10(v[mid_idx]))
+                # Get calculated and reference values
+                calc_val = P_qmax_array[idx]
+                ref_val = ref_interp(np.log10(actual_v))
 
-            # Calculate percentage gap: (calc - ref) / ref * 100
-            if ref_low > 0:
-                gap_low = (calc_low - ref_low) / ref_low * 100
-            else:
-                gap_low = 0
+                # Calculate percentage gap
+                if ref_val > 0:
+                    gap = (calc_val - ref_val) / ref_val * 100
+                else:
+                    gap = 0
+                gaps.append((actual_v, gap))
 
-            if ref_mid > 0:
-                gap_mid = (calc_mid - ref_mid) / ref_mid * 100
-            else:
-                gap_mid = 0
-
-            # Format display
-            v_low_str = f"{v[low_idx]:.2e}"
-            v_mid_str = f"{v[mid_idx]:.2e}"
-            self.area_gap_var.set(
-                f"A/A0 Gap: v={v_low_str}에서 {gap_low:+.1f}%, v={v_mid_str}에서 {gap_mid:+.1f}%"
-            )
+            # Format display: show gaps at 10^-4, 10^-2, 10^0
+            gap_strs = [f"v={v_:.0e}: {g:+.1f}%" for v_, g in gaps]
+            self.area_gap_var.set(f"A/A0 Gap: " + ", ".join(gap_strs))
 
         except Exception as e:
             print(f"[DEBUG] A/A0 gap 계산 오류: {e}")
