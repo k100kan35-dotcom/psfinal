@@ -404,8 +404,8 @@ class GCalculator:
                 )
 
             # Apply prefactor 1/8
-            # NOTE: Testing division by π to check if formula needs 1/(8π) instead of 1/8
-            G_values[i] = integral / 8.0 / np.pi  # TEST: divide by π
+            # NOTE: Testing factor ~2.5 to match reference A/A0
+            G_values[i] = integral / 8.0 / 2.5  # TEST: divide by 2.5
 
         return G_values
 
@@ -476,7 +476,7 @@ class GCalculator:
             delta_G = 0.5 * (integrand_lower + integrand_upper) * (q_upper - q_lower)
 
             # Add to cumulative sum
-            G_cumulative[i] = G_cumulative[i-1] + delta_G / 8.0 / np.pi  # TEST: divide by π
+            G_cumulative[i] = G_cumulative[i-1] + delta_G / 8.0 / 2.5  # TEST: divide by 2.5
 
         return q_refined, G_cumulative
 
@@ -588,7 +588,7 @@ class GCalculator:
             delta_G = 0.5 * (G_integrand_arr[i-1] + G_integrand_arr[i]) * \
                       (q_values[i] - q_values[i-1])
 
-            delta_G_arr[i] = delta_G / 8.0 / np.pi  # TEST: Apply 1/(8π) factor
+            delta_G_arr[i] = delta_G / 8.0 / 2.5  # TEST: Apply 1/(8*2.5) factor
             G_arr[i] = G_arr[i-1] + delta_G_arr[i]
 
         # Calculate contact area ratio P(q) = erf(1 / (2√G))
