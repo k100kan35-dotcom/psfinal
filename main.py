@@ -664,7 +664,7 @@ class PerssonModelGUI_V2:
         q1_row = ttk.Frame(extrap_frame)
         q1_row.pack(fill=tk.X, pady=2)
         ttk.Label(q1_row, text="Target q1:", font=('Arial', 9)).pack(side=tk.LEFT)
-        self.target_q1_extrap_var = tk.StringVar(value="1e9")
+        self.target_q1_extrap_var = tk.StringVar(value="1e6")
         ttk.Entry(q1_row, textvariable=self.target_q1_extrap_var, width=10).pack(side=tk.LEFT, padx=5)
         ttk.Label(q1_row, text="1/m", font=('Arial', 8)).pack(side=tk.LEFT)
 
@@ -3513,12 +3513,12 @@ class PerssonModelGUI_V2:
 
         row += 1
         ttk.Label(input_frame, text="  최소 속도 v_min (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.v_min_var = tk.StringVar(value="0.0000001")
+        self.v_min_var = tk.StringVar(value="0.00001")
         ttk.Entry(input_frame, textvariable=self.v_min_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
         ttk.Label(input_frame, text="  최대 속도 v_max (m/s):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.v_max_var = tk.StringVar(value="10000")
+        self.v_max_var = tk.StringVar(value="1000")
         ttk.Entry(input_frame, textvariable=self.v_max_var, width=15).grid(row=row, column=1, pady=5)
 
         row += 1
@@ -6482,7 +6482,7 @@ $\begin{array}{lcc}
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.75")
+        self.gamma_var = tk.StringVar(value="0.59")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Arial', 8)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="36")
