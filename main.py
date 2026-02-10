@@ -509,8 +509,8 @@ class PerssonModelGUI_V2:
         self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
                                               state='readonly', width=25)
         self.preset_psd_combo.pack(side=tk.LEFT, padx=5)
-        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=6).pack(side=tk.LEFT)
-        ttk.Button(preset_psd_frame, text="추가", command=self._add_preset_psd, width=6).pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=5).pack(side=tk.LEFT)
+        ttk.Button(preset_psd_frame, text="삭제", command=self._delete_preset_psd, width=5).pack(side=tk.LEFT, padx=2)
 
         # 프로그램 시작 시 내장 PSD 목록 로드
         self._refresh_preset_psd_list()
@@ -1815,7 +1815,7 @@ class PerssonModelGUI_V2:
                                              state='readonly', width=20)
         self.preset_mc_combo.pack(side=tk.LEFT, padx=2)
         ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=5).pack(side=tk.LEFT)
-        ttk.Button(preset_mc_frame, text="추가", command=self._add_preset_mastercurve, width=5).pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_mc_frame, text="삭제", command=self._delete_preset_mastercurve, width=5).pack(side=tk.LEFT, padx=2)
 
         # 내장 aT 선택
         preset_aT_frame = ttk.Frame(load_frame)
@@ -1826,7 +1826,7 @@ class PerssonModelGUI_V2:
                                              state='readonly', width=20)
         self.preset_aT_combo.pack(side=tk.LEFT, padx=2)
         ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=5).pack(side=tk.LEFT)
-        ttk.Button(preset_aT_frame, text="추가", command=self._add_preset_aT, width=5).pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_aT_frame, text="삭제", command=self._delete_preset_aT, width=5).pack(side=tk.LEFT, padx=2)
 
         # 프로그램 시작 시 내장 데이터 목록 로드
         self._refresh_preset_mastercurve_list()
@@ -11160,15 +11160,25 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('psd')
             filepath = os.path.join(preset_dir, selected)
 
-            # 기존 _load_psd_direct 로직 활용
-            psd_data = np.loadtxt(filepath, comments='#', encoding='utf-8')
+            # 다중 인코딩 시도
+            psd_data = None
+            for enc in ['utf-8', 'cp949', 'euc-kr', 'latin-1']:
+                try:
+                    psd_data = np.loadtxt(filepath, comments='#', encoding=enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if psd_data is None:
+                raise ValueError("파일 인코딩을 인식할 수 없습니다.")
+
             q_data = psd_data[:, 0]
             C_data = psd_data[:, 1]
 
-            # Store for later use
-            self.loaded_psd_direct = {
+            # Store for later use - psd_direct_data에도 저장
+            self.psd_direct_data = {
                 'q': q_data,
-                'C': C_data,
+                'C_q': C_data,
+                'filename': selected,
                 'source': f'내장: {selected}'
             }
 
@@ -11179,6 +11189,26 @@ $\begin{array}{lcc}
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 PSD 로드 실패:\n{str(e)}")
+
+    def _delete_preset_psd(self):
+        """Delete selected preset PSD file."""
+        selected = self.preset_psd_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "삭제할 내장 PSD 파일을 선택하세요.")
+            return
+
+        if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('psd')
+            filepath = os.path.join(preset_dir, selected)
+            os.remove(filepath)
+            self._refresh_preset_psd_list()
+            self.preset_psd_var.set("(선택...)")
+            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+        except Exception as e:
+            messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
     def _add_preset_psd(self):
         """Add current PSD to preset list."""
@@ -11251,8 +11281,17 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('mastercurve')
             filepath = os.path.join(preset_dir, selected)
 
-            # 마스터 커브 데이터 로드
-            data = np.loadtxt(filepath, comments='#', encoding='utf-8')
+            # 다중 인코딩 시도
+            data = None
+            for enc in ['utf-8', 'cp949', 'euc-kr', 'latin-1']:
+                try:
+                    data = np.loadtxt(filepath, comments='#', encoding=enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if data is None:
+                raise ValueError("파일 인코딩을 인식할 수 없습니다.")
+
             freq = data[:, 0]
             E_storage = data[:, 1]
             E_loss = data[:, 2]
@@ -11260,8 +11299,10 @@ $\begin{array}{lcc}
             # 저장
             self.persson_master_curve = {
                 'freq': freq,
+                'f': freq,
                 'E_storage': E_storage,
                 'E_loss': E_loss,
+                'filename': selected,
                 'source': f'내장: {selected}'
             }
 
@@ -11271,6 +11312,26 @@ $\begin{array}{lcc}
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 마스터 커브 로드 실패:\n{str(e)}")
+
+    def _delete_preset_mastercurve(self):
+        """Delete selected preset master curve file."""
+        selected = self.preset_mc_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "삭제할 내장 마스터 커브 파일을 선택하세요.")
+            return
+
+        if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('mastercurve')
+            filepath = os.path.join(preset_dir, selected)
+            os.remove(filepath)
+            self._refresh_preset_mastercurve_list()
+            self.preset_mc_var.set("(선택...)")
+            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+        except Exception as e:
+            messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
     def _add_preset_mastercurve(self):
         """Add current master curve to preset list."""
@@ -11328,15 +11389,25 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('aT')
             filepath = os.path.join(preset_dir, selected)
 
-            # aT 데이터 로드
-            data = np.loadtxt(filepath, comments='#', encoding='utf-8')
+            # 다중 인코딩 시도
+            data = None
+            for enc in ['utf-8', 'cp949', 'euc-kr', 'latin-1']:
+                try:
+                    data = np.loadtxt(filepath, comments='#', encoding=enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if data is None:
+                raise ValueError("파일 인코딩을 인식할 수 없습니다.")
+
             T = data[:, 0]
             aT = data[:, 1]
 
-            # 저장
-            self.persson_aT = {
+            # 저장 - persson_aT_data에도 저장
+            self.persson_aT_data = {
                 'T': T,
                 'aT': aT,
+                'filename': selected,
                 'source': f'내장: {selected}'
             }
 
@@ -11346,6 +11417,26 @@ $\begin{array}{lcc}
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 aT 시프트 팩터 로드 실패:\n{str(e)}")
+
+    def _delete_preset_aT(self):
+        """Delete selected preset aT shift factor file."""
+        selected = self.preset_aT_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "삭제할 내장 aT 파일을 선택하세요.")
+            return
+
+        if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('aT')
+            filepath = os.path.join(preset_dir, selected)
+            os.remove(filepath)
+            self._refresh_preset_aT_list()
+            self.preset_aT_var.set("(선택...)")
+            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+        except Exception as e:
+            messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
     def _add_preset_aT(self):
         """Add current aT shift factor to preset list."""
