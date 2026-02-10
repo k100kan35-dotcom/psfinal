@@ -404,8 +404,7 @@ class GCalculator:
                 )
 
             # Apply prefactor 1/8
-            # NOTE: Testing factor ~2.5 to match reference A/A0
-            G_values[i] = integral / 8.0 / 2.5  # TEST: divide by 2.5
+            G_values[i] = integral / 8.0
 
         return G_values
 
@@ -476,7 +475,7 @@ class GCalculator:
             delta_G = 0.5 * (integrand_lower + integrand_upper) * (q_upper - q_lower)
 
             # Add to cumulative sum
-            G_cumulative[i] = G_cumulative[i-1] + delta_G / 8.0 / 2.5  # TEST: divide by 2.5
+            G_cumulative[i] = G_cumulative[i-1] + delta_G / 8.0
 
         return q_refined, G_cumulative
 
@@ -588,7 +587,7 @@ class GCalculator:
             delta_G = 0.5 * (G_integrand_arr[i-1] + G_integrand_arr[i]) * \
                       (q_values[i] - q_values[i-1])
 
-            delta_G_arr[i] = delta_G / 8.0 / 2.5  # TEST: Apply 1/(8*2.5) factor
+            delta_G_arr[i] = delta_G / 8.0
             G_arr[i] = G_arr[i-1] + delta_G_arr[i]
 
         # Calculate contact area ratio P(q) = erf(1 / (2√G))
@@ -603,6 +602,9 @@ class GCalculator:
                 P_arr[i] = erf(arg)
             else:
                 P_arr[i] = 1.0  # Full contact when G is very small
+
+        # DEBUG: Print G and P at max q to understand the discrepancy
+        print(f"[DEBUG G] v={self.velocity:.2e}, G_max={G_arr[-1]:.4e}, P(q_max)={P_arr[-1]:.6f}")
 
         result = {
             'q': q_values,
