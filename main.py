@@ -9239,14 +9239,14 @@ $\begin{array}{lcc}
         self.fig_strain_map = Figure(figsize=(18, 9), dpi=100)
 
         # 2x4 subplots layout:
-        # Row 1: Local Strain | E' Storage | E''*g Loss | E'*f Storage
-        # Row 2: G Integrand (linear) | G Integrand (nonlinear) | A/A0 (linear) | A/A0 (nonlinear)
+        # Row 1: Local Strain | E' Storage (linear) | E'' Loss (linear) | E''*g Loss (nonlinear)
+        # Row 2: E'*f Storage (nonlinear) | G Integrand | A/A0 (linear) | A/A0 (nonlinear)
         self.ax_strain_contour = self.fig_strain_map.add_subplot(241)
         self.ax_E_storage = self.fig_strain_map.add_subplot(242)
-        self.ax_E_loss_nonlinear = self.fig_strain_map.add_subplot(243)
-        self.ax_E_storage_nonlinear = self.fig_strain_map.add_subplot(244)
-        self.ax_G_integrand_linear = self.fig_strain_map.add_subplot(245)
-        self.ax_G_integrand_nonlinear = self.fig_strain_map.add_subplot(246)
+        self.ax_E_loss_linear = self.fig_strain_map.add_subplot(243)  # NEW: E'' 순수 (linear)
+        self.ax_E_loss_nonlinear = self.fig_strain_map.add_subplot(244)
+        self.ax_E_storage_nonlinear = self.fig_strain_map.add_subplot(245)
+        self.ax_G_integrand = self.fig_strain_map.add_subplot(246)  # G Integrand 통합
         self.ax_contact_linear = self.fig_strain_map.add_subplot(247)
         self.ax_contact_nonlinear = self.fig_strain_map.add_subplot(248)
 
@@ -9265,16 +9265,16 @@ $\begin{array}{lcc}
         for ax, title in [
             (self.ax_strain_contour, 'Local Strain [%]'),
             (self.ax_E_storage, "E' Storage [log Pa]"),
-            (self.ax_E_loss_nonlinear, "E''*g Loss [log Pa]"),
-            (self.ax_E_storage_nonlinear, "E'*f Storage [log Pa]"),
-            (self.ax_G_integrand_linear, "G Integrand (linear)"),
-            (self.ax_G_integrand_nonlinear, "G Integrand (f applied)"),
-            (self.ax_contact_linear, "A/A0 Contact (linear)"),
-            (self.ax_contact_nonlinear, "A/A0 Contact (f applied)")
+            (self.ax_E_loss_linear, "E'' Loss [log Pa]"),
+            (self.ax_E_loss_nonlinear, "E''×g [log Pa]"),
+            (self.ax_E_storage_nonlinear, "E'×f [log Pa]"),
+            (self.ax_G_integrand, "G Integrand"),
+            (self.ax_contact_linear, "A/A₀ (linear)"),
+            (self.ax_contact_nonlinear, "A/A₀ (nonlinear)")
         ]:
             ax.set_title(title, fontweight='bold', fontsize=9)
-            ax.set_xlabel('log10(v) [m/s]', fontsize=8)
-            ax.set_ylabel('log10(q) [1/m]', fontsize=8)
+            ax.set_xlabel('log₁₀(v) [m/s]', fontsize=8)
+            ax.set_ylabel('log₁₀(q) [1/m]', fontsize=8)
             ax.text(0.5, 0.5, 'No data',
                    ha='center', va='center', transform=ax.transAxes,
                    fontsize=10, color='gray')
@@ -9506,8 +9506,8 @@ $\begin{array}{lcc}
         strain = self.strain_map_results['strain']
         E_storage = self.strain_map_results['E_storage']
         E_storage_nl = self.strain_map_results['E_storage_nonlinear']
+        E_loss_lin = self.strain_map_results.get('E_loss_linear')  # NEW: 순수 E''
         E_loss_nl = self.strain_map_results['E_loss_nonlinear']
-        G_int_lin = self.strain_map_results.get('G_integrand_linear')
         G_int_nl = self.strain_map_results.get('G_integrand_nonlinear')
         contact_lin = self.strain_map_results.get('contact_linear')
         contact_nl = self.strain_map_results.get('contact_nonlinear')
@@ -9528,16 +9528,23 @@ $\begin{array}{lcc}
 
         # Clear all 8 axes
         all_axes = [self.ax_strain_contour, self.ax_E_storage,
-                    self.ax_E_loss_nonlinear, self.ax_E_storage_nonlinear,
-                    self.ax_G_integrand_linear, self.ax_G_integrand_nonlinear,
+                    self.ax_E_loss_linear, self.ax_E_loss_nonlinear,
+                    self.ax_E_storage_nonlinear, self.ax_G_integrand,
                     self.ax_contact_linear, self.ax_contact_nonlinear]
         for ax in all_axes:
             ax.clear()
 
-        # Color maps (강한값=진한색, 약한값=밝은색으로 통일)
-        strain_cmap = 'YlOrRd'          # Yellow(약)→Red(강) - 이미 올바름
-        modulus_cmap = 'viridis_r'      # Yellow(약)→Dark(강)
-        contact_cmap = 'plasma_r'       # Yellow(약)→Dark(강)
+        # ===== 색상 맵 개선 =====
+        # 변형률: 노랑(낮음) → 빨강(높음) - 유연함→딱딱함 느낌
+        strain_cmap = 'YlOrRd'
+        # 모듈러스: 진한 파랑 계열 - 높을수록 "딱딱한" 느낌
+        # PuBu: 연한 보라→진한 파랑 (저→고)
+        modulus_cmap = 'PuBu'
+        # 실접촉: 낮으면 "없어 보이는" 흰색 계열, 높으면 진한 초록
+        # Greens: 흰색→진한 초록 (낮은 접촉=희미, 높은 접촉=존재감)
+        contact_cmap = 'Greens'
+        # G Integrand: 에너지 손실 느낌 - 낮으면 차가운 색, 높으면 뜨거운 색
+        g_cmap = 'YlOrBr'
 
         # v=1 m/s 인덱스 찾기 (모든 그래프 주석에 사용)
         v_1ms_idx = int(np.argmin(np.abs(v - 1.0)))
@@ -9545,13 +9552,14 @@ $\begin{array}{lcc}
         # Fix NaN in strain for statistics
         strain_valid = np.nan_to_num(strain, nan=0.0)
 
-        # === Row 1 ===
-        # Plot 1: Local Strain with contours
+        # ===== Row 1 =====
+        # Plot 1: Local Strain [%] with contours
         im1 = self.ax_strain_contour.pcolormesh(V, Q, strain_valid * 100, cmap=strain_cmap, shading='auto')
         self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=9)
-        self.ax_strain_contour.set_xlabel('log10(v)', fontsize=8)
-        self.ax_strain_contour.set_ylabel('log10(q)', fontsize=8)
+        self.ax_strain_contour.set_xlabel('log₁₀(v)', fontsize=8)
+        self.ax_strain_contour.set_ylabel('log₁₀(q)', fontsize=8)
         cbar1 = self.fig_strain_map.colorbar(im1, ax=self.ax_strain_contour)
+        cbar1.set_label('%', fontsize=7)
         self._strain_map_colorbars.append(cbar1)
         try:
             cs = self.ax_strain_contour.contour(V, Q, strain_valid * 100, levels=[1, 5, 10], colors='k', linewidths=0.5)
@@ -9564,117 +9572,122 @@ $\begin{array}{lcc}
             transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 2: E' Storage Modulus
+        # Plot 2: E' Storage Modulus (linear, 순수)
         E_s_safe = np.maximum(E_storage, 1e-10)
-        im2 = self.ax_E_storage.pcolormesh(V, Q, np.log10(E_s_safe), cmap=modulus_cmap, shading='auto')
+        log_E_s = np.log10(E_s_safe)
+        im2 = self.ax_E_storage.pcolormesh(V, Q, log_E_s, cmap=modulus_cmap, shading='auto')
         self.ax_E_storage.set_title("E' Storage [log Pa]", fontweight='bold', fontsize=9)
-        self.ax_E_storage.set_xlabel('log10(v)', fontsize=8)
-        self.ax_E_storage.set_ylabel('log10(q)', fontsize=8)
+        self.ax_E_storage.set_xlabel('log₁₀(v)', fontsize=8)
+        self.ax_E_storage.set_ylabel('log₁₀(q)', fontsize=8)
         cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage)
+        cbar2.set_label('log₁₀(Pa)', fontsize=7)
         self._strain_map_colorbars.append(cbar2)
-        E_s_at1 = np.log10(np.maximum(E_storage[:, v_1ms_idx], 1e-10))
+        E_s_at1 = log_E_s[:, v_1ms_idx]
         self.ax_E_storage.text(0.02, 0.98, f"v=1: {E_s_at1.min():.1f}~{E_s_at1.max():.1f}",
             transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 3: E''*g Loss Modulus
+        # Plot 3: E'' Loss Modulus (linear, 순수) - NEW!
+        if E_loss_lin is not None:
+            E_ll_safe = np.maximum(E_loss_lin, 1e-10)
+            log_E_ll = np.log10(E_ll_safe)
+            im3 = self.ax_E_loss_linear.pcolormesh(V, Q, log_E_ll, cmap=modulus_cmap, shading='auto')
+            self.ax_E_loss_linear.set_title("E'' Loss [log Pa]", fontweight='bold', fontsize=9)
+            self.ax_E_loss_linear.set_xlabel('log₁₀(v)', fontsize=8)
+            self.ax_E_loss_linear.set_ylabel('log₁₀(q)', fontsize=8)
+            cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_linear)
+            cbar3.set_label('log₁₀(Pa)', fontsize=7)
+            self._strain_map_colorbars.append(cbar3)
+            E_ll_at1 = log_E_ll[:, v_1ms_idx]
+            self.ax_E_loss_linear.text(0.02, 0.98, f"v=1: {E_ll_at1.min():.1f}~{E_ll_at1.max():.1f}",
+                transform=self.ax_E_loss_linear.transAxes, fontsize=7, va='top',
+                bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+
+        # Plot 4: E''×g Loss Modulus (nonlinear, g 적용)
         E_l_safe = np.maximum(E_loss_nl, 1e-10)
-        im3 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, np.log10(E_l_safe), cmap=modulus_cmap, shading='auto')
-        self.ax_E_loss_nonlinear.set_title("E''*g Loss [log Pa]", fontweight='bold', fontsize=9)
-        self.ax_E_loss_nonlinear.set_xlabel('log10(v)', fontsize=8)
-        self.ax_E_loss_nonlinear.set_ylabel('log10(q)', fontsize=8)
-        cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_nonlinear)
-        self._strain_map_colorbars.append(cbar3)
-        E_l_at1 = np.log10(np.maximum(E_loss_nl[:, v_1ms_idx], 1e-10))
+        log_E_l = np.log10(E_l_safe)
+        im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, log_E_l, cmap=modulus_cmap, shading='auto')
+        self.ax_E_loss_nonlinear.set_title("E''×g [log Pa]", fontweight='bold', fontsize=9)
+        self.ax_E_loss_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
+        self.ax_E_loss_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
+        cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_loss_nonlinear)
+        cbar4.set_label('log₁₀(Pa)', fontsize=7)
+        self._strain_map_colorbars.append(cbar4)
+        E_l_at1 = log_E_l[:, v_1ms_idx]
         self.ax_E_loss_nonlinear.text(0.02, 0.98, f"v=1: {E_l_at1.min():.1f}~{E_l_at1.max():.1f}",
             transform=self.ax_E_loss_nonlinear.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 4: E'*f Storage Modulus
+        # ===== Row 2 =====
+        # Plot 5: E'×f Storage Modulus (nonlinear, f 적용)
         E_snl_safe = np.maximum(E_storage_nl, 1e-10)
-        im4 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, np.log10(E_snl_safe), cmap=modulus_cmap, shading='auto')
-        self.ax_E_storage_nonlinear.set_title("E'*f Storage [log Pa]", fontweight='bold', fontsize=9)
-        self.ax_E_storage_nonlinear.set_xlabel('log10(v)', fontsize=8)
-        self.ax_E_storage_nonlinear.set_ylabel('log10(q)', fontsize=8)
-        cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_storage_nonlinear)
-        self._strain_map_colorbars.append(cbar4)
-        E_snl_at1 = np.log10(np.maximum(E_storage_nl[:, v_1ms_idx], 1e-10))
+        log_E_snl = np.log10(E_snl_safe)
+        im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, log_E_snl, cmap=modulus_cmap, shading='auto')
+        self.ax_E_storage_nonlinear.set_title("E'×f [log Pa]", fontweight='bold', fontsize=9)
+        self.ax_E_storage_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
+        self.ax_E_storage_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
+        cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_E_storage_nonlinear)
+        cbar5.set_label('log₁₀(Pa)', fontsize=7)
+        self._strain_map_colorbars.append(cbar5)
+        E_snl_at1 = log_E_snl[:, v_1ms_idx]
         self.ax_E_storage_nonlinear.text(0.02, 0.98, f"v=1: {E_snl_at1.min():.1f}~{E_snl_at1.max():.1f}",
             transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # === Row 2 ===
-        # G Integrand 공통 vmin/vmax 계산 (두 플롯 비교 가능하도록 동일 범위)
-        g_vmin, g_vmax = None, None
-        if G_int_lin is not None:
-            log_G_lin = np.log10(np.maximum(G_int_lin, 1e-30))
-            g_vmax = np.max(log_G_lin)
-            if G_int_nl is not None:
-                log_G_nl = np.log10(np.maximum(G_int_nl, 1e-30))
-                g_vmax = max(g_vmax, np.max(log_G_nl))
-            # vmin: 유효 범위만 표시 (상위 95% 구간, 최대 15 orders 이내)
-            all_log_G = log_G_lin.ravel()
-            if G_int_nl is not None:
-                all_log_G = np.concatenate([all_log_G, log_G_nl.ravel()])
-            g_vmin = max(np.percentile(all_log_G, 5), g_vmax - 15)
-
-        # Plot 5: G Integrand (linear)
-        if G_int_lin is not None:
-            log_G_lin_data = np.log10(np.maximum(G_int_lin, 1e-30))
-            im5 = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_data, cmap='inferno_r', shading='auto',
-                                                         vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand_linear.set_title('G Integrand (linear)', fontweight='bold', fontsize=9)
-            self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
-            cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_G_integrand_linear)
-            self._strain_map_colorbars.append(cbar5)
-            G_lin_at1 = log_G_lin_data[:, v_1ms_idx]
-            G_lin_valid = G_lin_at1[G_lin_at1 > -29]  # 유효값만
-            if len(G_lin_valid) > 0:
-                self.ax_G_integrand_linear.text(0.02, 0.98, f"v=1: {G_lin_valid.min():.1f}~{G_lin_valid.max():.1f}",
-                    transform=self.ax_G_integrand_linear.transAxes, fontsize=7, va='top',
-                    bbox=dict(boxstyle='round', fc='white', alpha=0.8))
-
-        # Plot 6: G Integrand (nonlinear with f applied)
+        # Plot 6: G Integrand (nonlinear only - 실제 사용되는 값)
         if G_int_nl is not None:
-            log_G_nl_data = np.log10(np.maximum(G_int_nl, 1e-30))
-            im6 = self.ax_G_integrand_nonlinear.pcolormesh(V, Q, log_G_nl_data, cmap='inferno_r', shading='auto',
-                                                            vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand_nonlinear.set_title('G Integrand (f applied)', fontweight='bold', fontsize=9)
-            self.ax_G_integrand_nonlinear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_G_integrand_nonlinear.set_ylabel('log10(q)', fontsize=8)
-            cbar6 = self.fig_strain_map.colorbar(im6, ax=self.ax_G_integrand_nonlinear)
+            log_G_nl = np.log10(np.maximum(G_int_nl, 1e-30))
+            g_vmax = np.max(log_G_nl)
+            g_vmin = max(np.percentile(log_G_nl.ravel(), 5), g_vmax - 15)
+            im6 = self.ax_G_integrand.pcolormesh(V, Q, log_G_nl, cmap=g_cmap, shading='auto',
+                                                  vmin=g_vmin, vmax=g_vmax)
+            self.ax_G_integrand.set_title('G Integrand [log]', fontweight='bold', fontsize=9)
+            self.ax_G_integrand.set_xlabel('log₁₀(v)', fontsize=8)
+            self.ax_G_integrand.set_ylabel('log₁₀(q)', fontsize=8)
+            cbar6 = self.fig_strain_map.colorbar(im6, ax=self.ax_G_integrand)
+            cbar6.set_label('log₁₀(G)', fontsize=7)
             self._strain_map_colorbars.append(cbar6)
-            G_nl_at1 = log_G_nl_data[:, v_1ms_idx]
+            G_nl_at1 = log_G_nl[:, v_1ms_idx]
             G_nl_valid = G_nl_at1[G_nl_at1 > -29]
             if len(G_nl_valid) > 0:
-                self.ax_G_integrand_nonlinear.text(0.02, 0.98, f"v=1: {G_nl_valid.min():.1f}~{G_nl_valid.max():.1f}",
-                    transform=self.ax_G_integrand_nonlinear.transAxes, fontsize=7, va='top',
+                self.ax_G_integrand.text(0.02, 0.98, f"v=1: {G_nl_valid.min():.1f}~{G_nl_valid.max():.1f}",
+                    transform=self.ax_G_integrand.transAxes, fontsize=7, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 7: Contact area ratio A/A0 (linear)
+        # Plot 7: Contact area ratio A/A₀ (linear)
+        # 실접촉: 낮으면(0에 가까우면) 희미하게, 높으면(1에 가까우면) 진하게
         if contact_lin is not None:
+            # 실제 데이터 범위 확인
+            c_min_actual = np.nanmin(contact_lin)
+            c_max_actual = np.nanmax(contact_lin)
+            # 범위를 0~1로 고정하되, 실제 범위 표시
             im7 = self.ax_contact_linear.pcolormesh(V, Q, contact_lin, cmap=contact_cmap, shading='auto', vmin=0, vmax=1)
-            self.ax_contact_linear.set_title('A/A0 Contact (linear)', fontweight='bold', fontsize=9)
-            self.ax_contact_linear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_contact_linear.set_ylabel('log10(q)', fontsize=8)
+            self.ax_contact_linear.set_title('A/A₀ (linear)', fontweight='bold', fontsize=9)
+            self.ax_contact_linear.set_xlabel('log₁₀(v)', fontsize=8)
+            self.ax_contact_linear.set_ylabel('log₁₀(q)', fontsize=8)
             cbar7 = self.fig_strain_map.colorbar(im7, ax=self.ax_contact_linear)
+            cbar7.set_label('A/A₀', fontsize=7)
             self._strain_map_colorbars.append(cbar7)
             P_lin_at1 = contact_lin[:, v_1ms_idx]
-            self.ax_contact_linear.text(0.02, 0.98, f'v=1: {P_lin_at1.min():.2f}~{P_lin_at1.max():.2f}',
+            self.ax_contact_linear.text(0.02, 0.98,
+                f'v=1: {P_lin_at1.min():.3f}~{P_lin_at1.max():.3f}\n전체: {c_min_actual:.3f}~{c_max_actual:.3f}',
                 transform=self.ax_contact_linear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 8: Contact area ratio A/A0 (nonlinear)
+        # Plot 8: Contact area ratio A/A₀ (nonlinear)
         if contact_nl is not None:
+            c_nl_min = np.nanmin(contact_nl)
+            c_nl_max = np.nanmax(contact_nl)
             im8 = self.ax_contact_nonlinear.pcolormesh(V, Q, contact_nl, cmap=contact_cmap, shading='auto', vmin=0, vmax=1)
-            self.ax_contact_nonlinear.set_title('A/A0 Contact (f applied)', fontweight='bold', fontsize=9)
-            self.ax_contact_nonlinear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_contact_nonlinear.set_ylabel('log10(q)', fontsize=8)
+            self.ax_contact_nonlinear.set_title('A/A₀ (nonlinear)', fontweight='bold', fontsize=9)
+            self.ax_contact_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
+            self.ax_contact_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
             cbar8 = self.fig_strain_map.colorbar(im8, ax=self.ax_contact_nonlinear)
+            cbar8.set_label('A/A₀', fontsize=7)
             self._strain_map_colorbars.append(cbar8)
             P_nl_at1 = contact_nl[:, v_1ms_idx]
-            self.ax_contact_nonlinear.text(0.02, 0.98, f'v=1: {P_nl_at1.min():.2f}~{P_nl_at1.max():.2f}',
+            self.ax_contact_nonlinear.text(0.02, 0.98,
+                f'v=1: {P_nl_at1.min():.3f}~{P_nl_at1.max():.3f}\n전체: {c_nl_min:.3f}~{c_nl_max:.3f}',
                 transform=self.ax_contact_nonlinear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
@@ -9715,12 +9728,12 @@ $\begin{array}{lcc}
         data_options = [
             ("Local Strain [%]", "strain", True),
             ("E' Storage [Pa]", "E_storage", True),
-            ("E''*g Loss [Pa]", "E_loss_nonlinear", True),
-            ("E'*f Storage [Pa]", "E_storage_nonlinear", True),
-            ("G Integrand (linear)", "G_integrand_linear", True),
-            ("G Integrand (nonlinear)", "G_integrand_nonlinear", True),
-            ("A/A0 Contact (linear)", "contact_linear", True),
-            ("A/A0 Contact (nonlinear)", "contact_nonlinear", True),
+            ("E'' Loss [Pa] (linear)", "E_loss_linear", True),
+            ("E''×g Loss [Pa]", "E_loss_nonlinear", True),
+            ("E'×f Storage [Pa]", "E_storage_nonlinear", True),
+            ("G Integrand", "G_integrand_nonlinear", True),
+            ("A/A₀ Contact (linear)", "contact_linear", True),
+            ("A/A₀ Contact (nonlinear)", "contact_nonlinear", True),
         ]
 
         # Create checkbox variables
@@ -11185,6 +11198,10 @@ $\begin{array}{lcc}
             self.psd_direct_info_var.set(f"내장 PSD: {selected} ({len(q_data)}pts)")
             self.apply_psd_type_var.set("direct")
             self.status_var.set(f"내장 PSD 로드 완료: {selected}")
+
+            # 그래프에 표시
+            self._plot_psd_direct_on_tab0()
+
             messagebox.showinfo("성공", f"내장 PSD 로드 완료:\n{selected}")
 
         except Exception as e:
@@ -11308,6 +11325,10 @@ $\begin{array}{lcc}
 
             self.mc_data_info_var.set(f"내장: {selected} ({len(freq)}pts)")
             self.status_var.set(f"내장 마스터 커브 로드 완료: {selected}")
+
+            # 그래프에 표시
+            self._plot_persson_master_curve()
+
             messagebox.showinfo("성공", f"내장 마스터 커브 로드 완료:\n{selected}")
 
         except Exception as e:
