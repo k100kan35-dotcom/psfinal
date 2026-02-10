@@ -7566,7 +7566,34 @@ $\begin{array}{lcc}
             # Recalculate G with f(ε), g(ε) applied INSIDE the integral:
             # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)sigma_0)² dφ dq'
             # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
-            G_matrix_corrected = G_matrix.copy()
+
+            # ALWAYS recalculate G(q) with current normalization factor
+            # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
+            self.status_var.set("G(q) 재계산 중 (정규화 적용)...")
+            self.root.update()
+
+            q_min = float(self.q_min_var.get())
+            G_matrix_corrected = np.zeros_like(G_matrix)
+            P_matrix_corrected = np.zeros_like(G_matrix)
+
+            for j, v_j in enumerate(v):
+                self.g_calculator.velocity = v_j
+                results_recalc = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
+                G_matrix_corrected[:, j] = results_recalc['G']
+                P_matrix_corrected[:, j] = results_recalc['contact_area_ratio']
+
+                # Progress update (0-25%)
+                if j % max(1, len(v) // 10) == 0:
+                    progress = int((j + 1) / len(v) * 25)
+                    self.mu_progress_var.set(progress)
+                    self.root.update()
+
+            # Update self.results['2d_results'] so Tab 2's G(q) graph shows correct values
+            self.results['2d_results']['G_matrix'] = G_matrix_corrected
+            self.results['2d_results']['P_matrix'] = P_matrix_corrected
+
+            self.status_var.set("G(q) 재계산 완료")
+            self.root.update()
 
             if use_fg and self.f_interpolator is not None and self.g_interpolator is not None:
                 self.status_var.set("비선형 G(q) 재계산 중 (적분 내 보정)...")
@@ -7596,20 +7623,24 @@ $\begin{array}{lcc}
                 )
 
                 # Recalculate G(q,v) with nonlinear correction inside integral
-                q_min = float(self.q_min_var.get())
                 for j, v_j in enumerate(v):
                     self.g_calculator.velocity = v_j
                     results_nl = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
                     G_matrix_corrected[:, j] = results_nl['G']
+                    P_matrix_corrected[:, j] = results_nl['contact_area_ratio']
 
-                    # Progress update
+                    # Progress update (25-50%)
                     if j % max(1, len(v) // 10) == 0:
-                        progress = int((j + 1) / len(v) * 50)
+                        progress = 25 + int((j + 1) / len(v) * 25)
                         self.mu_progress_var.set(progress)
                         self.root.update()
 
                 # Clear nonlinear correction after calculation
                 self.g_calculator.clear_nonlinear_correction()
+
+                # Update self.results['2d_results'] with nonlinear-corrected values
+                self.results['2d_results']['G_matrix'] = G_matrix_corrected
+                self.results['2d_results']['P_matrix'] = P_matrix_corrected
 
                 self.status_var.set("비선형 G(q) 재계산 완료 - μ_visc 계산 중...")
                 self.root.update()
@@ -7629,14 +7660,14 @@ $\begin{array}{lcc}
             )
 
             # Calculate mu_visc for all velocities
-            # Scale progress to 50-100% if nonlinear correction was applied (Stage 1 used 0-50%)
+            # Progress: Stage 1 (G recalc) 0-25%, Stage 2 (nonlinear, if used) 25-50%, Stage 3 (mu_visc) 50-100%
             def progress_callback(percent):
                 if use_fg and self.f_interpolator is not None and self.g_interpolator is not None:
-                    # Stage 2: scale 0-100% to 50-100%
+                    # With nonlinear: Stage 3 starts at 50%
                     scaled_percent = 50 + int(percent * 0.5)
                 else:
-                    # No Stage 1, so use full 0-100%
-                    scaled_percent = percent
+                    # Without nonlinear: Stage 3 starts at 25% (after G recalc)
+                    scaled_percent = 25 + int(percent * 0.75)
                 self.mu_progress_var.set(scaled_percent)
                 self.root.update()
 
@@ -7674,6 +7705,12 @@ $\begin{array}{lcc}
 
             # Update plots
             self._update_mu_visc_plots(v, mu_array, details, use_nonlinear=use_fg)
+
+            # Also refresh Tab 2's G(q) plot to show updated values
+            try:
+                self._plot_g_results()
+            except Exception as e:
+                print(f"Tab 2 G(q) 그래프 갱신 중 오류: {e}")
 
             # Update result text with detailed information
             self.mu_result_text.delete(1.0, tk.END)
