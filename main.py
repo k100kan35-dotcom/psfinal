@@ -6989,7 +6989,7 @@ $\begin{array}{lcc}
             nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
 
             with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.writer(f, delimiter='\t')
+                writer = csv.writer(f)  # 쉼표 구분자 (기본값)
                 # 헤더 정보
                 writer.writerow(['# f,g 곡선 데이터'])
                 writer.writerow(['# 생성일시', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
@@ -8813,13 +8813,13 @@ $\begin{array}{lcc}
                     calc_temp = 20.0
                 nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
 
-                # 공통 헤더 정보
+                # 공통 헤더 정보 (쉼표 구분)
                 def get_header_lines():
                     return [
-                        f"# 생성일시\t{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                        f"# 공칭하중(MPa)\t{load_mpa:.3f}",
-                        f"# 계산온도(°C)\t{calc_temp:.1f}",
-                        f"# 비선형보정적용\t{'예' if nonlinear_applied else '아니오'}",
+                        f"# 생성일시,{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                        f"# 공칭하중(MPa),{load_mpa:.3f}",
+                        f"# 계산온도(°C),{calc_temp:.1f}",
+                        f"# 비선형보정적용,{'예' if nonlinear_applied else '아니오'}",
                         "#"
                     ]
 
@@ -8827,9 +8827,9 @@ $\begin{array}{lcc}
                 if check_vars['mu_v'].get():
                     filename = "mu_visc_vs_velocity.csv"
                     filepath = os.path.join(save_dir, filename)
-                    lines = get_header_lines() + ["velocity [m/s]\tmu_visc"]
+                    lines = get_header_lines() + ["velocity [m/s],mu_visc"]
                     for vi, mui in zip(v, mu):
-                        lines.append(f"{vi:.6e}\t{mui:.6f}")
+                        lines.append(f"{vi:.6e},{mui:.6f}")
                     with open(filepath, 'w', encoding='utf-8-sig') as f:
                         f.write("\n".join(lines))
                     exported_files.append(filename)
@@ -8837,9 +8837,9 @@ $\begin{array}{lcc}
                 if check_vars['mu_raw_v'].get():
                     filename = "mu_visc_raw_vs_velocity.csv"
                     filepath = os.path.join(save_dir, filename)
-                    lines = get_header_lines() + ["velocity [m/s]\tmu_visc_raw"]
+                    lines = get_header_lines() + ["velocity [m/s],mu_visc_raw"]
                     for vi, mui in zip(v, mu_raw):
-                        lines.append(f"{vi:.6e}\t{mui:.6f}")
+                        lines.append(f"{vi:.6e},{mui:.6f}")
                     with open(filepath, 'w', encoding='utf-8-sig') as f:
                         f.write("\n".join(lines))
                     exported_files.append(filename)
@@ -8982,23 +8982,23 @@ $\begin{array}{lcc}
             nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
 
             with open(file_path, 'w', encoding='utf-8-sig') as f:
-                # 헤더 정보
+                # 헤더 정보 (주석은 별도 행으로)
                 f.write("# mu_visc and A/A0 data\n")
-                f.write(f"# 생성일시\t{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
-                f.write(f"# 공칭하중(MPa)\t{load_mpa:.3f}\n")
-                f.write(f"# 계산온도(°C)\t{calc_temp:.1f}\n")
-                f.write(f"# 비선형보정적용\t{'예' if nonlinear_applied else '아니오'}\n")
+                f.write(f"# 생성일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# 공칭하중(MPa): {load_mpa:.3f}\n")
+                f.write(f"# 계산온도(°C): {calc_temp:.1f}\n")
+                f.write(f"# 비선형보정적용: {'예' if nonlinear_applied else '아니오'}\n")
                 f.write("#\n")
                 f.write("# Column 1: log10(v) [m/s]\n")
                 f.write("# Column 2: mu_visc (friction coefficient)\n")
                 f.write("# Column 3: A/A0 (real contact area ratio)\n")
                 f.write("#\n")
-                f.write("log10_v\tmu_visc\tA_A0\n")
+                f.write("log10_v,mu_visc,A_A0\n")
 
-                # Data
+                # Data - 쉼표로 구분 (진짜 CSV 형식)
                 for i in range(len(v)):
                     log_v = np.log10(v[i])
-                    f.write(f"{log_v:.6e}\t{mu[i]:.6e}\t{P_qmax[i]:.6e}\n")
+                    f.write(f"{log_v:.6e},{mu[i]:.6e},{P_qmax[i]:.6e}\n")
 
             messagebox.showinfo("완료", f"파일 저장 완료:\n{file_path}")
             self.status_var.set(f"CSV 내보내기 완료: {file_path}")
