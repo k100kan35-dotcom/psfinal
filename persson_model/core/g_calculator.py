@@ -160,17 +160,18 @@ class GCalculator:
         float
             Result of angle integration
         """
-        # Create angle array
-        phi = np.linspace(0, 2 * np.pi, self.n_angle_points)
+        # Use symmetry: integrate over [0, π/2] and multiply by 4
+        # This avoids overcounting due to |cos(φ)| symmetry
+        # |cos(φ)| is symmetric about π/2, π, 3π/2, so [0,2π] = 4 × [0,π/2]
+        phi = np.linspace(0, np.pi / 2, self.n_angle_points)
         dphi = phi[1] - phi[0]
 
         # Calculate frequencies for each angle
-        # ω = q * v * cos(φ)
-        omega = q * self.velocity * np.cos(phi)
+        # ω = q * v * cos(φ), always positive in [0, π/2]
+        omega_eval = q * self.velocity * np.cos(phi)
 
-        # Handle zero and negative frequencies
-        omega_eval = np.abs(omega)
-        omega_eval[omega_eval < 1e-10] = 1e-10
+        # Handle very small frequencies
+        omega_eval = np.maximum(omega_eval, 1e-10)
 
         # Check if nonlinear correction should be applied
         use_nonlinear = (self.f_interpolator is not None and
@@ -228,7 +229,8 @@ class GCalculator:
             integrand = np.nan_to_num(integrand, nan=0.0, posinf=0.0, neginf=0.0)
 
         # Numerical integration using trapezoidal rule
-        result = np.trapz(integrand, phi)
+        # Multiply by 4 due to symmetry: [0,π/2] → [0,2π]
+        result = 4.0 * np.trapz(integrand, phi)
 
         return result
 
@@ -257,16 +259,15 @@ class GCalculator:
             - 'omega': frequency array (rad/s)
             - 'integrand': integrand values at each angle
         """
-        # Create angle array
-        phi = np.linspace(0, 2 * np.pi, self.n_angle_points)
+        # Use symmetry: integrate over [0, π/2] and multiply by 4
+        phi = np.linspace(0, np.pi / 2, self.n_angle_points)
 
         # Calculate frequencies for each angle
-        # ω = q * v * cos(φ)
-        omega = q * self.velocity * np.cos(phi)
+        # ω = q * v * cos(φ), always positive in [0, π/2]
+        omega_eval = q * self.velocity * np.cos(phi)
 
-        # Handle zero and negative frequencies
-        omega_eval = np.abs(omega)
-        omega_eval[omega_eval < 1e-10] = 1e-10
+        # Handle very small frequencies
+        omega_eval = np.maximum(omega_eval, 1e-10)
 
         # Check if nonlinear correction should be applied
         use_nonlinear = (self.f_interpolator is not None and
@@ -295,12 +296,13 @@ class GCalculator:
             integrand = np.abs(E_values * self.prefactor)**2
 
         # Numerical integration using trapezoidal rule
-        result = np.trapz(integrand, phi)
+        # Multiply by 4 due to symmetry: [0,π/2] → [0,2π]
+        result = 4.0 * np.trapz(integrand, phi)
 
         # Store details
         details = {
             'phi': phi,
-            'omega': omega,
+            'omega': omega_eval,
             'integrand': integrand
         }
 
