@@ -9901,8 +9901,8 @@ $\begin{array}{lcc}
                                           label=f'q = {q:.1e} 1/m', linewidth=1.5)
 
                 # Calculate angle integral result
-                angle_integral_G = np.trapz(integrand_G, phi)
-                angle_integral_mu = np.trapz(integrand_mu, phi)
+                angle_integral_G = np.trapezoid(integrand_G, phi)
+                angle_integral_mu = np.trapezoid(integrand_mu, phi)
 
                 # Summary text
                 self.integrand_result_text.insert(tk.END, f"q = {q:.2e} 1/m:\n")
@@ -9959,7 +9959,7 @@ $\begin{array}{lcc}
                     E_star_sq = E_prime_eff**2 + E_loss_eff**2
                     integrand[j] = E_star_sq * prefactor**2
 
-                angle_int = np.trapz(integrand, phi)
+                angle_int = np.trapezoid(integrand, phi)
                 G_integrand_values[i] = q**3 * C_q * angle_int
 
             # Plot G(q) integrand

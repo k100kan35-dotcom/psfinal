@@ -200,7 +200,7 @@ class ContactMechanics:
             sigma_range = np.linspace(0, sigma_max, 1000)
 
             P = self.stress_distribution_gaussian(sigma_range, zeta)
-            contact_fraction = np.trapz(P, sigma_range)
+            contact_fraction = np.trapezoid(P, sigma_range)
 
             return min(contact_fraction, 1.0)
 

@@ -177,7 +177,7 @@ class FractalPSD(PSDModel):
 
         # Integrate: h_rms² = 2π ∫ C(q) q dq
         integrand = C_q * q
-        integral = np.trapz(integrand, q)
+        integral = np.trapezoid(integrand, q)
         h_rms = np.sqrt(2 * np.pi * integral)
 
         return h_rms
@@ -202,7 +202,7 @@ class FractalPSD(PSDModel):
 
         # Integrate: (∇h)² = 2π ∫ C(q) q³ dq
         integrand = C_q * q**3
-        integral = np.trapz(integrand, q)
+        integral = np.trapezoid(integrand, q)
         slope_rms = np.sqrt(2 * np.pi * integral)
 
         return slope_rms
@@ -307,7 +307,7 @@ class MeasuredPSD(PSDModel):
         C_q = self(q)
 
         integrand = C_q * q
-        integral = np.trapz(integrand, q)
+        integral = np.trapezoid(integrand, q)
         h_rms = np.sqrt(2 * np.pi * integral)
 
         return h_rms
@@ -352,7 +352,7 @@ class CombinedPSD(PSDModel):
         C_q = self(q)
 
         integrand = C_q * q
-        integral = np.trapz(integrand, q)
+        integral = np.trapezoid(integrand, q)
         h_rms = np.sqrt(2 * np.pi * integral)
 
         return h_rms
@@ -416,7 +416,7 @@ class RollOffPSD(PSDModel):
         C_q = self(q)
 
         integrand = C_q * q
-        integral = np.trapz(integrand, q)
+        integral = np.trapezoid(integrand, q)
         h_rms = np.sqrt(2 * np.pi * integral)
 
         return h_rms
