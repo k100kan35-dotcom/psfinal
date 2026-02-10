@@ -11164,9 +11164,23 @@ $\begin{array}{lcc}
 
     def _add_preset_psd(self):
         """Add current PSD to preset list."""
-        # 현재 로드된 PSD가 있는지 확인
-        if not hasattr(self, 'loaded_psd_direct') or self.loaded_psd_direct is None:
-            messagebox.showwarning("경고", "먼저 PSD 파일을 로드하세요.")
+        # 현재 로드된 PSD가 있는지 확인 (psd_direct_data 또는 profile_psd_analyzer)
+        psd_data = None
+        source_name = "unknown"
+
+        if hasattr(self, 'psd_direct_data') and self.psd_direct_data is not None:
+            psd_data = self.psd_direct_data
+            source_name = psd_data.get('filename', 'direct load')
+        elif hasattr(self, 'profile_psd_analyzer') and self.profile_psd_analyzer is not None:
+            if hasattr(self.profile_psd_analyzer, 'q') and self.profile_psd_analyzer.q is not None:
+                psd_data = {
+                    'q': self.profile_psd_analyzer.q,
+                    'C_q': self.profile_psd_analyzer.C_q
+                }
+                source_name = "profile analysis"
+
+        if psd_data is None:
+            messagebox.showwarning("경고", "먼저 PSD 파일을 로드하세요.\n(Tab 0에서 PSD 직접 로드 또는 프로파일 분석)")
             return
 
         # 파일 이름 입력 받기
@@ -11183,10 +11197,10 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('psd')
             filepath = os.path.join(preset_dir, name)
 
-            # 데이터 저장
-            q = self.loaded_psd_direct['q']
-            C = self.loaded_psd_direct['C']
-            header = f"# 내장 PSD 데이터\n# 원본: {self.loaded_psd_direct.get('source', 'unknown')}\n# q (1/m)\tC(q) (m^4)"
+            # 데이터 저장 (키 이름 호환성 처리)
+            q = psd_data.get('q', psd_data.get('q'))
+            C = psd_data.get('C_q', psd_data.get('C', psd_data.get('C_q')))
+            header = f"# 내장 PSD 데이터\n# 원본: {source_name}\n# q (1/m)\tC(q) (m^4)"
             np.savetxt(filepath, np.column_stack([q, C]), header=header, comments='', delimiter='\t')
 
             self._refresh_preset_psd_list()
@@ -11243,7 +11257,7 @@ $\begin{array}{lcc}
     def _add_preset_mastercurve(self):
         """Add current master curve to preset list."""
         if not hasattr(self, 'persson_master_curve') or self.persson_master_curve is None:
-            messagebox.showwarning("경고", "먼저 마스터 커브를 로드하세요.")
+            messagebox.showwarning("경고", "먼저 마스터 커브를 로드하세요.\n(Tab 1에서 Persson 정품 마스터 커브 로드)")
             return
 
         from tkinter import simpledialog
@@ -11258,10 +11272,12 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('mastercurve')
             filepath = os.path.join(preset_dir, name)
 
-            freq = self.persson_master_curve['freq']
+            # 키 이름 호환성 처리: 'f' 또는 'freq' 키 모두 지원
+            freq = self.persson_master_curve.get('freq', self.persson_master_curve.get('f'))
             E_storage = self.persson_master_curve['E_storage']
             E_loss = self.persson_master_curve['E_loss']
-            header = f"# 내장 마스터 커브 데이터\n# 원본: {self.persson_master_curve.get('source', 'unknown')}\n# freq (Hz)\tE' (Pa)\tE'' (Pa)"
+            source_name = self.persson_master_curve.get('source', self.persson_master_curve.get('filename', 'unknown'))
+            header = f"# 내장 마스터 커브 데이터\n# 원본: {source_name}\n# freq (Hz)\tE' (Pa)\tE'' (Pa)"
             np.savetxt(filepath, np.column_stack([freq, E_storage, E_loss]), header=header, comments='', delimiter='\t')
 
             self._refresh_preset_mastercurve_list()
@@ -11315,8 +11331,15 @@ $\begin{array}{lcc}
 
     def _add_preset_aT(self):
         """Add current aT shift factor to preset list."""
-        if not hasattr(self, 'persson_aT') or self.persson_aT is None:
-            messagebox.showwarning("경고", "먼저 aT 시프트 팩터를 로드하세요.")
+        # persson_aT_data 또는 persson_aT 중 하나 확인
+        aT_data = None
+        if hasattr(self, 'persson_aT_data') and self.persson_aT_data is not None:
+            aT_data = self.persson_aT_data
+        elif hasattr(self, 'persson_aT') and self.persson_aT is not None:
+            aT_data = self.persson_aT
+
+        if aT_data is None:
+            messagebox.showwarning("경고", "먼저 aT 시프트 팩터를 로드하세요.\n(Tab 1에서 aT 시프트 팩터 로드)")
             return
 
         from tkinter import simpledialog
@@ -11331,9 +11354,10 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('aT')
             filepath = os.path.join(preset_dir, name)
 
-            T = self.persson_aT['T']
-            aT = self.persson_aT['aT']
-            header = f"# 내장 aT 시프트 팩터 데이터\n# 원본: {self.persson_aT.get('source', 'unknown')}\n# T (°C)\taT"
+            T = aT_data['T']
+            aT = aT_data['aT']
+            source_name = aT_data.get('source', aT_data.get('filename', 'unknown'))
+            header = f"# 내장 aT 시프트 팩터 데이터\n# 원본: {source_name}\n# T (°C)\taT"
             np.savetxt(filepath, np.column_stack([T, aT]), header=header, comments='', delimiter='\t')
 
             self._refresh_preset_aT_list()
