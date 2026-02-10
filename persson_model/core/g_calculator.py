@@ -42,9 +42,10 @@ class GCalculator:
     # - √(2π) ≈ 2.5: Good at low v, but +25% gap at high v
     # - 2.0: Uniform +12% gap across all velocities
     # - 1.75: Reduced to +5% gap
-    # - 1.65: Fine-tuned to minimize gap to ~0%
+    # - 1.65: Reduced to +1.5% gap
+    # - 1.63: Final tuning to ~0% gap
     # This factor accounts for PSD definition differences between implementations.
-    PSD_NORMALIZATION_FACTOR = 1.65
+    PSD_NORMALIZATION_FACTOR = 1.63
 
     def __init__(
         self,
