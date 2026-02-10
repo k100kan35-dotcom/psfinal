@@ -520,11 +520,17 @@ class PerssonModelGUI_V2:
         ttk.Label(load_frame, text="─ 또는: PSD 파일 직접 로드 ─",
                   font=('Arial', 8), foreground='blue').pack(anchor=tk.CENTER)
 
-        # PSD 직접 로드 버튼 (빨간 테두리)
-        btn_frame_psd_load = tk.Frame(load_frame, bg='red', padx=2, pady=2)
-        btn_frame_psd_load.pack(fill=tk.X, pady=2)
+        # PSD 직접 로드 버튼 + 리스트에 추가 버튼
+        psd_direct_btn_frame = ttk.Frame(load_frame)
+        psd_direct_btn_frame.pack(fill=tk.X, pady=2)
+
+        btn_frame_psd_load = tk.Frame(psd_direct_btn_frame, bg='red', padx=2, pady=2)
+        btn_frame_psd_load.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(btn_frame_psd_load, text="★ PSD 직접 로드 (q, C(q))",
                    command=self._load_psd_direct).pack(fill=tk.X)
+
+        ttk.Button(psd_direct_btn_frame, text="→ 리스트에 추가",
+                   command=self._add_preset_psd, width=14).pack(side=tk.LEFT, padx=(5, 0))
 
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
@@ -1831,23 +1837,35 @@ class PerssonModelGUI_V2:
         ttk.Label(load_frame, text="─ 또는: 완성된 마스터 커브 직접 로드 ─",
                   font=('Arial', 8), foreground='blue').pack(anchor=tk.CENTER)
 
-        # Persson 정품 마스터 커브 로드 버튼 (빨간 테두리)
-        btn_frame_mc_load = tk.Frame(load_frame, bg='red', padx=2, pady=2)
-        btn_frame_mc_load.pack(fill=tk.X, pady=2)
+        # 마스터 커브 직접 로드 버튼 + 리스트에 추가 버튼
+        mc_direct_btn_frame = ttk.Frame(load_frame)
+        mc_direct_btn_frame.pack(fill=tk.X, pady=2)
+
+        btn_frame_mc_load = tk.Frame(mc_direct_btn_frame, bg='red', padx=2, pady=2)
+        btn_frame_mc_load.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(
             btn_frame_mc_load,
-            text="★ Persson 정품 마스터 커브 로드 (f, E', E'')",
+            text="★ 마스터 커브 로드 (f, E', E'')",
             command=self._load_persson_master_curve
         ).pack(fill=tk.X)
 
-        # aT 시프트 팩터 로드 버튼 (빨간 테두리)
-        btn_frame_aT_load = tk.Frame(load_frame, bg='red', padx=2, pady=2)
-        btn_frame_aT_load.pack(fill=tk.X, pady=2)
+        ttk.Button(mc_direct_btn_frame, text="→ 리스트에 추가",
+                   command=self._add_preset_mastercurve, width=14).pack(side=tk.LEFT, padx=(5, 0))
+
+        # aT 시프트 팩터 로드 버튼 + 리스트에 추가 버튼
+        aT_direct_btn_frame = ttk.Frame(load_frame)
+        aT_direct_btn_frame.pack(fill=tk.X, pady=2)
+
+        btn_frame_aT_load = tk.Frame(aT_direct_btn_frame, bg='red', padx=2, pady=2)
+        btn_frame_aT_load.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(
             btn_frame_aT_load,
             text="aT 시프트 팩터 로드 (T, aT)",
             command=self._load_persson_aT
         ).pack(fill=tk.X)
+
+        ttk.Button(aT_direct_btn_frame, text="→ 리스트에 추가",
+                   command=self._add_preset_aT, width=14).pack(side=tk.LEFT, padx=(5, 0))
 
         # Persson 정품 마스터 커브 확정 버튼 (빨간 테두리)
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=3)
