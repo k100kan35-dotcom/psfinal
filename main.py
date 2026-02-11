@@ -7694,9 +7694,9 @@ $\begin{array}{lcc}
 
             # PSD_NORMALIZATION_FACTOR 조건부 적용:
             # - 선형 모드 (비선형 체크 해제): 1.667 적용
-            # - 비선형 모드 (비선형 체크): 적용 안함 (1.0)
+            # - 비선형 모드 (비선형 체크): 1.12 적용
             if use_fg:
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.0
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.12
             else:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.667
 
