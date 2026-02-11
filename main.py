@@ -7692,6 +7692,14 @@ $\begin{array}{lcc}
             # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)sigma_0)² dφ dq'
             # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
 
+            # PSD_NORMALIZATION_FACTOR 조건부 적용:
+            # - 선형 모드 (비선형 체크 해제): 1.667 적용
+            # - 비선형 모드 (비선형 체크): 적용 안함 (1.0)
+            if use_fg:
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.0
+            else:
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.667
+
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
             self.status_var.set("G(q) 재계산 중 (정규화 적용)...")
@@ -7859,6 +7867,11 @@ $\begin{array}{lcc}
             self.mu_result_text.insert(tk.END, f"  ν (푸아송비): {poisson:.2f}\n")
             self.mu_result_text.insert(tk.END, f"  γ (접촉 보정): {gamma:.2f}\n")
             self.mu_result_text.insert(tk.END, f"  각도 적분점: {n_phi}\n")
+            norm_factor = self.g_calculator.PSD_NORMALIZATION_FACTOR
+            if norm_factor == 1.0:
+                self.mu_result_text.insert(tk.END, f"  PSD 정규화: 미적용 (비선형 모드)\n")
+            else:
+                self.mu_result_text.insert(tk.END, f"  PSD 정규화: {norm_factor:.3f} (선형 모드)\n")
 
             # Smoothing info
             if smooth_mu:
