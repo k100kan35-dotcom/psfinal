@@ -17,8 +17,9 @@ EXCLUDES = [
     'xgboost', 'lightgbm', 'catboost',
 ]
 
-# matplotlib 불필요 백엔드 제외 (TkAgg만 사용)
-EXCLUDE_MPL_BACKENDS = [
+# matplotlib 불필요 백엔드/테스트 제외 (TkAgg만 사용)
+EXCLUDE_MPL = [
+    'matplotlib.tests',
     'matplotlib.backends.backend_qt5agg',
     'matplotlib.backends.backend_qt5',
     'matplotlib.backends.backend_qt',
@@ -38,7 +39,7 @@ EXCLUDE_MPL_BACKENDS = [
 # 불필요 stdlib/패키지 제외
 EXCLUDE_MISC = [
     'IPython', 'jupyter', 'notebook',
-    'pytest', 'setuptools', 'pip', 'wheel',
+    'pytest', 'pip', 'wheel',
     'pdb', 'doctest', 'pydoc', 'unittest', 'test',
     'lib2to3', 'ensurepip', 'idlelib', 'distutils',
     'curses',
@@ -60,8 +61,6 @@ def build():
         # mpl-data/fonts/ (DejaVu Sans 등 내장 .ttf)
         # mpl-data/stylelib/, mpl-data/matplotlibrc
         '--collect-data', 'matplotlib',
-        # 폰트 렌더링 + 모든 서브모듈 포함
-        '--collect-submodules', 'matplotlib',
 
         # ===== hidden imports: matplotlib 핵심 =====
         '--hidden-import', 'matplotlib',
@@ -103,13 +102,14 @@ def build():
         '--hidden-import', 'csv',
         '--hidden-import', 're',
 
-        # ===== hidden imports: pkg_resources 의존성 =====
+        # ===== pkg_resources / jaraco 의존성 =====
+        # jaraco는 namespace package → collect-all 필수 (collect-submodules 불가)
         '--hidden-import', 'pkg_resources',
-        '--hidden-import', 'jaraco',
-        '--hidden-import', 'jaraco.text',
-        '--hidden-import', 'jaraco.functools',
-        '--hidden-import', 'jaraco.context',
-        '--collect-submodules', 'jaraco',
+        '--collect-all', 'jaraco',
+        '--collect-all', 'jaraco.text',
+        '--collect-all', 'jaraco.functools',
+        '--collect-all', 'jaraco.context',
+        '--collect-all', 'importlib_resources',
 
         # ===== hidden imports: persson_model 패키지 전체 =====
         '--hidden-import', 'persson_model',
@@ -128,7 +128,7 @@ def build():
     ]
 
     # 제외 모듈 추가
-    for exc in EXCLUDES + EXCLUDE_MPL_BACKENDS + EXCLUDE_MISC:
+    for exc in EXCLUDES + EXCLUDE_MPL + EXCLUDE_MISC:
         args.extend(['--exclude-module', exc])
 
     # ===== 데이터 디렉토리 포함 =====
