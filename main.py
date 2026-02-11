@@ -3643,11 +3643,11 @@ class PerssonModelGUI_V2:
         # G 보정 계수 (Norm Factor)
         row += 1
         ttk.Label(input_frame, text="G 보정 계수 (Norm Factor):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.g_norm_factor_var = tk.StringVar(value="1.492537")
+        self.g_norm_factor_var = tk.StringVar(value="1.5625")
         norm_entry_frame = tk.Frame(input_frame, bg='red', padx=2, pady=2)
         norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
         ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
-        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.492537",
+        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.5625",
                   font=('Arial', 7), foreground='gray').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
         row += 1
 
@@ -4599,7 +4599,7 @@ class PerssonModelGUI_V2:
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.492537
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
 
             # Initialize calculation progress plots (3 subplots)
             try:
@@ -6460,7 +6460,7 @@ $\begin{array}{lcc}
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.61")
+        self.gamma_var = tk.StringVar(value="0.60")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Arial', 8)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="14")
@@ -7282,7 +7282,7 @@ $\begin{array}{lcc}
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.492537
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
 
             # Progress callback
             def progress_callback(percent):
@@ -7533,7 +7533,7 @@ $\begin{array}{lcc}
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.492537
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
