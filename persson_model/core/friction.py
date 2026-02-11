@@ -89,7 +89,7 @@ def get_effective_modulus(
         else:
             # Clip g to reasonable range: minimum 0.01 to prevent zero
             # g should be > 0 for physical meaning (complete loss of modulus is unrealistic)
-            g_val = np.clip(g_val, 0.01, 1.0)
+            g_val = np.clip(g_val, 0.01, None)  # g can exceed 1.0
 
         ImE_eff = ImE_linear * g_val
     else:
@@ -761,7 +761,7 @@ def apply_nonlinear_strain_correction(
 
     # Clip to valid range
     f_val = np.clip(f_val, 0.0, 1.0)
-    g_val = np.clip(g_val, 0.0, 1.0)
+    g_val = np.clip(g_val, 0.01, None)  # g can exceed 1.0
 
     E_prime_corrected = E_prime * f_val
     E_double_prime_corrected = E_double_prime * g_val
