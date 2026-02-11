@@ -3643,11 +3643,11 @@ class PerssonModelGUI_V2:
         # G 보정 계수 (Norm Factor)
         row += 1
         ttk.Label(input_frame, text="G 보정 계수 (Norm Factor):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.g_norm_factor_var = tk.StringVar(value="1.59")
+        self.g_norm_factor_var = tk.StringVar(value="1.492537")
         norm_entry_frame = tk.Frame(input_frame, bg='red', padx=2, pady=2)
         norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
         ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
-        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.59",
+        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.492537",
                   font=('Arial', 7), foreground='gray').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
         row += 1
 
@@ -4599,83 +4599,7 @@ class PerssonModelGUI_V2:
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
-
-            # =====================================================================
-            # DIAGNOSTIC OUTPUT: Check units and values for G(q) calculation
-            # =====================================================================
-            print("\n" + "="*80)
-            print("G(q) 계산 단위 진단 (Unit Diagnostics)")
-            print("="*80)
-
-            # Data source information
-            psd_src = getattr(self, 'psd_source', 'Unknown')
-            mat_src = getattr(self, 'material_source', 'Unknown')
-            tab1_ready = getattr(self, 'tab1_finalized', False)
-            print("[데이터 출처]")
-            print(f"  PSD: {psd_src}")
-            print(f"  마스터 커브: {mat_src}")
-            if not tab1_ready:
-                print("  ⚠ 주의: Tab 1에서 확정하지 않은 기본/예제 마스터 커브 사용 중")
-            print()
-
-            print(f"σ₀ (nominal pressure) = {sigma_0:.2e} Pa = {sigma_0/1e6:.4f} MPa")
-            print(f"Poisson ratio (ν) = {poisson}")
-            print(f"Prefactor = 1/((1-ν²)σ₀) = {self.g_calculator.prefactor:.2e} (1/Pa)")
-            print()
-
-            # Check E' and E'' at representative frequencies
-            test_omegas = [0.1, 1, 10, 100, 1e3, 1e4, 1e5, 1e6]  # rad/s
-            print("주파수별 E', E'' 값 (Pa):")
-            print("-" * 60)
-            col1, col2, col3, col4 = "ω (rad/s)", "E' (Pa)", "E'' (Pa)", "|E*| (Pa)"
-            print(f"{col1:<12} {col2:<15} {col3:<15} {col4:<15}")
-            print("-" * 60)
-            for omega in test_omegas:
-                E_star = self.material.get_modulus(omega, temperature=temperature)
-                E_prime = np.real(E_star)
-                E_loss = np.imag(E_star)
-                E_abs = np.abs(E_star)
-                print(f"{omega:<12.1e} {E_prime:<15.2e} {E_loss:<15.2e} {E_abs:<15.2e}")
-            print()
-
-            # Check PSD values at representative wavenumbers
-            test_qs = [100, 1e3, 1e4, 1e5, 1e6, 1e7, 1e8]  # 1/m
-            print("파수별 C(q) 값 (m⁴):")
-            print("-" * 40)
-            print(f"{'q (1/m)':<12} {'C(q) (m⁴)':<15}")
-            print("-" * 40)
-            for q_test in test_qs:
-                C_test = self.psd_model(np.array([q_test]))[0]
-                print(f"{q_test:<12.1e} {C_test:<15.2e}")
-            print()
-
-            # Calculate sample G integrand at v = v_min
-            v_test = v_array[0]
-            q_test = 1e6  # 중간 파수값
-            omega_test = q_test * v_test  # ω = q × v
-            E_star_test = self.material.get_modulus(omega_test, temperature=temperature)
-            E_abs_test = np.abs(E_star_test)
-            C_q_test = self.psd_model(np.array([q_test]))[0]
-            prefactor = self.g_calculator.prefactor
-
-            # G_integrand ~ q³ × C(q) × 2π × |E × prefactor|²
-            modulus_term = (E_abs_test * prefactor)**2
-            G_integrand_approx = q_test**3 * C_q_test * 2 * np.pi * modulus_term
-
-            print("G integrand 샘플 계산:")
-            print("-" * 60)
-            print(f"v = {v_test:.4e} m/s")
-            print(f"q = {q_test:.2e} 1/m")
-            print(f"ω = q × v = {omega_test:.2e} rad/s")
-            print(f"|E*(ω)| = {E_abs_test:.2e} Pa")
-            print(f"prefactor = {prefactor:.2e} 1/Pa")
-            print(f"|E × prefactor|² = {modulus_term:.2e} (dimensionless)")
-            print(f"q³ = {q_test**3:.2e} m⁻³")
-            print(f"C(q) = {C_q_test:.2e} m⁴")
-            print(f"q³ × C(q) = {q_test**3 * C_q_test:.2e} m")
-            print(f"G_integrand ≈ q³ × C(q) × 2π × |E×pf|² = {G_integrand_approx:.2e}")
-            print("="*80 + "\n")
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.492537
 
             # Initialize calculation progress plots (3 subplots)
             try:
@@ -5022,46 +4946,18 @@ class PerssonModelGUI_V2:
         v_fixed = 0.01  # m/s (lower velocity to see clearer peak at sigma_0)
 
         # Calculate G_stress(q) at fixed velocity
-        # Calculate G_stress(q) at fixed velocity
-        print("\n" + "="*80)
-        print("DEBUG: G_stress Calculation at FIXED velocity v = 1 m/s")
-        print("="*80)
-        print(f"sigma_0 = {sigma_0_MPa:.4f} MPa = {sigma_0_Pa:.2e} Pa")
-        print(f"q range: {q_min:.2e} ~ {q_max:.2e} (1/m)")
-        print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
-        print(f"Poisson ratio: {poisson:.3f}")
-
-        # Check E values at this velocity
         omega_low = q_min * v_fixed
-        omega_high = q_max * v_fixed
         E_low = self.material.get_storage_modulus(np.array([omega_low]))[0]
-        E_high = self.material.get_storage_modulus(np.array([omega_high]))[0]
         E_star_low = E_low / (1 - poisson**2)
-        E_star_high = E_high / (1 - poisson**2)
 
-        print(f"\nω_low = {omega_low:.2e} rad/s  →  E = {E_low:.2e} Pa  →  E* = {E_star_low:.2e} Pa")
-        print(f"ω_high = {omega_high:.2e} rad/s  →  E = {E_high:.2e} Pa  →  E* = {E_star_high:.2e} Pa")
-
-        # Calculate integral of q³C(q)
         integrand = q_stress**3 * C_q_stress
-        integral_full = np.trapezoid(integrand, q_stress)
-        print(f"∫ q³C(q)dq = {integral_full:.4e} m⁴")
-
-        # CRITICAL FIX: Normalize by sigma_0 to make G_stress dimensionless
-        E_normalized = E_star_low / sigma_0_Pa  # Normalize E by sigma_0
-        print(f"E_normalized = E*/sigma_0 = {E_normalized:.2e}")
+        E_normalized = E_star_low / sigma_0_Pa
 
         # Calculate G_stress(q) array
         G_stress_array = np.zeros_like(q_stress)
         for i in range(1, len(q_stress)):
             integrand_partial = q_stress[:i+1]**3 * C_q_stress[:i+1]
             G_stress_array[i] = (np.pi / 4) * E_normalized**2 * np.trapezoid(integrand_partial, q_stress[:i+1])
-
-        print(f"G_dimensionless(qmax) = {G_stress_array[-1]:.4e}")
-        print(f"√G_dimensionless(qmax) = {np.sqrt(G_stress_array[-1]):.4f}")
-        print(f"Peak location: ALWAYS at sigma_0 = {sigma_0_MPa:.2f} MPa (independent of G)")
-        print(f"Distribution width at qmax: √G × sigma_0 = {np.sqrt(G_stress_array[-1]) * sigma_0_MPa:.4f} MPa")
-        print("="*80 + "\n")
 
         # Set x-axis range based on MAXIMUM G to show full Gaussian shapes
         # Use the maximum G value to ensure all curves fit within the plot
@@ -5075,17 +4971,6 @@ class PerssonModelGUI_V2:
             sigma_max = 2 * sigma_0_MPa
             sigma_min = -sigma_max
         sigma_array = np.linspace(sigma_min, sigma_max, 800)  # Increased points for smoother curves
-
-        # Debug: Print some values to verify calculations
-        print(f"\n=== Debug: Stress Distribution at Fixed Velocity ===")
-        print(f"σ0 = {sigma_0_MPa:.4f} MPa")
-        print(f"Fixed velocity: v = {v_fixed:.1f} m/s")
-        print(f"G_dimensionless(qmax) = {G_max:.4e}")
-        print(f"√G_dimensionless(qmax) = {np.sqrt(G_max):.4f}")
-        print(f"std_max = √G_max × sigma_0 = {std_max:.4f} MPa")
-        print(f"sigma_min (for x-axis) = {sigma_min:.2f} MPa")
-        print(f"sigma_max (for x-axis) = {sigma_max:.2f} MPa")
-        print(f"X-axis range: [{sigma_min:.2f}, {sigma_max:.2f}] MPa (±6σ from σ0)")
 
         # Select 10 wavenumbers to plot (uniformly spaced in log)
         n_q_selected = min(10, len(q_stress))
@@ -5106,10 +4991,6 @@ class PerssonModelGUI_V2:
             G_zoom = G_max
         std_zoom = np.sqrt(G_zoom) * sigma_0_MPa
         half_range = max(4 * std_zoom, sigma_0_MPa * 0.5)
-
-        print(f"\nPlotting P(σ) for {n_q_selected} wavenumbers:")
-        print(f"Zoom: σ0 ± {half_range:.4f} MPa (G_zoom={G_zoom:.2e})")
-        print("="*80)
 
         # Track maximum values for axis scaling
         max_P_sigma = 0
@@ -5145,11 +5026,6 @@ class PerssonModelGUI_V2:
                 ax2.plot(sigma_array, P_sigma, color=color, linewidth=1.8,
                         label=f'q={q_val:.1e}', alpha=0.9)
 
-                # Print debug information
-                print(f"\n[q = {q_val:.2e} 1/m]")
-                print(f"  G = {G_norm_q:.4e} (무차원)")
-                print(f"  P(σ > 0) = {P_positive_percent:.2f}%")
-
         # Add vertical line for nominal pressure
         ax2.axvline(sigma_0_MPa, color='black', linestyle='--', linewidth=2,
                    label=f'σ0 = {sigma_0_MPa:.2f} MPa', alpha=0.7)
@@ -5162,8 +5038,6 @@ class PerssonModelGUI_V2:
         # X축: σ0 주변 확대 (5개+ 파수 분포 경향 확인용)
         ax2.set_xlim(sigma_0_MPa - half_range, sigma_0_MPa + half_range)
         ax2.set_ylim(0, max_P_sigma * 1.15 if max_P_sigma > 0 else 1.0)
-
-        print("="*80)
 
         # Plot 3: Contact Area P(q,v) (접촉 면적)
         for j, (v_val, color) in enumerate(zip(v, colors)):
@@ -6586,10 +6460,10 @@ $\begin{array}{lcc}
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.6")
+        self.gamma_var = tk.StringVar(value="0.61")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.n_phi_var = tk.StringVar(value="36")
+        self.n_phi_var = tk.StringVar(value="14")
         ttk.Entry(integ_row, textvariable=self.n_phi_var, width=5).pack(side=tk.LEFT, padx=2)
 
         # Smoothing in single row
@@ -7408,7 +7282,7 @@ $\begin{array}{lcc}
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.492537
 
             # Progress callback
             def progress_callback(percent):
@@ -7659,7 +7533,7 @@ $\begin{array}{lcc}
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.492537
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values

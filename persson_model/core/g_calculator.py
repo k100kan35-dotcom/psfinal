@@ -40,7 +40,7 @@ class GCalculator:
     # Different software may use different PSD normalization conventions.
     # This factor accounts for PSD definition differences between implementations.
     # Applied to both linear and nonlinear (f,g corrected) modes equally.
-    PSD_NORMALIZATION_FACTOR = 1.59
+    PSD_NORMALIZATION_FACTOR = 1.492537
 
     def __init__(
         self,
@@ -610,8 +610,7 @@ class GCalculator:
             else:
                 P_arr[i] = 1.0  # Full contact when G is very small
 
-        # DEBUG: Print G and P at max q (with √(2π) normalization applied)
-        print(f"[DEBUG G] v={self.velocity:.2e}, G_max={G_arr[-1]:.4e}, P(q_max)={P_arr[-1]:.6f} (norm_factor={self.PSD_NORMALIZATION_FACTOR:.4f})")
+        # G and P at max q (debug disabled for performance)
 
         result = {
             'q': q_values,
