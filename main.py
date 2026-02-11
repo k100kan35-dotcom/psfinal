@@ -3692,9 +3692,6 @@ class PerssonModelGUI_V2:
         # Add trace to sync target_hrms_slope_var with Tab 1's psd_xi_var and Tab 4's display
         self.target_hrms_slope_var.trace_add('write', self._on_target_hrms_changed)
 
-        # 초기 모드 UI 상태 적용 (모드2: q1 활성, h'rms 비활성)
-        self._on_hrms_q1_mode_changed()
-
         # 계산 버튼
         calc_btn_frame = ttk.Frame(mode_frame)
         calc_btn_frame.pack(fill=tk.X, pady=5)
@@ -3704,6 +3701,9 @@ class PerssonModelGUI_V2:
         self.hrms_q1_calc_btn = ttk.Button(hrms_calc_wrapper, text="h'rms/q1 계산",
                                            command=self._calculate_hrms_q1)
         self.hrms_q1_calc_btn.pack()
+
+        # 초기 모드 UI 상태 적용 (모드2: q1 활성, h'rms 비활성) - 버튼 생성 후 호출
+        self._on_hrms_q1_mode_changed()
 
         ttk.Button(calc_btn_frame, text="Tab 4로 전달",
                   command=self._send_hrms_q1_to_tab4).pack(side=tk.LEFT, padx=5)
