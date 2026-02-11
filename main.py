@@ -3640,6 +3640,17 @@ class PerssonModelGUI_V2:
         self.n_phi_gq_var = tk.StringVar(value="36")
         ttk.Entry(input_frame, textvariable=self.n_phi_gq_var, width=15).grid(row=row, column=1, pady=5)
 
+        # G 보정 계수 (Norm Factor)
+        row += 1
+        ttk.Label(input_frame, text="G 보정 계수 (Norm Factor):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.g_norm_factor_var = tk.StringVar(value="1.59")
+        norm_entry_frame = tk.Frame(input_frame, bg='red', padx=2, pady=2)
+        norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
+        ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
+        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.59",
+                  font=('Arial', 7), foreground='gray').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
+        row += 1
+
         # ===== h'rms (ξ) / q1 모드 선택 섹션 =====
         # h'rms = ξ = RMS slope (경사), NOT h_rms (height)
         row += 1
@@ -4030,22 +4041,6 @@ class PerssonModelGUI_V2:
             "모든 속도가 컬러 코딩되어 하나의 그래프에 표시됩니다.",
             font=('Arial', 10)
         ).pack()
-
-        # G Norm Factor 조절 UI
-        norm_frame = ttk.LabelFrame(parent, text="G 보정 계수 (PSD Normalization Factor)", padding=5)
-        norm_frame.pack(fill=tk.X, padx=10, pady=3)
-
-        norm_row = ttk.Frame(norm_frame)
-        norm_row.pack(fill=tk.X)
-        ttk.Label(norm_row, text="Norm Factor:", font=('Arial', 9)).pack(side=tk.LEFT, padx=5)
-        self.g_norm_factor_var = tk.StringVar(value="1.59")
-        norm_entry_wrapper = tk.Frame(norm_row, bg='red', padx=2, pady=2)
-        norm_entry_wrapper.pack(side=tk.LEFT)
-        ttk.Entry(norm_entry_wrapper, textvariable=self.g_norm_factor_var, width=8).pack()
-        ttk.Label(norm_row, text="  G(q) = integrand / (8.0 x NormFactor)",
-                  font=('Arial', 8), foreground='gray').pack(side=tk.LEFT, padx=5)
-        ttk.Label(norm_row, text="기본값: 1.59",
-                  font=('Arial', 8), foreground='blue').pack(side=tk.LEFT, padx=5)
 
         # Plot area
         plot_frame = ttk.Frame(parent)
