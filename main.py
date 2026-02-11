@@ -1644,11 +1644,9 @@ class PerssonModelGUI_V2:
             if hasattr(self, 'psd_xi_var'):
                 self.psd_xi_var.set(f"{xi:.6f}")
 
-            # Update q_min/q_max for calculation
+            # Update q_min for calculation (q_max는 기본값 1.0e+6 유지)
             if hasattr(self, 'q_min_var'):
                 self.q_min_var.set(f"{q[0]:.2e}")
-            if hasattr(self, 'q_max_var'):
-                self.q_max_var.set(f"{q[-1]:.2e}")
 
             # Mark Tab 0 as finalized
             self.tab0_finalized = True
@@ -1693,17 +1691,13 @@ class PerssonModelGUI_V2:
             verification_msg += scan_length_str
 
             messagebox.showinfo("PSD 확정 완료",
-                f"{psd_type_str} → Tab 3 전송 완료\n\n"
+                f"{psd_type_str} → 계산 설정 전송 완료\n\n"
                 f"q range: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
                 f"H = {H:.4f}\n"
                 f"h_rms = {h_rms*1e6:.4f} um\n"
                 f"h'_rms (xi) = {xi:.6f}\n\n"
-                f"{verification_msg}\n"
-                f"Tab 3 (계산 설정)에서 계속하세요."
+                f"{verification_msg}"
             )
-
-            # Switch to Tab 3
-            self.notebook.select(3)
 
             self.status_var.set(f"PSD 확정: {psd_type_str}, ξ = {xi:.6f}")
 
@@ -2609,9 +2603,8 @@ class PerssonModelGUI_V2:
             self.tab0_finalized = True
             self.psd_source = f"직접 로드: {os.path.basename(filename)}"
 
-            # Update q range variables
+            # Update q_min (q_max는 기본값 1.0e+6 유지)
             self.q_min_var.set(f"{q.min():.2e}")
-            self.q_max_var.set(f"{q.max():.2e}")
 
             # Update info display in Tab 0
             if hasattr(self, 'psd_direct_info_var'):
@@ -3663,7 +3656,7 @@ class PerssonModelGUI_V2:
         desc_label.pack(fill=tk.X, pady=(0, 5))
 
         # 모드 선택 라디오 버튼
-        self.hrms_q1_mode_var = tk.StringVar(value="hrms_to_q1")  # 기본값: h'rms(ξ) → q1
+        self.hrms_q1_mode_var = tk.StringVar(value="q1_to_hrms")  # 기본값: q1 → h'rms(ξ) (모드 2)
 
         mode_row1 = ttk.Frame(mode_frame)
         mode_row1.pack(fill=tk.X, pady=2)
@@ -3692,12 +3685,15 @@ class PerssonModelGUI_V2:
         self.q1_input_frame = ttk.Frame(mode_frame)
         self.q1_input_frame.pack(fill=tk.X, pady=2)
         ttk.Label(self.q1_input_frame, text="목표 q1 (1/m):").pack(side=tk.LEFT)
-        self.input_q1_var = tk.StringVar(value="1.0e+05")
+        self.input_q1_var = tk.StringVar(value="1.0e+06")
         self.q1_entry = ttk.Entry(self.q1_input_frame, textvariable=self.input_q1_var, width=12)
         self.q1_entry.pack(side=tk.LEFT, padx=5)
 
         # Add trace to sync target_hrms_slope_var with Tab 1's psd_xi_var and Tab 4's display
         self.target_hrms_slope_var.trace_add('write', self._on_target_hrms_changed)
+
+        # 초기 모드 UI 상태 적용 (모드2: q1 활성, h'rms 비활성)
+        self._on_hrms_q1_mode_changed()
 
         # 계산 버튼
         calc_btn_frame = ttk.Frame(mode_frame)
@@ -6478,59 +6474,47 @@ $\begin{array}{lcc}
             width=15
         ).pack()
 
-        # 3. Piecewise Temperature Selection (Group A / Group B)
-        piecewise_frame = ttk.LabelFrame(left_panel, text="3) Piecewise 온도", padding=5)
-        piecewise_frame.pack(fill=tk.X, pady=2, padx=3)
+        # 3. Persson Average f,g (RANK 1 최적 가중치 자동 적용)
+        persson_avg_frame = ttk.LabelFrame(left_panel, text="3) Persson average f,g", padding=5)
+        persson_avg_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        # Split strain setting
-        split_row = ttk.Frame(piecewise_frame)
+        # Split strain setting (RANK 1 default: 14.2%)
+        split_row = ttk.Frame(persson_avg_frame)
         split_row.pack(fill=tk.X, pady=1)
         ttk.Label(split_row, text="Split(%):", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.split_strain_var = tk.StringVar(value="15.0")
+        self.split_strain_var = tk.StringVar(value="14.2")
         ttk.Entry(split_row, textvariable=self.split_strain_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Label(split_row, text="(A≤Split, B>Split)", font=('Arial', 7), foreground='gray').pack(side=tk.LEFT)
+        ttk.Label(split_row, text="RANK1 최적", font=('Arial', 7), foreground='blue').pack(side=tk.LEFT, padx=2)
 
-        # Group A temperatures (low strain)
-        group_a_frame = ttk.LabelFrame(piecewise_frame, text="Group A (저변형)", padding=2)
-        group_a_frame.pack(fill=tk.X, pady=2)
-
-        self.temp_listbox_A = tk.Listbox(
-            group_a_frame,
-            height=3,
-            selectmode=tk.MULTIPLE,
-            exportselection=False,
-            font=('Arial', 8)
+        # RANK 1 weight info display
+        info_frame = ttk.Frame(persson_avg_frame)
+        info_frame.pack(fill=tk.X, pady=1)
+        weight_info = (
+            "f: low(0.02°C:10%,29.9°C:90%) high(29.9°C:30%,49.99°C:70%)\n"
+            "g: low(0.02°C:35%,49.99°C:65%) high(29.9°C:55%,49.99°C:45%)"
         )
-        self.temp_listbox_A.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        scrollbar_A = ttk.Scrollbar(group_a_frame, command=self.temp_listbox_A.yview)
-        scrollbar_A.pack(side=tk.RIGHT, fill=tk.Y)
-        self.temp_listbox_A.config(yscrollcommand=scrollbar_A.set)
+        ttk.Label(info_frame, text=weight_info, font=('Arial', 6),
+                  foreground='gray', justify=tk.LEFT).pack(anchor=tk.W)
 
-        # Group B temperatures (high strain)
-        group_b_frame = ttk.LabelFrame(piecewise_frame, text="Group B (고변형)", padding=2)
-        group_b_frame.pack(fill=tk.X, pady=2)
+        # Persson average f,g 계산 button (빨간 테두리)
+        persson_avg_wrapper = tk.Frame(persson_avg_frame, bg='red', padx=2, pady=2)
+        persson_avg_wrapper.pack(anchor=tk.W, pady=3)
+        ttk.Button(
+            persson_avg_wrapper,
+            text="Persson average f,g 계산",
+            command=self._persson_average_fg,
+            width=25
+        ).pack()
 
-        self.temp_listbox_B = tk.Listbox(
-            group_b_frame,
-            height=3,
-            selectmode=tk.MULTIPLE,
-            exportselection=False,
-            font=('Arial', 8)
-        )
-        self.temp_listbox_B.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        scrollbar_B = ttk.Scrollbar(group_b_frame, command=self.temp_listbox_B.yview)
-        scrollbar_B.pack(side=tk.RIGHT, fill=tk.Y)
-        self.temp_listbox_B.config(yscrollcommand=scrollbar_B.set)
+        # Status label for Persson average
+        self.persson_avg_status_var = tk.StringVar(value="(미계산)")
+        ttk.Label(persson_avg_frame, textvariable=self.persson_avg_status_var,
+                  font=('Arial', 8), foreground='green').pack(anchor=tk.W)
 
-        # Buttons for temperature selection
-        temp_btn_frame = ttk.Frame(piecewise_frame)
-        temp_btn_frame.pack(fill=tk.X, pady=2)
-
-        ttk.Button(temp_btn_frame, text="전체 선택", command=self._select_all_temps, width=10).pack(side=tk.LEFT, padx=1)
-        # Piecewise 평균 버튼 (빨간 테두리)
-        piecewise_wrapper = tk.Frame(temp_btn_frame, bg='red', padx=2, pady=2)
-        piecewise_wrapper.pack(side=tk.LEFT, padx=1)
-        ttk.Button(piecewise_wrapper, text="Piecewise 평균", command=self._piecewise_average_fg_curves, width=15).pack()
+        # Hidden listboxes for internal compatibility (not displayed)
+        _hidden_frame = ttk.Frame(left_panel)
+        self.temp_listbox_A = tk.Listbox(_hidden_frame, height=0, selectmode=tk.MULTIPLE, exportselection=False)
+        self.temp_listbox_B = tk.Listbox(_hidden_frame, height=0, selectmode=tk.MULTIPLE, exportselection=False)
 
         # Legacy simple averaging (keep for compatibility)
         self.temp_listbox_frame = ttk.Frame(left_panel)
@@ -6753,53 +6737,48 @@ $\begin{array}{lcc}
 
     def _select_all_temps(self):
         """Select all temperatures in both Group A and B listboxes."""
-        # Select all in Group A
         for i in range(self.temp_listbox_A.size()):
             self.temp_listbox_A.selection_set(i)
-        # Select all in Group B
         for i in range(self.temp_listbox_B.size()):
             self.temp_listbox_B.selection_set(i)
 
-    def _piecewise_average_fg_curves(self):
-        """Perform piecewise averaging with Group A/B temperatures."""
+    def _persson_average_fg(self):
+        """Persson average f,g 계산: RANK 1 최적 가중치로 자동 계산.
+
+        1) fg_by_T가 없으면 먼저 f,g 곡선 계산 (strain data 필요)
+        2) DEFAULT_STRAIN_SPLIT (RANK 1) 가중치로 strain-split weighted average
+        3) interpolator 생성 → mu_visc 계산에 바로 사용 가능
+        """
+        # Step 1: fg_by_T가 없으면 자동으로 계산
         if self.fg_by_T is None:
-            messagebox.showwarning("경고", "먼저 f,g 곡선을 계산하세요.")
-            return
+            if self.strain_data is None:
+                messagebox.showwarning("경고",
+                    "Strain Sweep 데이터가 없습니다.\n"
+                    "먼저 '1) Strain Sweep 로드'로 데이터를 로드하세요.")
+                return
+            # 자동으로 f,g 곡선 계산
+            self._compute_fg_curves()
+            if self.fg_by_T is None:
+                return  # 계산 실패
 
         try:
-            # Get selected temperatures from Group A and B
-            temps = sorted(self.fg_by_T.keys())
-
-            sel_A = self.temp_listbox_A.curselection()
-            sel_B = self.temp_listbox_B.curselection()
-
-            if not sel_A or not sel_B:
-                messagebox.showwarning("경고", "Group A와 B 모두에서 최소 1개 온도를 선택하세요.")
-                return
-
-            temps_A = [temps[i] for i in sel_A]
-            temps_B = [temps[i] for i in sel_B]
-
-            # Get split strain
+            # Step 2: RANK 1 최적 설정으로 strain-split 구성
             split_percent = float(self.split_strain_var.get())
             split_strain = split_percent / 100.0
 
-            # Get max strain for grid
             extend_percent = float(self.extend_strain_var.get())
             max_strain = extend_percent / 100.0
 
-            # Create strain grid
             use_persson = self.use_persson_grid_var.get()
             grid_strain = create_strain_grid(30, max_strain, use_persson_grid=use_persson)
 
-            # Build strain_split: use DEFAULT_STRAIN_SPLIT weights with
-            # UI threshold override.  Group A/B temps are passed so the
-            # temperature matcher can find them; the actual per-temp
-            # weighting comes from DEFAULT_STRAIN_SPLIT.
+            # DEFAULT_STRAIN_SPLIT (RANK 1) 가중치 + UI threshold 적용
             strain_split_cfg = dict(DEFAULT_STRAIN_SPLIT)
             strain_split_cfg['threshold'] = split_strain
 
+            # 모든 온도 자동 사용 (Group A/B 수동 선택 불필요)
             all_temps = list(self.fg_by_T.keys())
+
             result = average_fg_curves(
                 self.fg_by_T,
                 all_temps,
@@ -6811,7 +6790,10 @@ $\begin{array}{lcc}
             )
 
             if result is None:
-                messagebox.showerror("오류", "평균화 실패: 데이터가 부족합니다.")
+                messagebox.showerror("오류",
+                    "Persson average 실패: 데이터가 부족합니다.\n"
+                    "DEFAULT_STRAIN_SPLIT 온도(0.02, 29.9, 49.99°C)와\n"
+                    "데이터 온도가 매칭되지 않을 수 있습니다.")
                 return
 
             f_stitched = result['f_avg']
@@ -6820,9 +6802,8 @@ $\begin{array}{lcc}
 
             # Extend to 100% strain with hold extrapolation
             max_data_strain = grid_strain[-1]
-            original_len = len(grid_strain)  # Store original length before extension
+            original_len = len(grid_strain)
             if max_data_strain < 1.0:
-                # Add points up to 100% strain holding the last value
                 extend_strains = np.array([0.5, 0.7, 1.0])
                 extend_strains = extend_strains[extend_strains > max_data_strain]
                 if len(extend_strains) > 0:
@@ -6831,7 +6812,7 @@ $\begin{array}{lcc}
                     g_stitched = np.concatenate([g_stitched, np.full(len(extend_strains), g_stitched[-1])])
                     n_eff_stitched = np.concatenate([n_eff_stitched, np.full(len(extend_strains), n_eff_stitched[-1])])
 
-            # Store piecewise result
+            # Store piecewise result (Persson average)
             self.piecewise_result = {
                 'strain': grid_strain.copy(),
                 'strain_original_len': original_len,
@@ -6839,43 +6820,49 @@ $\begin{array}{lcc}
                 'g_avg': g_stitched,
                 'n_eff': n_eff_stitched,
                 'split': split_strain,
-                'temps_A': temps_A,
-                'temps_B': temps_B,
+                'temps_A': all_temps,
+                'temps_B': all_temps,
                 'strain_split_cfg': strain_split_cfg
             }
 
-            # Also set as main averaged result for mu_visc calculation
+            # Set as main averaged result for mu_visc calculation
             self.fg_averaged = {
                 'strain': grid_strain.copy(),
                 'f_avg': f_stitched,
                 'g_avg': g_stitched,
-                'Ts_used': list(set(temps_A + temps_B)),
+                'Ts_used': all_temps,
                 'n_eff': n_eff_stitched
             }
 
-            # Create interpolators with 'hold' extrapolation to avoid NaN at edges
+            # Create interpolators with 'hold' extrapolation
             self.f_interpolator, self.g_interpolator = create_fg_interpolator(
                 grid_strain, f_stitched, g_stitched,
                 interp_kind='loglog_linear', extrap_mode='hold'
             )
 
             # Update plot
-            self._update_fg_plot_piecewise()
+            self._update_fg_plot_persson_avg()
 
+            # Update status
+            n_temps = len(all_temps)
+            temps_str = ", ".join(f"{t:.1f}" for t in sorted(all_temps))
+            self.persson_avg_status_var.set(
+                f"완료: Split={split_percent:.1f}%, {n_temps}개 온도 [{temps_str}°C]"
+            )
             self.status_var.set(
-                f"Piecewise 평균화 완료: Split={split_percent:.1f}%, "
-                f"A={len(temps_A)}개, B={len(temps_B)}개 온도"
+                f"Persson average f,g 완료: RANK1 가중치, Split={split_percent:.1f}%, "
+                f"{n_temps}개 온도"
             )
 
         except Exception as e:
-            messagebox.showerror("오류", f"Piecewise 평균화 실패:\n{str(e)}")
+            messagebox.showerror("오류", f"Persson average f,g 실패:\n{str(e)}")
             import traceback
             traceback.print_exc()
 
-    def _update_fg_plot_piecewise(self):
-        """Update f,g curves plot with piecewise averaging visualization."""
+    def _update_fg_plot_persson_avg(self):
+        """Update f,g curves plot with Persson average visualization."""
         self.ax_fg_curves.clear()
-        self.ax_fg_curves.set_title('f(ε), g(ε) 곡선 (Piecewise 평균화)', fontweight='bold')
+        self.ax_fg_curves.set_title('f(ε), g(ε) Persson Average (RANK1)', fontweight='bold')
         self.ax_fg_curves.set_xlabel('변형률 ε (fraction)')
         self.ax_fg_curves.set_ylabel('보정 계수')
         self.ax_fg_curves.grid(True, alpha=0.3)
@@ -6889,30 +6876,28 @@ $\begin{array}{lcc}
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.15, linewidth=0.8)
                 self.ax_fg_curves.plot(s, g, 'r-', alpha=0.15, linewidth=0.8)
 
-        # Plot piecewise results
+        # Plot Persson average results
         if self.piecewise_result is not None:
             s = self.piecewise_result['strain']
             split = self.piecewise_result['split']
 
-            # Stitched (final) result only - Group A/B removed
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
-            self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='STITCHED f(ε)')
-            self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='STITCHED g(ε)')
+            self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='f(ε) Persson Avg')
+            self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='g(ε) Persson Avg')
 
             # Split line
             self.ax_fg_curves.axvline(split, color='green', linewidth=2, linestyle=':', alpha=0.8,
                                       label=f'Split @ {split*100:.1f}%')
 
         elif self.fg_averaged is not None:
-            # Fallback to simple averaged plot
             s = self.fg_averaged['strain']
             f_avg = self.fg_averaged['f_avg']
             g_avg = self.fg_averaged['g_avg']
             self.ax_fg_curves.plot(s, f_avg, 'b-', linewidth=3, label='f(ε) 평균')
             self.ax_fg_curves.plot(s, g_avg, 'r-', linewidth=3, label='g(ε) 평균')
 
-        self.ax_fg_curves.set_xlim(0, 1.0)  # Always show up to 100% strain
+        self.ax_fg_curves.set_xlim(0, 1.0)
         self.ax_fg_curves.set_ylim(0, 1.1)
         self.ax_fg_curves.legend(loc='upper right', fontsize=7, ncol=2)
 
@@ -6961,8 +6946,8 @@ $\begin{array}{lcc}
                 if self.piecewise_result is not None:
                     split = self.piecewise_result['split']
                     writer.writerow(['# Split Strain(%)', f'{split*100:.2f}'])
-                    writer.writerow(['# Group A temps', str(self.piecewise_result["temps_A"])])
-                    writer.writerow(['# Group B temps', str(self.piecewise_result["temps_B"])])
+                    writer.writerow(['# Method', 'Persson Average (RANK1 weighted)'])
+                    writer.writerow(['# Temps used', str(self.piecewise_result.get("temps_A", []))])
                 writer.writerow([])  # 빈 줄
                 writer.writerow(['strain_fraction', 'f_value', 'g_value', 'n_eff'])
 
@@ -7215,8 +7200,18 @@ $\begin{array}{lcc}
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.3, linewidth=1)
                 self.ax_fg_curves.plot(s, g, 'r-', alpha=0.3, linewidth=1)
 
-        # Plot averaged curves
-        if self.fg_averaged is not None:
+        # Plot Persson average if available
+        if self.piecewise_result is not None:
+            s = self.piecewise_result['strain']
+            split = self.piecewise_result['split']
+            f_final = self.piecewise_result['f_avg']
+            g_final = self.piecewise_result['g_avg']
+            self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='f(ε) Persson Avg')
+            self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='g(ε) Persson Avg')
+            self.ax_fg_curves.axvline(split, color='green', linewidth=2, linestyle=':', alpha=0.8,
+                                      label=f'Split @ {split*100:.1f}%')
+            self.ax_fg_curves.legend(loc='upper right', fontsize=7, ncol=2)
+        elif self.fg_averaged is not None:
             s = self.fg_averaged['strain']
             f_avg = self.fg_averaged['f_avg']
             g_avg = self.fg_averaged['g_avg']
@@ -7224,7 +7219,7 @@ $\begin{array}{lcc}
             self.ax_fg_curves.plot(s, g_avg, 'r-', linewidth=3, label='g(ε) 평균')
             self.ax_fg_curves.legend(loc='upper right')
 
-        self.ax_fg_curves.set_xlim(left=0)
+        self.ax_fg_curves.set_xlim(0, 1.0)
         self.ax_fg_curves.set_ylim(0, 1.1)
 
         self.canvas_mu_visc.draw()
