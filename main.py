@@ -10116,16 +10116,17 @@ $\begin{array}{lcc}
 
                 # Get strain for nonlinear correction (if available)
                 strain_at_q = 0.01  # default
-                if use_fg and hasattr(self, 'local_strain_array') and self.local_strain_array is not None:
+                if use_fg and hasattr(self, 'rms_slope_profiles') and self.rms_slope_profiles is not None:
                     try:
                         from scipy.interpolate import interp1d
-                        if hasattr(self, 'rms_q_array') and self.rms_q_array is not None:
-                            log_q = np.log10(self.rms_q_array)
-                            log_strain = np.log10(np.maximum(self.local_strain_array, 1e-10))
-                            interp_func = interp1d(log_q, log_strain, kind='linear',
-                                                   bounds_error=False, fill_value='extrapolate')
-                            strain_at_q = 10 ** interp_func(np.log10(q))
-                            strain_at_q = np.clip(strain_at_q, 0.0, 1.0)
+                        rms_q = self.rms_slope_profiles['q']
+                        rms_strain = self.rms_slope_profiles['strain']
+                        log_q_arr = np.log10(rms_q)
+                        log_strain = np.log10(np.maximum(rms_strain, 1e-10))
+                        interp_func = interp1d(log_q_arr, log_strain, kind='linear',
+                                               bounds_error=False, fill_value='extrapolate')
+                        strain_at_q = 10 ** interp_func(np.log10(q))
+                        strain_at_q = np.clip(strain_at_q, 0.0, 1.0)
                     except:
                         pass
 
