@@ -39,10 +39,7 @@ class GCalculator:
     # PSD normalization correction factor
     # Different software may use different PSD normalization conventions.
     # This factor accounts for PSD definition differences between implementations.
-    # Applied only in linear mode (no nonlinear f,g correction).
-    # When nonlinear correction is enabled, this factor is set to 1.0
-    # (i.e., not applied) because the f(ε),g(ε) corrections already
-    # account for the effective modulus reduction.
+    # Applied to both linear and nonlinear (f,g corrected) modes equally.
     PSD_NORMALIZATION_FACTOR = 1.59
 
     def __init__(
