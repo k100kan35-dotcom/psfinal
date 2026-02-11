@@ -6792,76 +6792,31 @@ $\begin{array}{lcc}
             use_persson = self.use_persson_grid_var.get()
             grid_strain = create_strain_grid(30, max_strain, use_persson_grid=use_persson)
 
-            # Average curves for Group A
-            result_A = average_fg_curves(
+            # Build strain_split: use DEFAULT_STRAIN_SPLIT weights with
+            # UI threshold override.  Group A/B temps are passed so the
+            # temperature matcher can find them; the actual per-temp
+            # weighting comes from DEFAULT_STRAIN_SPLIT.
+            strain_split_cfg = dict(DEFAULT_STRAIN_SPLIT)
+            strain_split_cfg['threshold'] = split_strain
+
+            all_temps = list(self.fg_by_T.keys())
+            result = average_fg_curves(
                 self.fg_by_T,
-                temps_A,
+                all_temps,
                 grid_strain,
                 interp_kind='loglog_linear',
                 avg_mode='mean',
-                clip_leq_1=self.clip_fg_var.get()
+                clip_leq_1=self.clip_fg_var.get(),
+                strain_split=strain_split_cfg
             )
 
-            # Average curves for Group B
-            result_B = average_fg_curves(
-                self.fg_by_T,
-                temps_B,
-                grid_strain,
-                interp_kind='loglog_linear',
-                avg_mode='mean',
-                clip_leq_1=self.clip_fg_var.get()
-            )
-
-            if result_A is None or result_B is None:
+            if result is None:
                 messagebox.showerror("오류", "평균화 실패: 데이터가 부족합니다.")
                 return
 
-            # Stitch results: use A for strain <= split, B for strain > split
-            mask_A = grid_strain <= split_strain
-            mask_B = ~mask_A
-
-            f_stitched = np.empty_like(result_A['f_avg'])
-            g_stitched = np.empty_like(result_A['g_avg'])
-            n_eff_stitched = np.empty_like(result_A['n_eff'])
-
-            f_stitched[mask_A] = result_A['f_avg'][mask_A]
-            f_stitched[mask_B] = result_B['f_avg'][mask_B]
-            g_stitched[mask_A] = result_A['g_avg'][mask_A]
-            g_stitched[mask_B] = result_B['g_avg'][mask_B]
-            n_eff_stitched[mask_A] = result_A['n_eff'][mask_A]
-            n_eff_stitched[mask_B] = result_B['n_eff'][mask_B]
-
-            # Handle any remaining NaN values with interpolation/fill
-            if np.any(~np.isfinite(f_stitched)) or np.any(~np.isfinite(g_stitched)):
-                # Forward-backward fill for NaN values
-                valid_f = np.isfinite(f_stitched)
-                valid_g = np.isfinite(g_stitched)
-
-                if np.any(valid_f):
-                    # Forward fill
-                    last_val = f_stitched[valid_f][0]
-                    for i in range(len(f_stitched)):
-                        if valid_f[i]:
-                            last_val = f_stitched[i]
-                        else:
-                            f_stitched[i] = last_val
-                    # Backward fill for beginning
-                    first_valid_idx = np.argmax(valid_f)
-                    f_stitched[:first_valid_idx] = f_stitched[first_valid_idx]
-                else:
-                    f_stitched[:] = 1.0  # Default
-
-                if np.any(valid_g):
-                    last_val = g_stitched[valid_g][0]
-                    for i in range(len(g_stitched)):
-                        if valid_g[i]:
-                            last_val = g_stitched[i]
-                        else:
-                            g_stitched[i] = last_val
-                    first_valid_idx = np.argmax(valid_g)
-                    g_stitched[:first_valid_idx] = g_stitched[first_valid_idx]
-                else:
-                    g_stitched[:] = 1.0  # Default
+            f_stitched = result['f_avg']
+            g_stitched = result['g_avg']
+            n_eff_stitched = result['n_eff']
 
             # Extend to 100% strain with hold extrapolation
             max_data_strain = grid_strain[-1]
@@ -6879,15 +6834,14 @@ $\begin{array}{lcc}
             # Store piecewise result
             self.piecewise_result = {
                 'strain': grid_strain.copy(),
-                'strain_original_len': original_len,  # For plotting Group A/B
+                'strain_original_len': original_len,
                 'f_avg': f_stitched,
                 'g_avg': g_stitched,
                 'n_eff': n_eff_stitched,
                 'split': split_strain,
                 'temps_A': temps_A,
                 'temps_B': temps_B,
-                'result_A': result_A,
-                'result_B': result_B
+                'strain_split_cfg': strain_split_cfg
             }
 
             # Also set as main averaged result for mu_visc calculation
