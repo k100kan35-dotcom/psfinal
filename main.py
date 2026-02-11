@@ -9078,23 +9078,26 @@ $\begin{array}{lcc}
         self.strain_map_progress = ttk.Progressbar(control_frame, mode='determinate')
         self.strain_map_progress.pack(fill=tk.X, pady=3)
 
-        # Plot area - 2x4 grid for 8 heatmaps
+        # Plot area - 3x4 grid for 10 heatmaps + f,g graph
         plot_frame = ttk.Frame(main_frame)
         plot_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
-        self.fig_strain_map = Figure(figsize=(18, 9), dpi=100)
+        self.fig_strain_map = Figure(figsize=(18, 13), dpi=100)
 
-        # 2x4 subplots layout:
+        # 3x4 subplots layout:
         # Row 1: Local Strain | E' Storage (linear) | E'' Loss (linear) | E''*g Loss (nonlinear)
-        # Row 2: E'*f Storage (nonlinear) | G Integrand | A/A0 (linear) | A/A0 (nonlinear)
-        self.ax_strain_contour = self.fig_strain_map.add_subplot(241)
-        self.ax_E_storage = self.fig_strain_map.add_subplot(242)
-        self.ax_E_loss_linear = self.fig_strain_map.add_subplot(243)  # NEW: E'' 순수 (linear)
-        self.ax_E_loss_nonlinear = self.fig_strain_map.add_subplot(244)
-        self.ax_E_storage_nonlinear = self.fig_strain_map.add_subplot(245)
-        self.ax_G_integrand = self.fig_strain_map.add_subplot(246)  # G Integrand 통합
-        self.ax_contact_linear = self.fig_strain_map.add_subplot(247)
-        self.ax_contact_nonlinear = self.fig_strain_map.add_subplot(248)
+        # Row 2: f,g Factors  | E'*f Storage (nl)   | G Integrand (lin) | G Integrand (nl)
+        # Row 3: (empty)      | (empty)              | A/A0 (linear)     | A/A0 (nonlinear)
+        self.ax_strain_contour = self.fig_strain_map.add_subplot(3, 4, 1)
+        self.ax_E_storage = self.fig_strain_map.add_subplot(3, 4, 2)
+        self.ax_E_loss_linear = self.fig_strain_map.add_subplot(3, 4, 3)
+        self.ax_E_loss_nonlinear = self.fig_strain_map.add_subplot(3, 4, 4)
+        self.ax_fg_factors = self.fig_strain_map.add_subplot(3, 4, 5)
+        self.ax_E_storage_nonlinear = self.fig_strain_map.add_subplot(3, 4, 6)
+        self.ax_G_integrand_linear = self.fig_strain_map.add_subplot(3, 4, 7)
+        self.ax_G_integrand = self.fig_strain_map.add_subplot(3, 4, 8)
+        self.ax_contact_linear = self.fig_strain_map.add_subplot(3, 4, 11)
+        self.ax_contact_nonlinear = self.fig_strain_map.add_subplot(3, 4, 12)
 
         self.canvas_strain_map = FigureCanvasTkAgg(self.fig_strain_map, plot_frame)
         self.canvas_strain_map.draw()
@@ -9108,22 +9111,32 @@ $\begin{array}{lcc}
 
     def _init_strain_map_plots(self):
         """Initialize strain map plots with placeholder data."""
-        for ax, title in [
+        heatmap_axes = [
             (self.ax_strain_contour, 'Local Strain [%]'),
-            (self.ax_E_storage, "E' Storage [log Pa] (Blues)"),
-            (self.ax_E_loss_linear, "E'' Loss [log Pa] (Reds)"),
-            (self.ax_E_loss_nonlinear, "E''×g [log Pa]"),
-            (self.ax_E_storage_nonlinear, "E'×f [log Pa]"),
-            (self.ax_G_integrand, "G Integrand"),
+            (self.ax_E_storage, "E' Storage [MPa]"),
+            (self.ax_E_loss_linear, "E'' Loss [MPa]"),
+            (self.ax_E_loss_nonlinear, "E''×g [MPa]"),
+            (self.ax_E_storage_nonlinear, "E'×f [MPa]"),
+            (self.ax_G_integrand_linear, "G Integrand (lin)"),
+            (self.ax_G_integrand, "G Integrand (nl)"),
             (self.ax_contact_linear, "A/A₀ (linear)"),
             (self.ax_contact_nonlinear, "A/A₀ (nonlinear)")
-        ]:
+        ]
+        for ax, title in heatmap_axes:
             ax.set_title(title, fontweight='bold', fontsize=9)
             ax.set_xlabel('log₁₀(v) [m/s]', fontsize=8)
             ax.set_ylabel('log₁₀(q) [1/m]', fontsize=8)
             ax.text(0.5, 0.5, 'No data',
                    ha='center', va='center', transform=ax.transAxes,
                    fontsize=10, color='gray')
+
+        # f,g factor graph placeholder
+        self.ax_fg_factors.set_title('f(ε), g(ε) Factors', fontweight='bold', fontsize=9)
+        self.ax_fg_factors.set_xlabel('Strain', fontsize=8)
+        self.ax_fg_factors.set_ylabel('Factor', fontsize=8)
+        self.ax_fg_factors.text(0.5, 0.5, 'No data',
+               ha='center', va='center', transform=self.ax_fg_factors.transAxes,
+               fontsize=10, color='gray')
 
         self.fig_strain_map.tight_layout()
         self.canvas_strain_map.draw()
@@ -9343,12 +9356,15 @@ $\begin{array}{lcc}
             self.status_var.set("오류 발생")
 
     def _update_strain_map_plots(self):
-        """Update strain map heatmap plots (8 plots total).
+        """Update strain map heatmap plots (3x4 grid, 10 plots + f,g graph).
 
-        개선사항:
-        - A/A0 < 0.999 인 유효 영역만 표시 (나머지 회색)
-        - E', E'' 는 MPa 단위 linear 스케일 (log보다 직관적)
-        - E' vs E'×f, E'' vs E''×g 각 쌍별 동일 colorbar 범위
+        Layout:
+        Row 1: Local Strain | E' Storage | E'' Loss | E''×g
+        Row 2: f,g Factors  | E'×f       | G (lin)  | G (nl)
+        Row 3: (empty)      | (empty)    | A/A₀ lin | A/A₀ nl
+
+        - E' + E'' LogNorm 공유, E'×f + E''×g LogNorm 공유
+        - G integrand lin/nl 공유 범위, Y축 유효영역 크롭
         """
         if not hasattr(self, 'strain_map_results') or self.strain_map_results is None:
             return
@@ -9360,6 +9376,7 @@ $\begin{array}{lcc}
         E_storage_nl = self.strain_map_results['E_storage_nonlinear']
         E_loss_lin = self.strain_map_results.get('E_loss_linear')
         E_loss_nl = self.strain_map_results['E_loss_nonlinear']
+        G_int_lin = self.strain_map_results.get('G_integrand_linear')
         G_int_nl = self.strain_map_results.get('G_integrand_nonlinear')
         contact_lin = self.strain_map_results.get('contact_linear')
         contact_nl = self.strain_map_results.get('contact_nonlinear')
@@ -9378,10 +9395,11 @@ $\begin{array}{lcc}
                     pass
         self._strain_map_colorbars = []
 
-        # Clear all 8 axes
+        # Clear all axes
         all_axes = [self.ax_strain_contour, self.ax_E_storage,
                     self.ax_E_loss_linear, self.ax_E_loss_nonlinear,
-                    self.ax_E_storage_nonlinear, self.ax_G_integrand,
+                    self.ax_fg_factors, self.ax_E_storage_nonlinear,
+                    self.ax_G_integrand_linear, self.ax_G_integrand,
                     self.ax_contact_linear, self.ax_contact_nonlinear]
         for ax in all_axes:
             ax.clear()
@@ -9527,26 +9545,79 @@ $\begin{array}{lcc}
             transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 6: G Integrand [log]
+        # ===== Y축 크롭: 유효 데이터 영역만 표시 =====
+        # valid_mask 에서 행(q축) 기준으로 유효 데이터가 있는 범위를 찾음
+        valid_rows = np.any(valid_mask, axis=1)  # 각 q행에 유효 데이터가 있는지
+        if np.any(valid_rows):
+            valid_row_indices = np.where(valid_rows)[0]
+            # 유효 행 시작 ~ 끝까지의 q 범위 (약간 여유)
+            q_crop_min = log_q[max(valid_row_indices[0] - 1, 0)]
+            q_crop_max = log_q[min(valid_row_indices[-1] + 1, len(log_q) - 1)]
+        else:
+            q_crop_min, q_crop_max = log_q[0], log_q[-1]
+
+        # G integrand, A/A₀ 등 마스킹 플롯에 Y축 크롭 적용할 axes 목록
+        crop_axes = []
+
+        # Plot 6: f(ε), g(ε) Factors graph
+        self.ax_fg_factors.set_facecolor('white')
+        if self.f_interpolator is not None:
+            s_plot = np.linspace(0, 0.5, 200)
+            f_vals = np.array([self.f_interpolator(s) for s in s_plot])
+            self.ax_fg_factors.plot(s_plot * 100, f_vals, 'b-', linewidth=2, label='f(ε)')
+        if self.g_interpolator is not None:
+            s_plot = np.linspace(0, 0.5, 200)
+            g_vals = np.array([self.g_interpolator(s) for s in s_plot])
+            self.ax_fg_factors.plot(s_plot * 100, g_vals, 'r-', linewidth=2, label='g(ε)')
+        self.ax_fg_factors.set_title('f(ε), g(ε) Factors', fontweight='bold', fontsize=9)
+        self.ax_fg_factors.set_xlabel('Strain [%]', fontsize=8)
+        self.ax_fg_factors.set_ylabel('Factor', fontsize=8)
+        self.ax_fg_factors.set_ylim(0, 1.1)
+        self.ax_fg_factors.legend(fontsize=7, loc='lower left')
+        self.ax_fg_factors.grid(True, alpha=0.3)
+
+        # G integrand 공유 범위 계산 (linear + nonlinear)
+        g_lin_log = np.log10(np.maximum(G_int_lin, 1e-30)) if G_int_lin is not None else None
+        g_nl_log = np.log10(np.maximum(G_int_nl, 1e-30)) if G_int_nl is not None else None
+        g_vmin, g_vmax = -10, 0
+        g_arrays = []
+        if g_lin_log is not None:
+            g_arrays.append(g_lin_log[valid_mask])
+        if g_nl_log is not None:
+            g_arrays.append(g_nl_log[valid_mask])
+        if g_arrays:
+            g_all_valid = np.concatenate(g_arrays)
+            if len(g_all_valid) > 0:
+                g_vmax = np.max(g_all_valid)
+                g_vmin = max(np.percentile(g_all_valid, 5), g_vmax - 15)
+
+        # Plot 7: G Integrand (linear) [log]
+        if G_int_lin is not None:
+            log_G_lin_masked = _masked(g_lin_log)
+            im7a = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_masked, cmap=g_cmap, shading='auto',
+                                                          vmin=g_vmin, vmax=g_vmax)
+            self.ax_G_integrand_linear.set_title('G Integrand (lin) [log]', fontweight='bold', fontsize=9)
+            self.ax_G_integrand_linear.set_xlabel('log₁₀(v)', fontsize=8)
+            self.ax_G_integrand_linear.set_ylabel('log₁₀(q)', fontsize=8)
+            cbar7a = self.fig_strain_map.colorbar(im7a, ax=self.ax_G_integrand_linear)
+            cbar7a.set_label('log₁₀(G)', fontsize=7)
+            self._strain_map_colorbars.append(cbar7a)
+            crop_axes.append(self.ax_G_integrand_linear)
+
+        # Plot 7b: G Integrand (nonlinear) [log]
         if G_int_nl is not None:
-            log_G_nl = np.log10(np.maximum(G_int_nl, 1e-30))
-            log_G_masked = _masked(log_G_nl)
-            g_valid = log_G_nl[valid_mask]
-            if len(g_valid) > 0:
-                g_vmax = np.max(g_valid)
-                g_vmin = max(np.percentile(g_valid, 5), g_vmax - 15)
-            else:
-                g_vmin, g_vmax = -10, 0
-            im6 = self.ax_G_integrand.pcolormesh(V, Q, log_G_masked, cmap=g_cmap, shading='auto',
-                                                  vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand.set_title('G Integrand [log]', fontweight='bold', fontsize=9)
+            log_G_nl_masked = _masked(g_nl_log)
+            im7b = self.ax_G_integrand.pcolormesh(V, Q, log_G_nl_masked, cmap=g_cmap, shading='auto',
+                                                   vmin=g_vmin, vmax=g_vmax)
+            self.ax_G_integrand.set_title('G Integrand (nl) [log]', fontweight='bold', fontsize=9)
             self.ax_G_integrand.set_xlabel('log₁₀(v)', fontsize=8)
             self.ax_G_integrand.set_ylabel('log₁₀(q)', fontsize=8)
-            cbar6 = self.fig_strain_map.colorbar(im6, ax=self.ax_G_integrand)
-            cbar6.set_label('log₁₀(G)', fontsize=7)
-            self._strain_map_colorbars.append(cbar6)
+            cbar7b = self.fig_strain_map.colorbar(im7b, ax=self.ax_G_integrand)
+            cbar7b.set_label('log₁₀(G)', fontsize=7)
+            self._strain_map_colorbars.append(cbar7b)
+            crop_axes.append(self.ax_G_integrand)
 
-        # Plot 7: A/A₀ (linear) — 유효 영역만
+        # Plot 9: A/A₀ (linear) — 유효 영역만
         if contact_lin is not None:
             c_lin_masked = _masked(contact_lin)
             c_valid = contact_lin[valid_mask]
@@ -9555,14 +9626,15 @@ $\begin{array}{lcc}
                 c_vmax = min(np.max(c_valid) + 0.02, 1)
             else:
                 c_vmin, c_vmax = 0, 1
-            im7 = self.ax_contact_linear.pcolormesh(V, Q, c_lin_masked, cmap=contact_cmap, shading='auto',
+            im9 = self.ax_contact_linear.pcolormesh(V, Q, c_lin_masked, cmap=contact_cmap, shading='auto',
                                                      vmin=c_vmin, vmax=c_vmax)
             self.ax_contact_linear.set_title('A/A₀ (linear)', fontweight='bold', fontsize=9)
             self.ax_contact_linear.set_xlabel('log₁₀(v)', fontsize=8)
             self.ax_contact_linear.set_ylabel('log₁₀(q)', fontsize=8)
-            cbar7 = self.fig_strain_map.colorbar(im7, ax=self.ax_contact_linear)
-            cbar7.set_label('A/A₀', fontsize=7)
-            self._strain_map_colorbars.append(cbar7)
+            cbar9 = self.fig_strain_map.colorbar(im9, ax=self.ax_contact_linear)
+            cbar9.set_label('A/A₀', fontsize=7)
+            self._strain_map_colorbars.append(cbar9)
+            crop_axes.append(self.ax_contact_linear)
             P_lin_at1 = contact_lin[:, v_1ms_idx]
             P_lin_valid = P_lin_at1[P_lin_at1 < AA0_THRESHOLD]
             if len(P_lin_valid) > 0:
@@ -9571,7 +9643,7 @@ $\begin{array}{lcc}
                     transform=self.ax_contact_linear.transAxes, fontsize=7, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 8: A/A₀ (nonlinear) — 유효 영역만
+        # Plot 10: A/A₀ (nonlinear) — 유효 영역만
         if contact_nl is not None:
             c_nl_masked = _masked(contact_nl)
             c_nl_valid = contact_nl[valid_mask]
@@ -9580,14 +9652,15 @@ $\begin{array}{lcc}
                 c_nl_vmax = min(np.max(c_nl_valid) + 0.02, 1)
             else:
                 c_nl_vmin, c_nl_vmax = 0, 1
-            im8 = self.ax_contact_nonlinear.pcolormesh(V, Q, c_nl_masked, cmap=contact_cmap, shading='auto',
-                                                        vmin=c_nl_vmin, vmax=c_nl_vmax)
+            im10 = self.ax_contact_nonlinear.pcolormesh(V, Q, c_nl_masked, cmap=contact_cmap, shading='auto',
+                                                         vmin=c_nl_vmin, vmax=c_nl_vmax)
             self.ax_contact_nonlinear.set_title('A/A₀ (nonlinear)', fontweight='bold', fontsize=9)
             self.ax_contact_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
             self.ax_contact_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
-            cbar8 = self.fig_strain_map.colorbar(im8, ax=self.ax_contact_nonlinear)
-            cbar8.set_label('A/A₀', fontsize=7)
-            self._strain_map_colorbars.append(cbar8)
+            cbar10 = self.fig_strain_map.colorbar(im10, ax=self.ax_contact_nonlinear)
+            cbar10.set_label('A/A₀', fontsize=7)
+            self._strain_map_colorbars.append(cbar10)
+            crop_axes.append(self.ax_contact_nonlinear)
             P_nl_at1 = contact_nl[:, v_1ms_idx]
             P_nl_valid = P_nl_at1[P_nl_at1 < AA0_THRESHOLD]
             if len(P_nl_valid) > 0:
@@ -9595,6 +9668,11 @@ $\begin{array}{lcc}
                     f'v=1: {P_nl_valid.min():.3f}~{P_nl_valid.max():.3f}',
                     transform=self.ax_contact_nonlinear.transAxes, fontsize=7, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
+
+        # ===== Y축 크롭 적용: G integrand, A/A₀ — 유효 데이터 영역만 =====
+        for ax in crop_axes:
+            ax.set_ylim(q_crop_min, q_crop_max)
+            ax.set_facecolor('white')  # 크롭 후 회색 배경 제거
 
         self.fig_strain_map.tight_layout()
         self.canvas_strain_map.draw()
