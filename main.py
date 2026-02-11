@@ -7692,13 +7692,15 @@ $\begin{array}{lcc}
             # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)sigma_0)² dφ dq'
             # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
 
-            # PSD_NORMALIZATION_FACTOR 조건부 적용:
-            # - 선형 모드 (비선형 체크 해제): 1.667 적용
-            # - 비선형 모드 (비선형 체크): 1.12 적용
+            # PSD_NORMALIZATION_FACTOR & gamma 조건부 적용:
+            # - 선형 모드 (비선형 체크 해제): norm=1.667, gamma=0.59
+            # - 비선형 모드 (비선형 체크): norm=1.0, gamma=0.74
             if use_fg:
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.12
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.0
+                gamma = 0.74
             else:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.667
+                gamma = 0.59
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
