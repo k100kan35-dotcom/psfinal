@@ -38,15 +38,12 @@ class GCalculator:
 
     # PSD normalization correction factor
     # Different software may use different PSD normalization conventions.
-    # Empirically tuned to minimize A/A0 gap across velocity range:
-    # - √(2π) ≈ 2.5: Good at low v, but +25% gap at high v
-    # - 2.0: Uniform +12% gap across all velocities
-    # - 1.75: Reduced to +5% gap
-    # - 1.65: Reduced to +1.5% gap
-    # - 1.63: Reduced to +1.0% gap
-    # - 1.60: Final tuning to ~0% gap
     # This factor accounts for PSD definition differences between implementations.
-    PSD_NORMALIZATION_FACTOR = 1.60
+    # Applied only in linear mode (no nonlinear f,g correction).
+    # When nonlinear correction is enabled, this factor is set to 1.0
+    # (i.e., not applied) because the f(ε),g(ε) corrections already
+    # account for the effective modulus reduction.
+    PSD_NORMALIZATION_FACTOR = 1.667
 
     def __init__(
         self,
