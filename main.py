@@ -4031,6 +4031,22 @@ class PerssonModelGUI_V2:
             font=('Arial', 10)
         ).pack()
 
+        # G Norm Factor 조절 UI
+        norm_frame = ttk.LabelFrame(parent, text="G 보정 계수 (PSD Normalization Factor)", padding=5)
+        norm_frame.pack(fill=tk.X, padx=10, pady=3)
+
+        norm_row = ttk.Frame(norm_frame)
+        norm_row.pack(fill=tk.X)
+        ttk.Label(norm_row, text="Norm Factor:", font=('Arial', 9)).pack(side=tk.LEFT, padx=5)
+        self.g_norm_factor_var = tk.StringVar(value="1.59")
+        norm_entry_wrapper = tk.Frame(norm_row, bg='red', padx=2, pady=2)
+        norm_entry_wrapper.pack(side=tk.LEFT)
+        ttk.Entry(norm_entry_wrapper, textvariable=self.g_norm_factor_var, width=8).pack()
+        ttk.Label(norm_row, text="  G(q) = integrand / (8.0 x NormFactor)",
+                  font=('Arial', 8), foreground='gray').pack(side=tk.LEFT, padx=5)
+        ttk.Label(norm_row, text="기본값: 1.59",
+                  font=('Arial', 8), foreground='blue').pack(side=tk.LEFT, padx=5)
+
         # Plot area
         plot_frame = ttk.Frame(parent)
         plot_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
@@ -4583,6 +4599,12 @@ class PerssonModelGUI_V2:
                 n_angle_points=n_phi_gq,
                 integration_method='trapz'
             )
+
+            # GUI에서 설정한 norm factor 적용
+            try:
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
+            except (ValueError, AttributeError):
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
 
             # =====================================================================
             # DIAGNOSTIC OUTPUT: Check units and values for G(q) calculation
@@ -7387,6 +7409,12 @@ $\begin{array}{lcc}
                 n_angle_points=n_phi
             )
 
+            # GUI에서 설정한 norm factor 적용
+            try:
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
+            except (ValueError, AttributeError):
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
+
             # Progress callback
             def progress_callback(percent):
                 self.g_calc_status_var.set(f"G(q,v) 재계산 중... {percent}%")
@@ -7632,8 +7660,11 @@ $\begin{array}{lcc}
             # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)sigma_0)² dφ dq'
             # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
 
-            # PSD_NORMALIZATION_FACTOR: 선형/비선형 모두 동일하게 적용
-            self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
+            # PSD_NORMALIZATION_FACTOR: GUI 값 적용 (선형/비선형 동일)
+            try:
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
+            except (ValueError, AttributeError):
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
