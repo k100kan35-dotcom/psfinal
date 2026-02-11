@@ -57,20 +57,13 @@ def build():
         '--log-level', 'WARN',
 
         # ===== matplotlib 폰트/데이터 완전 번들 =====
-        # collect-data: matplotlib의 모든 데이터 파일 포함
-        #   - mpl-data/fonts/ (DejaVu Sans 등 내장 폰트 .ttf)
-        #   - mpl-data/stylelib/ (스타일 파일)
-        #   - mpl-data/matplotlibrc (기본 설정)
+        # mpl-data/fonts/ (DejaVu Sans 등 내장 .ttf)
+        # mpl-data/stylelib/, mpl-data/matplotlibrc
         '--collect-data', 'matplotlib',
-        # collect-submodules: 폰트 렌더링 관련 서브모듈 전체 포함
-        #   - matplotlib.font_manager (폰트 탐색/등록)
-        #   - matplotlib.ft2font (FreeType2 바인딩)
-        #   - matplotlib.mathtext (수식 렌더링)
-        #   - matplotlib._mathtext (수식 파서)
+        # 폰트 렌더링 + 모든 서브모듈 포함
         '--collect-submodules', 'matplotlib',
 
-        # ===== 필수 hidden imports =====
-        # matplotlib 핵심
+        # ===== hidden imports: matplotlib 핵심 =====
         '--hidden-import', 'matplotlib',
         '--hidden-import', 'matplotlib.pyplot',
         '--hidden-import', 'matplotlib.backends.backend_tkagg',
@@ -82,8 +75,9 @@ def build():
         '--hidden-import', 'matplotlib.ticker',
         '--hidden-import', 'matplotlib.colors',
         '--hidden-import', 'matplotlib.cm',
+        '--hidden-import', 'matplotlib.collections',
 
-        # numpy/scipy
+        # ===== hidden imports: numpy/scipy =====
         '--hidden-import', 'numpy',
         '--hidden-import', 'numpy.core',
         '--hidden-import', 'scipy.integrate',
@@ -92,18 +86,45 @@ def build():
         '--hidden-import', 'scipy.signal',
         '--hidden-import', 'scipy.special',
 
-        # pandas (main.py에서 DMA/PSD 파일 로딩에 사용)
+        # ===== hidden imports: pandas =====
         '--hidden-import', 'pandas',
         '--hidden-import', 'pandas.core',
 
-        # tkinter GUI
+        # ===== hidden imports: tkinter =====
         '--hidden-import', 'tkinter',
         '--hidden-import', 'tkinter.ttk',
         '--hidden-import', 'tkinter.filedialog',
         '--hidden-import', 'tkinter.messagebox',
+        '--hidden-import', 'tkinter.simpledialog',
 
-        # 표준 라이브러리 (한글 폰트 탐색에 필요)
+        # ===== hidden imports: stdlib (동적 import) =====
         '--hidden-import', 'platform',
+        '--hidden-import', 'tempfile',
+        '--hidden-import', 'csv',
+        '--hidden-import', 're',
+
+        # ===== hidden imports: pkg_resources 의존성 =====
+        '--hidden-import', 'pkg_resources',
+        '--hidden-import', 'jaraco',
+        '--hidden-import', 'jaraco.text',
+        '--hidden-import', 'jaraco.functools',
+        '--hidden-import', 'jaraco.context',
+        '--collect-submodules', 'jaraco',
+
+        # ===== hidden imports: persson_model 패키지 전체 =====
+        '--hidden-import', 'persson_model',
+        '--hidden-import', 'persson_model.core',
+        '--hidden-import', 'persson_model.core.contact',
+        '--hidden-import', 'persson_model.core.friction',
+        '--hidden-import', 'persson_model.core.g_calculator',
+        '--hidden-import', 'persson_model.core.master_curve',
+        '--hidden-import', 'persson_model.core.psd_from_profile',
+        '--hidden-import', 'persson_model.core.psd_models',
+        '--hidden-import', 'persson_model.core.viscoelastic',
+        '--hidden-import', 'persson_model.utils',
+        '--hidden-import', 'persson_model.utils.data_loader',
+        '--hidden-import', 'persson_model.utils.numerical',
+        '--hidden-import', 'persson_model.utils.output',
     ]
 
     # 제외 모듈 추가
@@ -118,7 +139,7 @@ def build():
     if os.path.isdir('reference_data'):
         args.extend(['--add-data', f'reference_data{sep}reference_data'])
 
-    # preset_data (내장 PSD, aT, mastercurve 데이터)
+    # preset_data (내장 PSD, aT, mastercurve, strain_sweep, fg_curve)
     if os.path.isdir('preset_data'):
         args.extend(['--add-data', f'preset_data{sep}preset_data'])
 
@@ -131,6 +152,13 @@ def build():
     print("=" * 60)
     print(f"Python: {sys.version}")
     print(f"Platform: {sys.platform}")
+    print()
+
+    # 포함 데이터 디렉토리 확인 출력
+    for d in ['persson_model', 'reference_data', 'preset_data']:
+        if os.path.isdir(d):
+            sub = [s for s in os.listdir(d) if os.path.isdir(os.path.join(d, s))]
+            print(f"  [DATA] {d}/ ({len(sub)} subdirs: {', '.join(sub)})")
     print()
 
     PyInstaller.__main__.run(args)
