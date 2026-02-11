@@ -41,7 +41,7 @@ EXCLUDE_MPL = [
 EXCLUDE_MISC = [
     'IPython', 'jupyter', 'notebook',
     'pytest',
-    'pdb', 'doctest', 'pydoc', 'unittest', 'test',
+    'pdb', 'doctest', 'pydoc',
     'lib2to3', 'ensurepip', 'idlelib', 'distutils',
     'curses',
 ]
