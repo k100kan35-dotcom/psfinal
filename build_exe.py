@@ -36,14 +36,14 @@ EXCLUDE_MPL = [
     'matplotlib.backends.backend_macosx',
 ]
 
-# 불필요 stdlib/패키지 제외
-# 주의: wheel, setuptools 는 절대 제외 금지 (PyInstaller hook 충돌)
+# 불필요 외부 패키지만 제외
+# 주의: stdlib 모듈(unittest, pydoc, doctest 등)은 절대 제외 금지
+#   → numpy.testing → unittest, scipy._lib._docscrape → pydoc 등
+#   예측 불가능한 내부 의존성이 존재함
+# 주의: wheel, setuptools, pip 도 제외 금지 (PyInstaller hook 충돌)
 EXCLUDE_MISC = [
     'IPython', 'jupyter', 'notebook',
     'pytest',
-    'pdb',
-    'lib2to3', 'ensurepip', 'idlelib', 'distutils',
-    'curses',
 ]
 
 def build():
