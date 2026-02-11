@@ -918,7 +918,7 @@ def compute_fg_from_strain_sweep(
 
         if clip_leq_1:
             f = np.minimum(f, 1.0)
-            g = np.minimum(g, 1.0)
+            # g is NOT clipped: g(ε) can exceed 1.0 (loss modulus overshoot)
 
         fg_by_T[T] = {
             "strain": s,
@@ -1021,8 +1021,9 @@ def create_fg_interpolator(
                     yq[right] = y[-1] + slope * (xq[right] - x[-1])
 
             # Safety: replace any remaining NaN with 1.0 (no correction)
-            # This ensures interpolator always returns valid values
-            yq = np.nan_to_num(yq, nan=1.0)
+            # But preserve NaN when extrap='none' so nanmean can exclude them
+            if extrap != 'none':
+                yq = np.nan_to_num(yq, nan=1.0)
 
             return float(yq[0]) if len(yq) == 1 else yq
 
@@ -1153,7 +1154,7 @@ def average_fg_curves(
 
     if clip_leq_1:
         f_avg = np.minimum(f_avg, 1.0)
-        g_avg = np.minimum(g_avg, 1.0)
+        # g_avg is NOT clipped: g(ε) can exceed 1.0 (loss modulus overshoot)
 
     return {
         'strain': grid_strain.copy(),

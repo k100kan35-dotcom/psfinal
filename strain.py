@@ -303,7 +303,7 @@ def compute_fg_by_T(
 
         if clip_leq_1:
             f = np.minimum(f, 1.0)
-            g = np.minimum(g, 1.0)
+            # g is NOT clipped: g(ε) can exceed 1.0 (loss modulus overshoot)
 
         fg_by_T[T] = {"strain": s, "f": f, "g": g, "E0_re": E0_re, "E0_im": E0_im}
 
@@ -395,7 +395,7 @@ def average_fg_on_grid(
 
     if clip_leq_1:
         f_avg = np.minimum(f_avg, 1.0)
-        g_avg = np.minimum(g_avg, 1.0)
+        # g_avg is NOT clipped: g(ε) can exceed 1.0 (loss modulus overshoot)
 
     return {"strain": grid_strain.copy(), "f_avg": f_avg, "g_avg": g_avg, "Ts_used": Ts, "n_eff": n_eff}
 

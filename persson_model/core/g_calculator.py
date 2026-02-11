@@ -203,7 +203,7 @@ class GCalculator:
             if not np.isfinite(g_val):
                 g_val = 1.0  # No correction if g is invalid
             else:
-                g_val = np.clip(g_val, 0.01, 1.0)  # Minimum 0.01 to prevent zero
+                g_val = np.clip(g_val, 0.01, None)  # g can exceed 1.0
 
             # Calculate |E_eff|² = (E'×f)² + (E''×g)² for each angle
             integrand = np.zeros_like(phi)
@@ -288,7 +288,7 @@ class GCalculator:
             # Get strain at this q
             strain_q = self._get_strain_at_q(q)
             f_val = np.clip(self.f_interpolator(strain_q), 0.0, 1.0)
-            g_val = np.clip(self.g_interpolator(strain_q), 0.0, 1.0)
+            g_val = np.clip(self.g_interpolator(strain_q), 0.01, None)  # g can exceed 1.0
 
             # Calculate |E_eff|² for each angle
             integrand = np.zeros_like(phi)

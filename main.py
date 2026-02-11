@@ -6862,17 +6862,6 @@ $\begin{array}{lcc}
                 else:
                     g_stitched[:] = 1.0  # Default
 
-            # Force monotonic decrease: after minimum, hold the minimum value
-            # (Payne effect: f,g should decrease with strain, not increase)
-            f_min_idx = np.argmin(f_stitched)
-            g_min_idx = np.argmin(g_stitched)
-            f_min_val = f_stitched[f_min_idx]
-            g_min_val = g_stitched[g_min_idx]
-
-            # After minimum, ALL values become the minimum (flat plateau)
-            f_stitched[f_min_idx:] = f_min_val
-            g_stitched[g_min_idx:] = g_min_val
-
             # Extend to 100% strain with hold extrapolation
             max_data_strain = grid_strain[-1]
             original_len = len(grid_strain)  # Store original length before extension
@@ -7645,7 +7634,7 @@ $\begin{array}{lcc}
 
                     # Get g correction factor
                     g_val = self.g_interpolator(strain_estimate)
-                    g_val = np.clip(g_val, 0.0, 1.0)
+                    g_val = np.clip(g_val, 0.01, None)  # g can exceed 1.0
                     E_loss = E_loss * g_val
 
                 return E_loss
@@ -9431,7 +9420,7 @@ $\begin{array}{lcc}
                     # Apply f(ε), g(ε) correction for nonlinear E', E''
                     if self.g_interpolator is not None:
                         g_val = self.g_interpolator(strain)
-                        g_val = np.clip(g_val, 0.0, 1.0)
+                        g_val = np.clip(g_val, 0.01, None)  # g can exceed 1.0
                         E_loss_nonlinear[i, j] = E_loss * g_val
                     else:
                         E_loss_nonlinear[i, j] = E_loss
@@ -10136,7 +10125,7 @@ $\begin{array}{lcc}
 
                     if use_fg and f_interp is not None and g_interp is not None:
                         f_val = np.clip(f_interp(strain_at_q), 0.0, 1.0)
-                        g_val = np.clip(g_interp(strain_at_q), 0.0, 1.0)
+                        g_val = np.clip(g_interp(strain_at_q), 0.01, None)  # g can exceed 1.0
                         E_prime_eff = E_prime * f_val
                         E_loss_eff = E_loss * g_val
                     else:
@@ -10207,7 +10196,7 @@ $\begin{array}{lcc}
                     if use_fg and f_interp is not None and g_interp is not None:
                         strain_q = 0.01  # simplified
                         f_val = np.clip(f_interp(strain_q), 0.0, 1.0)
-                        g_val = np.clip(g_interp(strain_q), 0.0, 1.0)
+                        g_val = np.clip(g_interp(strain_q), 0.01, None)  # g can exceed 1.0
                         E_prime_eff = E_prime * f_val
                         E_loss_eff = E_loss * g_val
                     else:
