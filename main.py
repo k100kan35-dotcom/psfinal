@@ -7696,7 +7696,7 @@ $\begin{array}{lcc}
             if use_fg:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.0
             else:
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.74
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.59
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values

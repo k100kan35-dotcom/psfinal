@@ -43,7 +43,7 @@ class GCalculator:
     # When nonlinear correction is enabled, this factor is set to 1.0
     # (i.e., not applied) because the f(ε),g(ε) corrections already
     # account for the effective modulus reduction.
-    PSD_NORMALIZATION_FACTOR = 1.74
+    PSD_NORMALIZATION_FACTOR = 1.59
 
     def __init__(
         self,
