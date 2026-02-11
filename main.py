@@ -9439,9 +9439,10 @@ $\begin{array}{lcc}
             return np.ma.array(data, mask=invalid_mask)
 
         # ===== Row 1 =====
-        # Plot 1: Local Strain [%]
-        strain_pct = _masked(np.nan_to_num(strain, nan=0.0) * 100)
+        # Plot 1: Local Strain [%] — 마스크 미적용 (strain은 A/A0와 무관)
+        strain_pct = np.nan_to_num(strain, nan=0.0) * 100
         im1 = self.ax_strain_contour.pcolormesh(V, Q, strain_pct, cmap=strain_cmap, shading='auto')
+        self.ax_strain_contour.set_facecolor('white')
         self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=9)
         self.ax_strain_contour.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_strain_contour.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9449,15 +9450,15 @@ $\begin{array}{lcc}
         cbar1.set_label('%', fontsize=7)
         self._strain_map_colorbars.append(cbar1)
         try:
-            cs = self.ax_strain_contour.contour(V, Q, np.nan_to_num(strain, nan=0.0) * 100,
+            cs = self.ax_strain_contour.contour(V, Q, strain_pct,
                                                  levels=[1, 5, 10], colors='k', linewidths=0.5)
             self.ax_strain_contour.clabel(cs, inline=True, fontsize=7, fmt='%.0f%%')
         except:
             pass
-        strain_v = strain[valid_mask]
-        if len(strain_v) > 0:
+        strain_flat = strain.ravel()
+        if len(strain_flat) > 0:
             self.ax_strain_contour.text(0.02, 0.98,
-                f'Mean:{np.mean(strain_v)*100:.1f}%\nMax:{np.max(strain_v)*100:.1f}%',
+                f'Mean:{np.mean(strain_flat)*100:.1f}%\nMax:{np.max(strain_flat)*100:.1f}%',
                 transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
