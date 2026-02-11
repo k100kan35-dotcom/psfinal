@@ -9434,19 +9434,19 @@ $\begin{array}{lcc}
         E_ll_MPa = E_loss_lin / 1e6 if E_loss_lin is not None else np.zeros_like(E_storage) / 1e6
         E_lnl_MPa = E_loss_nl / 1e6
 
-        # Linear: E' + E'' 공유 LogNorm 범위
-        lin_all = np.concatenate([E_s_MPa.ravel(), E_ll_MPa.ravel()])
-        lin_pos = lin_all[lin_all > 0]
-        lin_vmin = np.percentile(lin_pos, 1) if len(lin_pos) > 0 else 1e-3
-        lin_vmax = np.percentile(lin_pos, 99) if len(lin_pos) > 0 else 1.0
-        lin_norm = LogNorm(vmin=lin_vmin, vmax=lin_vmax)
+        # Storage 쌍: E' + E'×f 공유 LogNorm (f 효과 비교)
+        stor_all = np.concatenate([E_s_MPa.ravel(), E_snl_MPa.ravel()])
+        stor_pos = stor_all[stor_all > 0]
+        stor_vmin = np.percentile(stor_pos, 1) if len(stor_pos) > 0 else 1e-3
+        stor_vmax = np.percentile(stor_pos, 99) if len(stor_pos) > 0 else 1.0
+        stor_norm = LogNorm(vmin=stor_vmin, vmax=stor_vmax)
 
-        # Nonlinear: E'×f + E''×g 공유 LogNorm 범위
-        nl_all = np.concatenate([E_snl_MPa.ravel(), E_lnl_MPa.ravel()])
-        nl_pos = nl_all[nl_all > 0]
-        nl_vmin = np.percentile(nl_pos, 1) if len(nl_pos) > 0 else 1e-3
-        nl_vmax = np.percentile(nl_pos, 99) if len(nl_pos) > 0 else 1.0
-        nl_norm = LogNorm(vmin=nl_vmin, vmax=nl_vmax)
+        # Loss 쌍: E'' + E''×g 공유 LogNorm (g 효과 비교)
+        loss_all = np.concatenate([E_ll_MPa.ravel(), E_lnl_MPa.ravel()])
+        loss_pos = loss_all[loss_all > 0]
+        loss_vmin = np.percentile(loss_pos, 1) if len(loss_pos) > 0 else 1e-3
+        loss_vmax = np.percentile(loss_pos, 99) if len(loss_pos) > 0 else 1.0
+        loss_norm = LogNorm(vmin=loss_vmin, vmax=loss_vmax)
 
         # v=1 m/s 인덱스
         v_1ms_idx = int(np.argmin(np.abs(v - 1.0)))
@@ -9479,9 +9479,9 @@ $\begin{array}{lcc}
                 transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 2: E' Storage [MPa] (linear) — E'+E'' 공유 LogNorm
+        # Plot 2: E' Storage [MPa] — E' + E'×f 공유 LogNorm
         im2 = self.ax_E_storage.pcolormesh(V, Q, E_s_MPa, cmap=E_storage_cmap, shading='auto',
-                                            norm=lin_norm)
+                                            norm=stor_norm)
         self.ax_E_storage.set_facecolor('white')
         self.ax_E_storage.set_title("E' Storage [MPa]", fontweight='bold', fontsize=9)
         self.ax_E_storage.set_xlabel('log10(v)', fontsize=8)
@@ -9495,10 +9495,10 @@ $\begin{array}{lcc}
             transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 3: E'' Loss [MPa] (linear) — E'+E'' 공유 LogNorm
+        # Plot 3: E'' Loss [MPa] — E'' + E''×g 공유 LogNorm
         if E_loss_lin is not None:
             im3 = self.ax_E_loss_linear.pcolormesh(V, Q, E_ll_MPa, cmap=E_loss_cmap, shading='auto',
-                                                    norm=lin_norm)
+                                                    norm=loss_norm)
             self.ax_E_loss_linear.set_facecolor('white')
             self.ax_E_loss_linear.set_title("E'' Loss [MPa]", fontweight='bold', fontsize=9)
             self.ax_E_loss_linear.set_xlabel('log10(v)', fontsize=8)
@@ -9512,9 +9512,9 @@ $\begin{array}{lcc}
                 transform=self.ax_E_loss_linear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 4: E''×g [MPa] (nonlinear) — E'×f + E''×g 공유 LogNorm
+        # Plot 4: E''×g [MPa] — E'' + E''×g 공유 LogNorm
         im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, E_lnl_MPa, cmap=E_loss_cmap, shading='auto',
-                                                    norm=nl_norm)
+                                                    norm=loss_norm)
         self.ax_E_loss_nonlinear.set_facecolor('white')
         self.ax_E_loss_nonlinear.set_title("E''×g [MPa]", fontweight='bold', fontsize=9)
         self.ax_E_loss_nonlinear.set_xlabel('log10(v)', fontsize=8)
@@ -9529,9 +9529,9 @@ $\begin{array}{lcc}
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Row 2 =====
-        # Plot 5: E'×f [MPa] (nonlinear) — E'×f + E''×g 공유 LogNorm
+        # Plot 5: E'×f [MPa] — E' + E'×f 공유 LogNorm
         im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, E_snl_MPa, cmap=E_storage_cmap, shading='auto',
-                                                      norm=nl_norm)
+                                                      norm=stor_norm)
         self.ax_E_storage_nonlinear.set_facecolor('white')
         self.ax_E_storage_nonlinear.set_title("E'×f [MPa]", fontweight='bold', fontsize=9)
         self.ax_E_storage_nonlinear.set_xlabel('log10(v)', fontsize=8)
