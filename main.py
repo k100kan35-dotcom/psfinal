@@ -9264,8 +9264,8 @@ $\begin{array}{lcc}
         """Initialize strain map plots with placeholder data."""
         for ax, title in [
             (self.ax_strain_contour, 'Local Strain [%]'),
-            (self.ax_E_storage, "E' Storage [log Pa]"),
-            (self.ax_E_loss_linear, "E'' Loss [log Pa]"),
+            (self.ax_E_storage, "E' Storage [log Pa] (Blues)"),
+            (self.ax_E_loss_linear, "E'' Loss [log Pa] (Reds)"),
             (self.ax_E_loss_nonlinear, "E''×g [log Pa]"),
             (self.ax_E_storage_nonlinear, "E'×f [log Pa]"),
             (self.ax_G_integrand, "G Integrand"),
@@ -9535,16 +9535,39 @@ $\begin{array}{lcc}
             ax.clear()
 
         # ===== 색상 맵 개선 =====
-        # 변형률: 노랑(낮음) → 빨강(높음) - 유연함→딱딱함 느낌
+        # 변형률: 노랑(낮음) → 빨강(높음)
         strain_cmap = 'YlOrRd'
-        # 모듈러스: 진한 파랑 계열 - 높을수록 "딱딱한" 느낌
-        # PuBu: 연한 보라→진한 파랑 (저→고)
-        modulus_cmap = 'PuBu'
-        # 실접촉: 낮으면 "없어 보이는" 흰색 계열, 높으면 진한 초록
-        # Greens: 흰색→진한 초록 (낮은 접촉=희미, 높은 접촉=존재감)
+        # E' Storage: 파랑 계열 (딱딱함 느낌)
+        E_storage_cmap = 'Blues'
+        # E'' Loss: 빨강 계열 (에너지 손실 느낌)
+        E_loss_cmap = 'Reds'
+        # 실접촉: 흰색→진한 초록
         contact_cmap = 'Greens'
-        # G Integrand: 에너지 손실 느낌 - 낮으면 차가운 색, 높으면 뜨거운 색
+        # G Integrand: 에너지 손실 - 차가운→뜨거운 색
         g_cmap = 'YlOrBr'
+
+        # ===== E' / E'' 공유 컬러바 범위 계산 =====
+        # 모든 modulus 데이터의 공통 범위를 사용하여 절대값 차이를 시각화
+        E_s_safe = np.maximum(E_storage, 1e-10)
+        log_E_s = np.log10(E_s_safe)
+        E_ll_safe = np.maximum(E_loss_lin, 1e-10) if E_loss_lin is not None else np.full_like(E_storage, 1e-10)
+        log_E_ll = np.log10(E_ll_safe)
+        E_l_safe = np.maximum(E_loss_nl, 1e-10)
+        log_E_l = np.log10(E_l_safe)
+        E_snl_safe = np.maximum(E_storage_nl, 1e-10)
+        log_E_snl = np.log10(E_snl_safe)
+
+        # E' / E'' 전체 범위에서 공유 vmin/vmax
+        all_log_modulus = [log_E_s, log_E_snl]
+        if E_loss_lin is not None:
+            all_log_modulus.append(log_E_ll)
+        all_log_modulus.append(log_E_l)
+        modulus_vmin = min(np.nanmin(m) for m in all_log_modulus)
+        modulus_vmax = max(np.nanmax(m) for m in all_log_modulus)
+        # 최소 범위 보장 (너무 좁으면 보기 어려움)
+        if modulus_vmax - modulus_vmin < 0.5:
+            modulus_vmin -= 0.25
+            modulus_vmax += 0.25
 
         # v=1 m/s 인덱스 찾기 (모든 그래프 주석에 사용)
         v_1ms_idx = int(np.argmin(np.abs(v - 1.0)))
@@ -9572,65 +9595,73 @@ $\begin{array}{lcc}
             transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 2: E' Storage Modulus (linear, 순수)
-        E_s_safe = np.maximum(E_storage, 1e-10)
-        log_E_s = np.log10(E_s_safe)
-        im2 = self.ax_E_storage.pcolormesh(V, Q, log_E_s, cmap=modulus_cmap, shading='auto')
+        # Plot 2: E' Storage Modulus (linear, 순수) — Blues, 공유 범위
+        im2 = self.ax_E_storage.pcolormesh(V, Q, log_E_s, cmap=E_storage_cmap, shading='auto',
+                                            vmin=modulus_vmin, vmax=modulus_vmax)
         self.ax_E_storage.set_title("E' Storage [log Pa]", fontweight='bold', fontsize=9)
         self.ax_E_storage.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_storage.set_ylabel('log₁₀(q)', fontsize=8)
         cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage)
         cbar2.set_label('log₁₀(Pa)', fontsize=7)
         self._strain_map_colorbars.append(cbar2)
-        E_s_at1 = log_E_s[:, v_1ms_idx]
-        self.ax_E_storage.text(0.02, 0.98, f"v=1: {E_s_at1.min():.1f}~{E_s_at1.max():.1f}",
+        E_s_at1 = E_s_safe[:, v_1ms_idx]
+        E_s_log_at1 = log_E_s[:, v_1ms_idx]
+        self.ax_E_storage.text(0.02, 0.98,
+            f"v=1: {E_s_at1.min()/1e6:.1f}~{E_s_at1.max()/1e6:.1f} MPa\n"
+            f"(log: {E_s_log_at1.min():.1f}~{E_s_log_at1.max():.1f})",
             transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 3: E'' Loss Modulus (linear, 순수) - NEW!
+        # Plot 3: E'' Loss Modulus (linear, 순수) — Reds, 공유 범위
         if E_loss_lin is not None:
-            E_ll_safe = np.maximum(E_loss_lin, 1e-10)
-            log_E_ll = np.log10(E_ll_safe)
-            im3 = self.ax_E_loss_linear.pcolormesh(V, Q, log_E_ll, cmap=modulus_cmap, shading='auto')
+            im3 = self.ax_E_loss_linear.pcolormesh(V, Q, log_E_ll, cmap=E_loss_cmap, shading='auto',
+                                                    vmin=modulus_vmin, vmax=modulus_vmax)
             self.ax_E_loss_linear.set_title("E'' Loss [log Pa]", fontweight='bold', fontsize=9)
             self.ax_E_loss_linear.set_xlabel('log₁₀(v)', fontsize=8)
             self.ax_E_loss_linear.set_ylabel('log₁₀(q)', fontsize=8)
             cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_linear)
             cbar3.set_label('log₁₀(Pa)', fontsize=7)
             self._strain_map_colorbars.append(cbar3)
-            E_ll_at1 = log_E_ll[:, v_1ms_idx]
-            self.ax_E_loss_linear.text(0.02, 0.98, f"v=1: {E_ll_at1.min():.1f}~{E_ll_at1.max():.1f}",
+            E_ll_at1 = E_ll_safe[:, v_1ms_idx]
+            E_ll_log_at1 = log_E_ll[:, v_1ms_idx]
+            self.ax_E_loss_linear.text(0.02, 0.98,
+                f"v=1: {E_ll_at1.min()/1e6:.2f}~{E_ll_at1.max()/1e6:.1f} MPa\n"
+                f"(log: {E_ll_log_at1.min():.1f}~{E_ll_log_at1.max():.1f})",
                 transform=self.ax_E_loss_linear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 4: E''×g Loss Modulus (nonlinear, g 적용)
-        E_l_safe = np.maximum(E_loss_nl, 1e-10)
-        log_E_l = np.log10(E_l_safe)
-        im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, log_E_l, cmap=modulus_cmap, shading='auto')
+        # Plot 4: E''×g Loss Modulus (nonlinear, g 적용) — Reds, 공유 범위
+        im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, log_E_l, cmap=E_loss_cmap, shading='auto',
+                                                    vmin=modulus_vmin, vmax=modulus_vmax)
         self.ax_E_loss_nonlinear.set_title("E''×g [log Pa]", fontweight='bold', fontsize=9)
         self.ax_E_loss_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_loss_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
         cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_loss_nonlinear)
         cbar4.set_label('log₁₀(Pa)', fontsize=7)
         self._strain_map_colorbars.append(cbar4)
-        E_l_at1 = log_E_l[:, v_1ms_idx]
-        self.ax_E_loss_nonlinear.text(0.02, 0.98, f"v=1: {E_l_at1.min():.1f}~{E_l_at1.max():.1f}",
+        E_l_at1 = E_l_safe[:, v_1ms_idx]
+        E_l_log_at1 = log_E_l[:, v_1ms_idx]
+        self.ax_E_loss_nonlinear.text(0.02, 0.98,
+            f"v=1: {E_l_at1.min()/1e6:.2f}~{E_l_at1.max()/1e6:.1f} MPa\n"
+            f"(log: {E_l_log_at1.min():.1f}~{E_l_log_at1.max():.1f})",
             transform=self.ax_E_loss_nonlinear.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Row 2 =====
-        # Plot 5: E'×f Storage Modulus (nonlinear, f 적용)
-        E_snl_safe = np.maximum(E_storage_nl, 1e-10)
-        log_E_snl = np.log10(E_snl_safe)
-        im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, log_E_snl, cmap=modulus_cmap, shading='auto')
+        # Plot 5: E'×f Storage Modulus (nonlinear, f 적용) — Blues, 공유 범위
+        im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, log_E_snl, cmap=E_storage_cmap, shading='auto',
+                                                      vmin=modulus_vmin, vmax=modulus_vmax)
         self.ax_E_storage_nonlinear.set_title("E'×f [log Pa]", fontweight='bold', fontsize=9)
         self.ax_E_storage_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_storage_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
         cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_E_storage_nonlinear)
         cbar5.set_label('log₁₀(Pa)', fontsize=7)
         self._strain_map_colorbars.append(cbar5)
-        E_snl_at1 = log_E_snl[:, v_1ms_idx]
-        self.ax_E_storage_nonlinear.text(0.02, 0.98, f"v=1: {E_snl_at1.min():.1f}~{E_snl_at1.max():.1f}",
+        E_snl_at1 = E_snl_safe[:, v_1ms_idx]
+        E_snl_log_at1 = log_E_snl[:, v_1ms_idx]
+        self.ax_E_storage_nonlinear.text(0.02, 0.98,
+            f"v=1: {E_snl_at1.min()/1e6:.1f}~{E_snl_at1.max()/1e6:.1f} MPa\n"
+            f"(log: {E_snl_log_at1.min():.1f}~{E_snl_log_at1.max():.1f})",
             transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 

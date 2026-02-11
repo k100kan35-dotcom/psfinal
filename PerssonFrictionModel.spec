@@ -1,16 +1,71 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+import os
+
+# matplotlib 데이터 (폰트, 스타일, matplotlibrc)
+mpl_datas = collect_data_files('matplotlib')
+
+# matplotlib 서브모듈 (font_manager, ft2font, mathtext 등)
+mpl_hiddenimports = collect_submodules('matplotlib')
+
+# 프로젝트 데이터 디렉토리
+project_datas = [
+    ('persson_model', 'persson_model'),
+    ('reference_data', 'reference_data'),
+]
+if os.path.isdir('preset_data'):
+    project_datas.append(('preset_data', 'preset_data'))
+if os.path.isfile('strain.py'):
+    project_datas.append(('strain.py', '.'))
 
 a = Analysis(
     ['main.py'],
     pathex=[],
     binaries=[],
-    datas=[('persson_model', 'persson_model'), ('reference_data', 'reference_data')],
-    hiddenimports=['numpy', 'numpy.core', 'scipy.integrate', 'scipy.interpolate', 'scipy.optimize', 'scipy.signal', 'scipy.special', 'matplotlib', 'matplotlib.pyplot', 'matplotlib.backends.backend_tkagg', 'matplotlib.figure', 'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox'],
+    datas=project_datas + mpl_datas,
+    hiddenimports=mpl_hiddenimports + [
+        # numpy/scipy
+        'numpy', 'numpy.core',
+        'scipy.integrate', 'scipy.interpolate', 'scipy.optimize',
+        'scipy.signal', 'scipy.special',
+        # pandas (DMA/PSD 파일 로딩)
+        'pandas', 'pandas.core',
+        # tkinter
+        'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
+        # 한글 폰트 탐색
+        'platform',
+    ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
-    excludes=['scipy.stats', 'scipy.fft', 'scipy.io', 'scipy.sparse', 'scipy.spatial', 'scipy.ndimage', 'scipy.cluster', 'scipy.odr', 'scipy.constants', 'scipy.datasets', 'scipy.misc', 'scipy.linalg.cython_blas', 'scipy.linalg.cython_lapack', 'matplotlib.backends.backend_qt5agg', 'matplotlib.backends.backend_qt5', 'matplotlib.backends.backend_qt', 'matplotlib.backends.backend_qtagg', 'matplotlib.backends.backend_gtk3', 'matplotlib.backends.backend_gtk3agg', 'matplotlib.backends.backend_gtk4', 'matplotlib.backends.backend_gtk4agg', 'matplotlib.backends.backend_wx', 'matplotlib.backends.backend_wxagg', 'matplotlib.backends.backend_webagg', 'matplotlib.backends.backend_nbagg', 'matplotlib.backends.backend_cairo', 'matplotlib.backends.backend_macosx', 'matplotlib.backends.backend_pdf', 'matplotlib.backends.backend_pgf', 'matplotlib.backends.backend_svg', 'matplotlib.backends.backend_ps', 'IPython', 'jupyter', 'notebook', 'pytest', 'setuptools', 'pip', 'wheel', 'pkg_resources', 'doctest', 'pydoc', 'unittest', 'test', 'tkinter.test', 'numpy.testing', 'scipy.testing', 'PIL', 'pillow', 'email', 'html', 'http', 'xml', 'xmlrpc', 'pdb', 'multiprocessing', 'concurrent', 'asyncio', 'curses', 'lib2to3', 'ensurepip', 'idlelib', 'distutils'],
+    excludes=[
+        # 불필요 matplotlib 백엔드 (TkAgg만 사용)
+        'matplotlib.backends.backend_qt5agg',
+        'matplotlib.backends.backend_qt5',
+        'matplotlib.backends.backend_qt',
+        'matplotlib.backends.backend_qtagg',
+        'matplotlib.backends.backend_gtk3',
+        'matplotlib.backends.backend_gtk3agg',
+        'matplotlib.backends.backend_gtk4',
+        'matplotlib.backends.backend_gtk4agg',
+        'matplotlib.backends.backend_wx',
+        'matplotlib.backends.backend_wxagg',
+        'matplotlib.backends.backend_webagg',
+        'matplotlib.backends.backend_nbagg',
+        'matplotlib.backends.backend_cairo',
+        'matplotlib.backends.backend_macosx',
+        # 불필요 패키지
+        'IPython', 'jupyter', 'notebook',
+        'pytest', 'setuptools', 'pip', 'wheel',
+        'pdb', 'doctest', 'pydoc', 'unittest', 'test',
+        'lib2to3', 'ensurepip', 'idlelib', 'distutils',
+        'curses',
+        # 대형 ML/DL
+        'torch', 'torchvision', 'torchaudio',
+        'tensorflow', 'keras',
+        'numba', 'llvmlite',
+    ],
     noarchive=False,
     optimize=0,
 )
