@@ -37,9 +37,10 @@ EXCLUDE_MPL = [
 ]
 
 # 불필요 stdlib/패키지 제외
+# 주의: wheel, setuptools 는 절대 제외 금지 (PyInstaller hook 충돌)
 EXCLUDE_MISC = [
     'IPython', 'jupyter', 'notebook',
-    'pytest', 'pip', 'wheel',
+    'pytest',
     'pdb', 'doctest', 'pydoc', 'unittest', 'test',
     'lib2to3', 'ensurepip', 'idlelib', 'distutils',
     'curses',
@@ -57,12 +58,10 @@ def build():
         '--noconsole',
         '--log-level', 'WARN',
 
-        # ===== matplotlib 폰트/데이터 완전 번들 =====
-        # mpl-data/fonts/ (DejaVu Sans 등 내장 .ttf)
-        # mpl-data/stylelib/, mpl-data/matplotlibrc
+        # ===== matplotlib 폰트/데이터 번들 =====
         '--collect-data', 'matplotlib',
 
-        # ===== hidden imports: matplotlib 핵심 =====
+        # ===== hidden imports: matplotlib =====
         '--hidden-import', 'matplotlib',
         '--hidden-import', 'matplotlib.pyplot',
         '--hidden-import', 'matplotlib.backends.backend_tkagg',
@@ -96,22 +95,23 @@ def build():
         '--hidden-import', 'tkinter.messagebox',
         '--hidden-import', 'tkinter.simpledialog',
 
-        # ===== hidden imports: stdlib (동적 import) =====
+        # ===== hidden imports: stdlib =====
         '--hidden-import', 'platform',
         '--hidden-import', 'tempfile',
         '--hidden-import', 'csv',
         '--hidden-import', 're',
 
         # ===== pkg_resources / jaraco 의존성 =====
-        # jaraco는 namespace package → collect-all 필수 (collect-submodules 불가)
+        # jaraco는 namespace package → hidden-import만 사용
+        # (collect-all/collect-submodules는 namespace pkg에서 크래시)
         '--hidden-import', 'pkg_resources',
-        '--collect-all', 'jaraco',
+        '--hidden-import', 'jaraco',
+        '--hidden-import', 'jaraco.text',
+        '--hidden-import', 'jaraco.functools',
+        '--hidden-import', 'jaraco.context',
         '--collect-all', 'jaraco.text',
-        '--collect-all', 'jaraco.functools',
-        '--collect-all', 'jaraco.context',
-        '--collect-all', 'importlib_resources',
 
-        # ===== hidden imports: persson_model 패키지 전체 =====
+        # ===== hidden imports: persson_model =====
         '--hidden-import', 'persson_model',
         '--hidden-import', 'persson_model.core',
         '--hidden-import', 'persson_model.core.contact',
@@ -132,18 +132,14 @@ def build():
         args.extend(['--exclude-module', exc])
 
     # ===== 데이터 디렉토리 포함 =====
-    # persson_model 패키지 (핵심 계산 모듈)
     args.extend(['--add-data', f'persson_model{sep}persson_model'])
 
-    # reference_data (검증용 참조 데이터)
     if os.path.isdir('reference_data'):
         args.extend(['--add-data', f'reference_data{sep}reference_data'])
 
-    # preset_data (내장 PSD, aT, mastercurve, strain_sweep, fg_curve)
     if os.path.isdir('preset_data'):
         args.extend(['--add-data', f'preset_data{sep}preset_data'])
 
-    # strain.py (Strain sweep GUI - 별도 실행 가능)
     if os.path.isfile('strain.py'):
         args.extend(['--add-data', f'strain.py{sep}.'])
 
@@ -154,7 +150,6 @@ def build():
     print(f"Platform: {sys.platform}")
     print()
 
-    # 포함 데이터 디렉토리 확인 출력
     for d in ['persson_model', 'reference_data', 'preset_data']:
         if os.path.isdir(d):
             sub = [s for s in os.listdir(d) if os.path.isdir(os.path.join(d, s))]
@@ -163,7 +158,6 @@ def build():
 
     PyInstaller.__main__.run(args)
 
-    # 결과 확인
     exe_name = 'PerssonFrictionModel.exe' if sys.platform == 'win32' else 'PerssonFrictionModel'
     exe_path = os.path.join('dist', exe_name)
     if os.path.exists(exe_path):
