@@ -82,7 +82,8 @@ from persson_model.utils.data_loader import (
     compute_fg_from_strain_sweep,
     create_fg_interpolator,
     average_fg_curves,
-    create_strain_grid
+    create_strain_grid,
+    DEFAULT_STRAIN_SPLIT
 )
 from persson_model.core.friction import (
     FrictionCalculator,
@@ -7218,7 +7219,8 @@ $\begin{array}{lcc}
                 grid_strain,
                 interp_kind='loglog_linear',
                 avg_mode='mean',
-                clip_leq_1=self.clip_fg_var.get()
+                clip_leq_1=self.clip_fg_var.get(),
+                strain_split=DEFAULT_STRAIN_SPLIT
             )
 
             if self.fg_averaged is None:
