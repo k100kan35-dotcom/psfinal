@@ -9415,21 +9415,15 @@ $\begin{array}{lcc}
         E_ll_MPa = E_loss_lin / 1e6 if E_loss_lin is not None else np.zeros_like(E_storage) / 1e6
         E_lnl_MPa = E_loss_nl / 1e6
 
-        # E' 쌍 공유 범위 (linear vs nonlinear 비교용)
-        Es_valid = np.concatenate([E_s_MPa[valid_mask], E_snl_MPa[valid_mask]])
-        if len(Es_valid) > 0:
-            Es_vmin = max(np.percentile(Es_valid, 1), 0)
-            Es_vmax = np.percentile(Es_valid, 99)
-        else:
-            Es_vmin, Es_vmax = 0, 100
+        # Linear: E' + E'' 공유 범위 (E''이 E'보다 낮아 연하게 표시됨)
+        lin_all = np.concatenate([E_s_MPa.ravel(), E_ll_MPa.ravel()])
+        lin_vmin = max(np.percentile(lin_all, 1), 0)
+        lin_vmax = np.percentile(lin_all, 99)
 
-        # E'' 쌍 공유 범위
-        El_valid = np.concatenate([E_ll_MPa[valid_mask], E_lnl_MPa[valid_mask]])
-        if len(El_valid) > 0:
-            El_vmin = max(np.percentile(El_valid, 1), 0)
-            El_vmax = np.percentile(El_valid, 99)
-        else:
-            El_vmin, El_vmax = 0, 100
+        # Nonlinear: E'×f + E''×g 공유 범위
+        nl_all = np.concatenate([E_snl_MPa.ravel(), E_lnl_MPa.ravel()])
+        nl_vmin = max(np.percentile(nl_all, 1), 0)
+        nl_vmax = np.percentile(nl_all, 99)
 
         # v=1 m/s 인덱스
         v_1ms_idx = int(np.argmin(np.abs(v - 1.0)))
@@ -9439,9 +9433,10 @@ $\begin{array}{lcc}
             return np.ma.array(data, mask=invalid_mask)
 
         # ===== Row 1 =====
-        # Plot 1: Local Strain [%]
-        strain_pct = _masked(np.nan_to_num(strain, nan=0.0) * 100)
+        # Plot 1: Local Strain [%] — 마스크 미적용 (strain은 A/A0와 무관)
+        strain_pct = np.nan_to_num(strain, nan=0.0) * 100
         im1 = self.ax_strain_contour.pcolormesh(V, Q, strain_pct, cmap=strain_cmap, shading='auto')
+        self.ax_strain_contour.set_facecolor('white')
         self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=9)
         self.ax_strain_contour.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_strain_contour.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9449,21 +9444,22 @@ $\begin{array}{lcc}
         cbar1.set_label('%', fontsize=7)
         self._strain_map_colorbars.append(cbar1)
         try:
-            cs = self.ax_strain_contour.contour(V, Q, np.nan_to_num(strain, nan=0.0) * 100,
+            cs = self.ax_strain_contour.contour(V, Q, strain_pct,
                                                  levels=[1, 5, 10], colors='k', linewidths=0.5)
             self.ax_strain_contour.clabel(cs, inline=True, fontsize=7, fmt='%.0f%%')
         except:
             pass
-        strain_v = strain[valid_mask]
-        if len(strain_v) > 0:
+        strain_flat = strain.ravel()
+        if len(strain_flat) > 0:
             self.ax_strain_contour.text(0.02, 0.98,
-                f'Mean:{np.mean(strain_v)*100:.1f}%\nMax:{np.max(strain_v)*100:.1f}%',
+                f'Mean:{np.mean(strain_flat)*100:.1f}%\nMax:{np.max(strain_flat)*100:.1f}%',
                 transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 2: E' Storage [MPa] (linear)
-        im2 = self.ax_E_storage.pcolormesh(V, Q, _masked(E_s_MPa), cmap=E_storage_cmap, shading='auto',
-                                            vmin=Es_vmin, vmax=Es_vmax)
+        # Plot 2: E' Storage [MPa] (linear) — E'+E'' 공유 범위
+        im2 = self.ax_E_storage.pcolormesh(V, Q, E_s_MPa, cmap=E_storage_cmap, shading='auto',
+                                            vmin=lin_vmin, vmax=lin_vmax)
+        self.ax_E_storage.set_facecolor('white')
         self.ax_E_storage.set_title("E' Storage [MPa]", fontweight='bold', fontsize=9)
         self.ax_E_storage.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_storage.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9476,10 +9472,11 @@ $\begin{array}{lcc}
             transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 3: E'' Loss [MPa] (linear)
+        # Plot 3: E'' Loss [MPa] (linear) — E'+E'' 공유 범위
         if E_loss_lin is not None:
-            im3 = self.ax_E_loss_linear.pcolormesh(V, Q, _masked(E_ll_MPa), cmap=E_loss_cmap, shading='auto',
-                                                    vmin=El_vmin, vmax=El_vmax)
+            im3 = self.ax_E_loss_linear.pcolormesh(V, Q, E_ll_MPa, cmap=E_loss_cmap, shading='auto',
+                                                    vmin=lin_vmin, vmax=lin_vmax)
+            self.ax_E_loss_linear.set_facecolor('white')
             self.ax_E_loss_linear.set_title("E'' Loss [MPa]", fontweight='bold', fontsize=9)
             self.ax_E_loss_linear.set_xlabel('log₁₀(v)', fontsize=8)
             self.ax_E_loss_linear.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9492,9 +9489,10 @@ $\begin{array}{lcc}
                 transform=self.ax_E_loss_linear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 4: E''×g [MPa] (nonlinear)
-        im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, _masked(E_lnl_MPa), cmap=E_loss_cmap, shading='auto',
-                                                    vmin=El_vmin, vmax=El_vmax)
+        # Plot 4: E''×g [MPa] (nonlinear) — E'×f + E''×g 공유 범위
+        im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, E_lnl_MPa, cmap=E_loss_cmap, shading='auto',
+                                                    vmin=nl_vmin, vmax=nl_vmax)
+        self.ax_E_loss_nonlinear.set_facecolor('white')
         self.ax_E_loss_nonlinear.set_title("E''×g [MPa]", fontweight='bold', fontsize=9)
         self.ax_E_loss_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_loss_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9508,9 +9506,10 @@ $\begin{array}{lcc}
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Row 2 =====
-        # Plot 5: E'×f [MPa] (nonlinear)
-        im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, _masked(E_snl_MPa), cmap=E_storage_cmap, shading='auto',
-                                                      vmin=Es_vmin, vmax=Es_vmax)
+        # Plot 5: E'×f [MPa] (nonlinear) — E'×f + E''×g 공유 범위
+        im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, E_snl_MPa, cmap=E_storage_cmap, shading='auto',
+                                                      vmin=nl_vmin, vmax=nl_vmax)
+        self.ax_E_storage_nonlinear.set_facecolor('white')
         self.ax_E_storage_nonlinear.set_title("E'×f [MPa]", fontweight='bold', fontsize=9)
         self.ax_E_storage_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_storage_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
