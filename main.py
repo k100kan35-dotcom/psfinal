@@ -9119,13 +9119,13 @@ $\begin{array}{lcc}
             (self.ax_E_storage_nonlinear, "E'×f [MPa]"),
             (self.ax_G_integrand_linear, "G Integrand (lin)"),
             (self.ax_G_integrand, "G Integrand (nl)"),
-            (self.ax_contact_linear, "A/A₀ (linear)"),
-            (self.ax_contact_nonlinear, "A/A₀ (nonlinear)")
+            (self.ax_contact_linear, "A/A0 (linear)"),
+            (self.ax_contact_nonlinear, "A/A0 (nonlinear)")
         ]
         for ax, title in heatmap_axes:
             ax.set_title(title, fontweight='bold', fontsize=9)
-            ax.set_xlabel('log₁₀(v) [m/s]', fontsize=8)
-            ax.set_ylabel('log₁₀(q) [1/m]', fontsize=8)
+            ax.set_xlabel('log10(v) [m/s]', fontsize=8)
+            ax.set_ylabel('log10(q) [1/m]', fontsize=8)
             ax.text(0.5, 0.5, 'No data',
                    ha='center', va='center', transform=ax.transAxes,
                    fontsize=10, color='gray')
@@ -9361,7 +9361,7 @@ $\begin{array}{lcc}
         Layout:
         Row 1: Local Strain | E' Storage | E'' Loss | E''×g
         Row 2: f,g Factors  | E'×f       | G (lin)  | G (nl)
-        Row 3: (empty)      | (empty)    | A/A₀ lin | A/A₀ nl
+        Row 3: (empty)      | (empty)    | A/A0 lin | A/A0 nl
 
         - E' + E'' LogNorm 공유, E'×f + E''×g LogNorm 공유
         - G integrand lin/nl 공유 범위, Y축 유효영역 크롭
@@ -9461,8 +9461,8 @@ $\begin{array}{lcc}
         im1 = self.ax_strain_contour.pcolormesh(V, Q, strain_pct, cmap=strain_cmap, shading='auto')
         self.ax_strain_contour.set_facecolor('white')
         self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=9)
-        self.ax_strain_contour.set_xlabel('log₁₀(v)', fontsize=8)
-        self.ax_strain_contour.set_ylabel('log₁₀(q)', fontsize=8)
+        self.ax_strain_contour.set_xlabel('log10(v)', fontsize=8)
+        self.ax_strain_contour.set_ylabel('log10(q)', fontsize=8)
         cbar1 = self.fig_strain_map.colorbar(im1, ax=self.ax_strain_contour)
         cbar1.set_label('%', fontsize=7)
         self._strain_map_colorbars.append(cbar1)
@@ -9484,8 +9484,8 @@ $\begin{array}{lcc}
                                             norm=lin_norm)
         self.ax_E_storage.set_facecolor('white')
         self.ax_E_storage.set_title("E' Storage [MPa]", fontweight='bold', fontsize=9)
-        self.ax_E_storage.set_xlabel('log₁₀(v)', fontsize=8)
-        self.ax_E_storage.set_ylabel('log₁₀(q)', fontsize=8)
+        self.ax_E_storage.set_xlabel('log10(v)', fontsize=8)
+        self.ax_E_storage.set_ylabel('log10(q)', fontsize=8)
         cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage)
         cbar2.set_label('MPa', fontsize=7)
         self._strain_map_colorbars.append(cbar2)
@@ -9501,8 +9501,8 @@ $\begin{array}{lcc}
                                                     norm=lin_norm)
             self.ax_E_loss_linear.set_facecolor('white')
             self.ax_E_loss_linear.set_title("E'' Loss [MPa]", fontweight='bold', fontsize=9)
-            self.ax_E_loss_linear.set_xlabel('log₁₀(v)', fontsize=8)
-            self.ax_E_loss_linear.set_ylabel('log₁₀(q)', fontsize=8)
+            self.ax_E_loss_linear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_E_loss_linear.set_ylabel('log10(q)', fontsize=8)
             cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_linear)
             cbar3.set_label('MPa', fontsize=7)
             self._strain_map_colorbars.append(cbar3)
@@ -9517,8 +9517,8 @@ $\begin{array}{lcc}
                                                     norm=nl_norm)
         self.ax_E_loss_nonlinear.set_facecolor('white')
         self.ax_E_loss_nonlinear.set_title("E''×g [MPa]", fontweight='bold', fontsize=9)
-        self.ax_E_loss_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
-        self.ax_E_loss_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
+        self.ax_E_loss_nonlinear.set_xlabel('log10(v)', fontsize=8)
+        self.ax_E_loss_nonlinear.set_ylabel('log10(q)', fontsize=8)
         cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_loss_nonlinear)
         cbar4.set_label('MPa', fontsize=7)
         self._strain_map_colorbars.append(cbar4)
@@ -9534,8 +9534,8 @@ $\begin{array}{lcc}
                                                       norm=nl_norm)
         self.ax_E_storage_nonlinear.set_facecolor('white')
         self.ax_E_storage_nonlinear.set_title("E'×f [MPa]", fontweight='bold', fontsize=9)
-        self.ax_E_storage_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
-        self.ax_E_storage_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
+        self.ax_E_storage_nonlinear.set_xlabel('log10(v)', fontsize=8)
+        self.ax_E_storage_nonlinear.set_ylabel('log10(q)', fontsize=8)
         cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_E_storage_nonlinear)
         cbar5.set_label('MPa', fontsize=7)
         self._strain_map_colorbars.append(cbar5)
@@ -9545,18 +9545,21 @@ $\begin{array}{lcc}
             transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # ===== Y축 크롭: 유효 데이터 영역만 표시 =====
-        # valid_mask 에서 행(q축) 기준으로 유효 데이터가 있는 범위를 찾음
-        valid_rows = np.any(valid_mask, axis=1)  # 각 q행에 유효 데이터가 있는지
-        if np.any(valid_rows):
-            valid_row_indices = np.where(valid_rows)[0]
-            # 유효 행 시작 ~ 끝까지의 q 범위 (약간 여유)
-            q_crop_min = log_q[max(valid_row_indices[0] - 1, 0)]
-            q_crop_max = log_q[min(valid_row_indices[-1] + 1, len(log_q) - 1)]
-        else:
-            q_crop_min, q_crop_max = log_q[0], log_q[-1]
+        # ===== Y축 크롭: G integrand가 유의미해지는 q부터만 표시 =====
+        # 제일 낮은 슬립속도(v 최소, 열 인덱스 0)에서 G값이 trivial하지 않은 행을 찾음
+        q_crop_min = log_q[0]
+        q_crop_max = log_q[-1]
+        if G_int_nl is not None:
+            # 가장 낮은 v 열에서 G_integrand가 의미 있는(> 1e-20) 행 찾기
+            g_col_lowest_v = G_int_nl[:, 0]  # v 최소 열
+            meaningful_rows = np.where(g_col_lowest_v > 1e-20)[0]
+            if len(meaningful_rows) > 0:
+                # 의미있는 첫 행부터 끝까지
+                start_idx = max(meaningful_rows[0] - 1, 0)
+                q_crop_min = log_q[start_idx]
+                q_crop_max = log_q[-1]
 
-        # G integrand, A/A₀ 등 마스킹 플롯에 Y축 크롭 적용할 axes 목록
+        # G integrand, A/A0 에 Y축 크롭 적용할 axes 목록
         crop_axes = []
 
         # Plot 6: f(ε), g(ε) Factors graph
@@ -9597,10 +9600,10 @@ $\begin{array}{lcc}
             im7a = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_masked, cmap=g_cmap, shading='auto',
                                                           vmin=g_vmin, vmax=g_vmax)
             self.ax_G_integrand_linear.set_title('G Integrand (lin) [log]', fontweight='bold', fontsize=9)
-            self.ax_G_integrand_linear.set_xlabel('log₁₀(v)', fontsize=8)
-            self.ax_G_integrand_linear.set_ylabel('log₁₀(q)', fontsize=8)
+            self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
             cbar7a = self.fig_strain_map.colorbar(im7a, ax=self.ax_G_integrand_linear)
-            cbar7a.set_label('log₁₀(G)', fontsize=7)
+            cbar7a.set_label('log10(G)', fontsize=7)
             self._strain_map_colorbars.append(cbar7a)
             crop_axes.append(self.ax_G_integrand_linear)
 
@@ -9610,14 +9613,14 @@ $\begin{array}{lcc}
             im7b = self.ax_G_integrand.pcolormesh(V, Q, log_G_nl_masked, cmap=g_cmap, shading='auto',
                                                    vmin=g_vmin, vmax=g_vmax)
             self.ax_G_integrand.set_title('G Integrand (nl) [log]', fontweight='bold', fontsize=9)
-            self.ax_G_integrand.set_xlabel('log₁₀(v)', fontsize=8)
-            self.ax_G_integrand.set_ylabel('log₁₀(q)', fontsize=8)
+            self.ax_G_integrand.set_xlabel('log10(v)', fontsize=8)
+            self.ax_G_integrand.set_ylabel('log10(q)', fontsize=8)
             cbar7b = self.fig_strain_map.colorbar(im7b, ax=self.ax_G_integrand)
-            cbar7b.set_label('log₁₀(G)', fontsize=7)
+            cbar7b.set_label('log10(G)', fontsize=7)
             self._strain_map_colorbars.append(cbar7b)
             crop_axes.append(self.ax_G_integrand)
 
-        # Plot 9: A/A₀ (linear) — 유효 영역만
+        # Plot 9: A/A0 (linear) — 유효 영역만
         if contact_lin is not None:
             c_lin_masked = _masked(contact_lin)
             c_valid = contact_lin[valid_mask]
@@ -9628,11 +9631,11 @@ $\begin{array}{lcc}
                 c_vmin, c_vmax = 0, 1
             im9 = self.ax_contact_linear.pcolormesh(V, Q, c_lin_masked, cmap=contact_cmap, shading='auto',
                                                      vmin=c_vmin, vmax=c_vmax)
-            self.ax_contact_linear.set_title('A/A₀ (linear)', fontweight='bold', fontsize=9)
-            self.ax_contact_linear.set_xlabel('log₁₀(v)', fontsize=8)
-            self.ax_contact_linear.set_ylabel('log₁₀(q)', fontsize=8)
+            self.ax_contact_linear.set_title('A/A0 (linear)', fontweight='bold', fontsize=9)
+            self.ax_contact_linear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_contact_linear.set_ylabel('log10(q)', fontsize=8)
             cbar9 = self.fig_strain_map.colorbar(im9, ax=self.ax_contact_linear)
-            cbar9.set_label('A/A₀', fontsize=7)
+            cbar9.set_label('A/A0', fontsize=7)
             self._strain_map_colorbars.append(cbar9)
             crop_axes.append(self.ax_contact_linear)
             P_lin_at1 = contact_lin[:, v_1ms_idx]
@@ -9643,7 +9646,7 @@ $\begin{array}{lcc}
                     transform=self.ax_contact_linear.transAxes, fontsize=7, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 10: A/A₀ (nonlinear) — 유효 영역만
+        # Plot 10: A/A0 (nonlinear) — 유효 영역만
         if contact_nl is not None:
             c_nl_masked = _masked(contact_nl)
             c_nl_valid = contact_nl[valid_mask]
@@ -9654,11 +9657,11 @@ $\begin{array}{lcc}
                 c_nl_vmin, c_nl_vmax = 0, 1
             im10 = self.ax_contact_nonlinear.pcolormesh(V, Q, c_nl_masked, cmap=contact_cmap, shading='auto',
                                                          vmin=c_nl_vmin, vmax=c_nl_vmax)
-            self.ax_contact_nonlinear.set_title('A/A₀ (nonlinear)', fontweight='bold', fontsize=9)
-            self.ax_contact_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
-            self.ax_contact_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
+            self.ax_contact_nonlinear.set_title('A/A0 (nonlinear)', fontweight='bold', fontsize=9)
+            self.ax_contact_nonlinear.set_xlabel('log10(v)', fontsize=8)
+            self.ax_contact_nonlinear.set_ylabel('log10(q)', fontsize=8)
             cbar10 = self.fig_strain_map.colorbar(im10, ax=self.ax_contact_nonlinear)
-            cbar10.set_label('A/A₀', fontsize=7)
+            cbar10.set_label('A/A0', fontsize=7)
             self._strain_map_colorbars.append(cbar10)
             crop_axes.append(self.ax_contact_nonlinear)
             P_nl_at1 = contact_nl[:, v_1ms_idx]
@@ -9669,7 +9672,7 @@ $\begin{array}{lcc}
                     transform=self.ax_contact_nonlinear.transAxes, fontsize=7, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # ===== Y축 크롭 적용: G integrand, A/A₀ — 유효 데이터 영역만 =====
+        # ===== Y축 크롭 적용: G integrand, A/A0 — 유효 데이터 영역만 =====
         for ax in crop_axes:
             ax.set_ylim(q_crop_min, q_crop_max)
             ax.set_facecolor('white')  # 크롭 후 회색 배경 제거
@@ -9715,8 +9718,8 @@ $\begin{array}{lcc}
             ("E''×g Loss [Pa]", "E_loss_nonlinear", True),
             ("E'×f Storage [Pa]", "E_storage_nonlinear", True),
             ("G Integrand", "G_integrand_nonlinear", True),
-            ("A/A₀ Contact (linear)", "contact_linear", True),
-            ("A/A₀ Contact (nonlinear)", "contact_nonlinear", True),
+            ("A/A0 Contact (linear)", "contact_linear", True),
+            ("A/A0 Contact (nonlinear)", "contact_nonlinear", True),
         ]
 
         # Create checkbox variables
