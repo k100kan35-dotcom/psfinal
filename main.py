@@ -6302,25 +6302,68 @@ $\begin{array}{lcc}
         strain_frame = ttk.LabelFrame(left_panel, text="1) Strain 데이터", padding=5)
         strain_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        # Strain Sweep 로드 버튼 (빨간 테두리)
-        strain_load_wrapper = tk.Frame(strain_frame, bg='red', padx=2, pady=2)
-        strain_load_wrapper.pack(anchor=tk.W, pady=1)
+        # ===== 내장 Strain Sweep 선택 =====
+        ttk.Label(strain_frame, text="-- 내장 Strain Sweep --",
+                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+
+        preset_ss_frame = ttk.Frame(strain_frame)
+        preset_ss_frame.pack(fill=tk.X, pady=1)
+        self.preset_ss_var = tk.StringVar(value="(선택...)")
+        self.preset_ss_combo = ttk.Combobox(preset_ss_frame, textvariable=self.preset_ss_var,
+                                             state='readonly', width=20)
+        self.preset_ss_combo.pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_ss_frame, text="로드", command=self._load_preset_strain_sweep, width=4).pack(side=tk.LEFT)
+        ttk.Button(preset_ss_frame, text="삭제", command=self._delete_preset_strain_sweep, width=4).pack(side=tk.LEFT, padx=1)
+
+        self._refresh_preset_strain_sweep_list()
+
+        # Strain Sweep 직접 로드 버튼 (빨간 테두리) + 리스트에 추가
+        ss_btn_frame = ttk.Frame(strain_frame)
+        ss_btn_frame.pack(fill=tk.X, pady=1)
+
+        strain_load_wrapper = tk.Frame(ss_btn_frame, bg='red', padx=2, pady=2)
+        strain_load_wrapper.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(
             strain_load_wrapper,
             text="Strain Sweep 로드",
             command=self._load_strain_sweep_data,
-            width=20
-        ).pack()
+        ).pack(fill=tk.X)
+
+        ttk.Button(ss_btn_frame, text="-> 추가",
+                   command=self._add_preset_strain_sweep, width=7).pack(side=tk.LEFT, padx=(3, 0))
 
         self.strain_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Arial', 8))
         self.strain_file_label.pack(anchor=tk.W)
 
+        # ===== 내장 f,g 곡선 선택 =====
+        ttk.Separator(strain_frame, orient='horizontal').pack(fill=tk.X, pady=3)
+        ttk.Label(strain_frame, text="-- 내장 f,g 곡선 --",
+                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+
+        preset_fg_frame = ttk.Frame(strain_frame)
+        preset_fg_frame.pack(fill=tk.X, pady=1)
+        self.preset_fg_var = tk.StringVar(value="(선택...)")
+        self.preset_fg_combo = ttk.Combobox(preset_fg_frame, textvariable=self.preset_fg_var,
+                                             state='readonly', width=20)
+        self.preset_fg_combo.pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_fg_frame, text="로드", command=self._load_preset_fg, width=4).pack(side=tk.LEFT)
+        ttk.Button(preset_fg_frame, text="삭제", command=self._delete_preset_fg, width=4).pack(side=tk.LEFT, padx=1)
+
+        self._refresh_preset_fg_list()
+
+        # f,g 직접 로드 버튼 + 리스트에 추가
+        fg_btn_frame = ttk.Frame(strain_frame)
+        fg_btn_frame.pack(fill=tk.X, pady=1)
+
         ttk.Button(
-            strain_frame,
+            fg_btn_frame,
             text="f,g 곡선 로드",
             command=self._load_fg_curve_data,
-            width=20
-        ).pack(anchor=tk.W, pady=1)
+            width=15
+        ).pack(side=tk.LEFT)
+
+        ttk.Button(fg_btn_frame, text="-> 추가",
+                   command=self._add_preset_fg, width=7).pack(side=tk.LEFT, padx=(3, 0))
 
         self.fg_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Arial', 8))
         self.fg_file_label.pack(anchor=tk.W)
@@ -11482,6 +11525,238 @@ $\begin{array}{lcc}
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 aT 시프트 팩터 추가 실패:\n{str(e)}")
+
+
+    # ===== Strain Sweep 내장 데이터 관리 =====
+
+    def _refresh_preset_strain_sweep_list(self):
+        """Refresh the preset Strain Sweep list in the combobox."""
+        try:
+            preset_dir = self._get_preset_data_dir('strain_sweep')
+            files = [f for f in os.listdir(preset_dir)
+                     if f.endswith(('.txt', '.csv', '.xlsx', '.xls'))]
+            if files:
+                self.preset_ss_combo['values'] = sorted(files)
+            else:
+                self.preset_ss_combo['values'] = ['(데이터 없음)']
+        except Exception as e:
+            print(f"[내장 Strain Sweep] 목록 로드 오류: {e}")
+            self.preset_ss_combo['values'] = ['(오류)']
+
+    def _load_preset_strain_sweep(self):
+        """Load a preset Strain Sweep file."""
+        selected = self.preset_ss_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "내장 Strain Sweep 파일을 선택하세요.")
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('strain_sweep')
+            filepath = os.path.join(preset_dir, selected)
+
+            self.strain_data = load_strain_sweep_file(filepath)
+
+            if not self.strain_data:
+                messagebox.showerror("오류", "유효한 데이터를 찾을 수 없습니다.")
+                return
+
+            # Update label
+            self.strain_file_label.config(
+                text=f"내장: {selected} ({len(self.strain_data)}개 온도)"
+            )
+
+            # Populate temperature listboxes
+            temps = sorted(self.strain_data.keys())
+            for lb in [self.temp_listbox_A, self.temp_listbox_B, self.temp_listbox]:
+                lb.delete(0, tk.END)
+                for T in temps:
+                    lb.insert(tk.END, f"{T:.2f} °C")
+                    lb.selection_set(tk.END)
+
+            self.status_var.set(f"내장 Strain Sweep 로드 완료: {selected}")
+            messagebox.showinfo("성공", f"내장 Strain Sweep 로드 완료:\n{selected}\n온도 블록: {len(self.strain_data)}개")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 Strain Sweep 로드 실패:\n{str(e)}")
+
+    def _delete_preset_strain_sweep(self):
+        """Delete selected preset Strain Sweep file."""
+        selected = self.preset_ss_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "삭제할 내장 Strain Sweep 파일을 선택하세요.")
+            return
+
+        if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('strain_sweep')
+            filepath = os.path.join(preset_dir, selected)
+            os.remove(filepath)
+            self._refresh_preset_strain_sweep_list()
+            self.preset_ss_var.set("(선택...)")
+            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+        except Exception as e:
+            messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
+
+    def _add_preset_strain_sweep(self):
+        """Add current Strain Sweep file to preset list (copy original file)."""
+        if not hasattr(self, 'strain_data') or self.strain_data is None:
+            messagebox.showwarning("경고", "먼저 Strain Sweep 파일을 로드하세요.")
+            return
+
+        from tkinter import simpledialog
+        name = simpledialog.askstring("내장 Strain Sweep 추가", "저장할 이름을 입력하세요:")
+        if not name:
+            return
+
+        if not name.endswith(('.txt', '.csv', '.xlsx', '.xls')):
+            name += '.txt'
+
+        try:
+            preset_dir = self._get_preset_data_dir('strain_sweep')
+            filepath = os.path.join(preset_dir, name)
+
+            # Strain sweep 데이터를 텍스트 형식으로 저장
+            # 온도별 블록 형식으로 재구성
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write("# Strain Sweep 내장 데이터\n")
+                for T in sorted(self.strain_data.keys()):
+                    block = self.strain_data[T]
+                    f.write(f"\n# Temperature: {T} C\n")
+                    f.write(f"Temperature {T}\n")
+                    # 각 블록의 데이터 기록
+                    if 'strain' in block and 'freq' in block:
+                        strains = block['strain']
+                        freqs = block['freq']
+                        E_stor = block.get('E_storage', block.get('E_prime', []))
+                        E_loss = block.get('E_loss', block.get('E_double_prime', []))
+                        f.write("Strain(%)\tFrequency(Hz)\tE'(Pa)\tE''(Pa)\n")
+                        for k in range(len(strains)):
+                            s = strains[k] if k < len(strains) else 0
+                            freq = freqs[k] if k < len(freqs) else 0
+                            es = E_stor[k] if k < len(E_stor) else 0
+                            el = E_loss[k] if k < len(E_loss) else 0
+                            f.write(f"{s}\t{freq}\t{es}\t{el}\n")
+
+            self._refresh_preset_strain_sweep_list()
+            messagebox.showinfo("성공", f"내장 Strain Sweep 추가 완료:\n{name}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 Strain Sweep 추가 실패:\n{str(e)}")
+
+    # ===== f,g 곡선 내장 데이터 관리 =====
+
+    def _refresh_preset_fg_list(self):
+        """Refresh the preset f,g curve list in the combobox."""
+        try:
+            preset_dir = self._get_preset_data_dir('fg_curve')
+            files = [f for f in os.listdir(preset_dir) if f.endswith(('.txt', '.csv', '.dat'))]
+            if files:
+                self.preset_fg_combo['values'] = sorted(files)
+            else:
+                self.preset_fg_combo['values'] = ['(데이터 없음)']
+        except Exception as e:
+            print(f"[내장 f,g] 목록 로드 오류: {e}")
+            self.preset_fg_combo['values'] = ['(오류)']
+
+    def _load_preset_fg(self):
+        """Load a preset f,g curve file."""
+        selected = self.preset_fg_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "내장 f,g 곡선 파일을 선택하세요.")
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('fg_curve')
+            filepath = os.path.join(preset_dir, selected)
+
+            # 다중 인코딩 시도
+            fg_raw = None
+            for enc in ['utf-8', 'cp949', 'euc-kr', 'latin-1']:
+                try:
+                    fg_raw = np.loadtxt(filepath, comments='#', encoding=enc)
+                    break
+                except UnicodeDecodeError:
+                    continue
+            if fg_raw is None:
+                raise ValueError("파일 인코딩을 인식할 수 없습니다.")
+
+            strain = fg_raw[:, 0]
+            f_vals = fg_raw[:, 1]
+            g_vals = fg_raw[:, 2] if fg_raw.shape[1] >= 3 else f_vals.copy()
+
+            # Create interpolators
+            self.f_interpolator, self.g_interpolator = create_fg_interpolator(
+                strain, f_vals, g_vals
+            )
+
+            # Store for plotting
+            self.fg_averaged = {
+                'strain': strain,
+                'f_avg': f_vals,
+                'g_avg': g_vals
+            }
+
+            self.fg_file_label.config(text=f"내장: {selected} ({len(strain)}pts)")
+            self._update_fg_plot()
+            self.status_var.set(f"내장 f,g 곡선 로드 완료: {selected}")
+            messagebox.showinfo("성공", f"내장 f,g 곡선 로드 완료:\n{selected}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 f,g 곡선 로드 실패:\n{str(e)}")
+
+    def _delete_preset_fg(self):
+        """Delete selected preset f,g curve file."""
+        selected = self.preset_fg_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "삭제할 내장 f,g 곡선 파일을 선택하세요.")
+            return
+
+        if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('fg_curve')
+            filepath = os.path.join(preset_dir, selected)
+            os.remove(filepath)
+            self._refresh_preset_fg_list()
+            self.preset_fg_var.set("(선택...)")
+            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+        except Exception as e:
+            messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
+
+    def _add_preset_fg(self):
+        """Add current f,g curve to preset list."""
+        if not hasattr(self, 'fg_averaged') or self.fg_averaged is None:
+            messagebox.showwarning("경고", "먼저 f,g 곡선을 계산하거나 로드하세요.")
+            return
+
+        from tkinter import simpledialog
+        name = simpledialog.askstring("내장 f,g 추가", "저장할 이름을 입력하세요:")
+        if not name:
+            return
+
+        if not name.endswith('.txt'):
+            name += '.txt'
+
+        try:
+            preset_dir = self._get_preset_data_dir('fg_curve')
+            filepath = os.path.join(preset_dir, name)
+
+            strain = self.fg_averaged['strain']
+            f_avg = self.fg_averaged['f_avg']
+            g_avg = self.fg_averaged['g_avg']
+
+            header = "# 내장 f,g 곡선 데이터\n# strain\tf(strain)\tg(strain)"
+            np.savetxt(filepath, np.column_stack([strain, f_avg, g_avg]),
+                       header=header, comments='', delimiter='\t')
+
+            self._refresh_preset_fg_list()
+            messagebox.showinfo("성공", f"내장 f,g 곡선 추가 완료:\n{name}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"내장 f,g 곡선 추가 실패:\n{str(e)}")
 
 
 def main():
