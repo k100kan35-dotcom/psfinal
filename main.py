@@ -1644,11 +1644,9 @@ class PerssonModelGUI_V2:
             if hasattr(self, 'psd_xi_var'):
                 self.psd_xi_var.set(f"{xi:.6f}")
 
-            # Update q_min/q_max for calculation
+            # Update q_min for calculation (q_max는 기본값 1.0e+6 유지)
             if hasattr(self, 'q_min_var'):
                 self.q_min_var.set(f"{q[0]:.2e}")
-            if hasattr(self, 'q_max_var'):
-                self.q_max_var.set(f"{q[-1]:.2e}")
 
             # Mark Tab 0 as finalized
             self.tab0_finalized = True
@@ -1693,17 +1691,13 @@ class PerssonModelGUI_V2:
             verification_msg += scan_length_str
 
             messagebox.showinfo("PSD 확정 완료",
-                f"{psd_type_str} → Tab 3 전송 완료\n\n"
+                f"{psd_type_str} → 계산 설정 전송 완료\n\n"
                 f"q range: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
                 f"H = {H:.4f}\n"
                 f"h_rms = {h_rms*1e6:.4f} um\n"
                 f"h'_rms (xi) = {xi:.6f}\n\n"
-                f"{verification_msg}\n"
-                f"Tab 3 (계산 설정)에서 계속하세요."
+                f"{verification_msg}"
             )
-
-            # Switch to Tab 3
-            self.notebook.select(3)
 
             self.status_var.set(f"PSD 확정: {psd_type_str}, ξ = {xi:.6f}")
 
@@ -2609,9 +2603,8 @@ class PerssonModelGUI_V2:
             self.tab0_finalized = True
             self.psd_source = f"직접 로드: {os.path.basename(filename)}"
 
-            # Update q range variables
+            # Update q_min (q_max는 기본값 1.0e+6 유지)
             self.q_min_var.set(f"{q.min():.2e}")
-            self.q_max_var.set(f"{q.max():.2e}")
 
             # Update info display in Tab 0
             if hasattr(self, 'psd_direct_info_var'):
@@ -3663,7 +3656,7 @@ class PerssonModelGUI_V2:
         desc_label.pack(fill=tk.X, pady=(0, 5))
 
         # 모드 선택 라디오 버튼
-        self.hrms_q1_mode_var = tk.StringVar(value="hrms_to_q1")  # 기본값: h'rms(ξ) → q1
+        self.hrms_q1_mode_var = tk.StringVar(value="q1_to_hrms")  # 기본값: q1 → h'rms(ξ) (모드 2)
 
         mode_row1 = ttk.Frame(mode_frame)
         mode_row1.pack(fill=tk.X, pady=2)
@@ -3692,12 +3685,15 @@ class PerssonModelGUI_V2:
         self.q1_input_frame = ttk.Frame(mode_frame)
         self.q1_input_frame.pack(fill=tk.X, pady=2)
         ttk.Label(self.q1_input_frame, text="목표 q1 (1/m):").pack(side=tk.LEFT)
-        self.input_q1_var = tk.StringVar(value="1.0e+05")
+        self.input_q1_var = tk.StringVar(value="1.0e+06")
         self.q1_entry = ttk.Entry(self.q1_input_frame, textvariable=self.input_q1_var, width=12)
         self.q1_entry.pack(side=tk.LEFT, padx=5)
 
         # Add trace to sync target_hrms_slope_var with Tab 1's psd_xi_var and Tab 4's display
         self.target_hrms_slope_var.trace_add('write', self._on_target_hrms_changed)
+
+        # 초기 모드 UI 상태 적용 (모드2: q1 활성, h'rms 비활성)
+        self._on_hrms_q1_mode_changed()
 
         # 계산 버튼
         calc_btn_frame = ttk.Frame(mode_frame)
