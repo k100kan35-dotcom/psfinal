@@ -40,7 +40,7 @@ class GCalculator:
     # Different software may use different PSD normalization conventions.
     # This factor accounts for PSD definition differences between implementations.
     # Applied to both linear and nonlinear (f,g corrected) modes equally.
-    PSD_NORMALIZATION_FACTOR = 1.492537
+    PSD_NORMALIZATION_FACTOR = 1.5625
 
     def __init__(
         self,
