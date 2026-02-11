@@ -103,6 +103,14 @@ def build():
         '--hidden-import', 'csv',
         '--hidden-import', 're',
 
+        # ===== hidden imports: pkg_resources 의존성 =====
+        '--hidden-import', 'pkg_resources',
+        '--hidden-import', 'jaraco',
+        '--hidden-import', 'jaraco.text',
+        '--hidden-import', 'jaraco.functools',
+        '--hidden-import', 'jaraco.context',
+        '--collect-submodules', 'jaraco',
+
         # ===== hidden imports: persson_model 패키지 전체 =====
         '--hidden-import', 'persson_model',
         '--hidden-import', 'persson_model.core',
