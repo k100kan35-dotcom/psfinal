@@ -1035,6 +1035,71 @@ def create_fg_interpolator(
     return f_interp, g_interp
 
 
+DEFAULT_STRAIN_SPLIT = {
+    'threshold': 0.142,
+    'f_low':  {0.02: 0.10, 29.9: 0.90},
+    'f_high': {29.9: 0.30, 49.99: 0.70},
+    'g_low':  {0.02: 0.35, 49.99: 0.65},
+    'g_high': {29.9: 0.55, 49.99: 0.45},
+}
+
+
+def _find_nearest_temp(available_temps, target_temp, tol=5.0):
+    """Find the nearest available temperature within tolerance."""
+    best, best_diff = None, float('inf')
+    for t in available_temps:
+        diff = abs(t - target_temp)
+        if diff < best_diff:
+            best, best_diff = t, diff
+    return best if best_diff <= tol else None
+
+
+def _weighted_avg_1d(values_by_T, temp_weights, available_temps):
+    """Compute weighted average of values from selected temperatures.
+
+    Handles NaN per-point: if a temperature has NaN at a given strain,
+    it is excluded from the average at that point and weights are
+    renormalized among the remaining temperatures.
+
+    Parameters
+    ----------
+    values_by_T : dict
+        {temp: array} of interpolated values at grid_strain points
+    temp_weights : dict
+        {temp: weight} requested temperatures and weights
+    available_temps : list
+        Temperatures actually available in values_by_T
+
+    Returns
+    -------
+    result : np.ndarray
+        Weighted average array
+    """
+    matched = []
+    for t_req, w in temp_weights.items():
+        t_act = _find_nearest_temp(available_temps, t_req)
+        if t_act is not None and t_act in values_by_T:
+            matched.append((values_by_T[t_act], w))
+
+    if not matched:
+        return None
+
+    n = len(matched[0][0])
+    result = np.full(n, np.nan)
+
+    for i in range(n):
+        total_w = 0.0
+        val = 0.0
+        for vals, w in matched:
+            if np.isfinite(vals[i]):
+                val += vals[i] * w
+                total_w += w
+        if total_w > 0:
+            result[i] = val / total_w
+
+    return result
+
+
 def average_fg_curves(
     fg_by_T: Dict[float, Dict[str, np.ndarray]],
     selected_temps: List[float],
@@ -1042,7 +1107,8 @@ def average_fg_curves(
     interp_kind: str = 'loglog_linear',
     avg_mode: str = 'mean',
     n_min: int = 1,
-    clip_leq_1: bool = True
+    clip_leq_1: bool = True,
+    strain_split: Optional[Dict] = None,
 ) -> Optional[Dict[str, np.ndarray]]:
     """
     Average f,g curves from multiple temperatures onto a common strain grid.
@@ -1063,6 +1129,21 @@ def average_fg_curves(
         Minimum number of temperature curves required at each point
     clip_leq_1 : bool, optional
         If True, clip f,g values to <= 1.0
+    strain_split : dict or None, optional
+        Strain-split weighted averaging configuration. When provided,
+        f and g are independently averaged with different temperature
+        weights for low/high strain regions. Format::
+
+            {
+                'threshold': 0.142,
+                'f_low':  {temp: weight, ...},
+                'f_high': {temp: weight, ...},
+                'g_low':  {temp: weight, ...},
+                'g_high': {temp: weight, ...},
+            }
+
+        Use DEFAULT_STRAIN_SPLIT for the optimized defaults.
+        When None, uses equal-weight mean of selected_temps (legacy).
 
     Returns
     -------
@@ -1074,11 +1155,24 @@ def average_fg_curves(
         - 'Ts_used': list of temperatures used
         - 'n_eff': effective number of curves at each point
     """
-    Ts = [T for T in selected_temps if T in fg_by_T]
+    # Collect all temperatures needed
+    if strain_split is not None:
+        all_temps_needed = set()
+        for key in ('f_low', 'f_high', 'g_low', 'g_high'):
+            if key in strain_split:
+                all_temps_needed.update(strain_split[key].keys())
+        # Also include selected_temps as fallback pool
+        all_temps_needed.update(selected_temps)
+        Ts = [T for T in fg_by_T if _find_nearest_temp(list(all_temps_needed), T) is not None]
+    else:
+        Ts = [T for T in selected_temps if T in fg_by_T]
+
     if len(Ts) == 0:
         return None
 
-    F, G = [], []
+    # Interpolate each temperature's f,g onto grid_strain
+    F_by_T = {}  # {temp: f_array}
+    G_by_T = {}  # {temp: g_array}
 
     for T in Ts:
         s = fg_by_T[T]['strain']
@@ -1095,45 +1189,104 @@ def average_fg_curves(
         fq = np.array([f_interp(sv) for sv in grid_strain])
         gq = np.array([g_interp(sv) for sv in grid_strain]) if g_interp else np.full_like(grid_strain, np.nan)
 
-        F.append(fq)
-        G.append(gq)
+        F_by_T[T] = fq
+        G_by_T[T] = gq
 
-    if len(F) == 0:
+    if len(F_by_T) == 0:
         return None
 
-    F = np.vstack(F)
-    G = np.vstack(G)
+    available_temps = list(F_by_T.keys())
 
-    # Check if arrays are all NaN
-    if np.all(np.isnan(F)) or np.all(np.isnan(G)):
-        return None
+    # Per-temperature forward-fill for strain_split mode:
+    # fill NaN at trailing edge with last valid value so that
+    # weighted averages use consistent data across temperatures.
+    if strain_split is not None:
+        for T in available_temps:
+            for arr in (F_by_T[T], G_by_T[T]):
+                last_valid = np.nan
+                for i in range(len(arr)):
+                    if np.isfinite(arr[i]):
+                        last_valid = arr[i]
+                    elif np.isfinite(last_valid):
+                        arr[i] = last_valid
 
-    # Average with suppressed warnings for empty slices
-    with np.errstate(all='ignore'):
-        if avg_mode == 'mean':
-            f_avg = np.nanmean(F, axis=0)
-            g_avg = np.nanmean(G, axis=0)
-        elif avg_mode == 'median':
-            f_avg = np.nanmedian(F, axis=0)
-            g_avg = np.nanmedian(G, axis=0)
-        elif avg_mode == 'max':
-            f_avg = np.nanmax(F, axis=0)
-            g_avg = np.nanmax(G, axis=0)
-        else:
-            raise ValueError(f"Unknown avg_mode: {avg_mode}")
+    # ── Strain-split weighted averaging ─────────────────────
+    if strain_split is not None:
+        threshold = strain_split['threshold']
+        lo_mask = grid_strain < threshold
+        hi_mask = ~lo_mask
 
-    n_eff = np.sum(np.isfinite(F), axis=0)
+        f_avg = np.full(len(grid_strain), np.nan)
+        g_avg = np.full(len(grid_strain), np.nan)
+
+        # f: low strain
+        if np.any(lo_mask) and 'f_low' in strain_split:
+            f_lo = _weighted_avg_1d(
+                {T: F_by_T[T][lo_mask] for T in available_temps},
+                strain_split['f_low'], available_temps
+            )
+            if f_lo is not None:
+                f_avg[lo_mask] = f_lo
+
+        # f: high strain
+        if np.any(hi_mask) and 'f_high' in strain_split:
+            f_hi = _weighted_avg_1d(
+                {T: F_by_T[T][hi_mask] for T in available_temps},
+                strain_split['f_high'], available_temps
+            )
+            if f_hi is not None:
+                f_avg[hi_mask] = f_hi
+
+        # g: low strain
+        if np.any(lo_mask) and 'g_low' in strain_split:
+            g_lo = _weighted_avg_1d(
+                {T: G_by_T[T][lo_mask] for T in available_temps},
+                strain_split['g_low'], available_temps
+            )
+            if g_lo is not None:
+                g_avg[lo_mask] = g_lo
+
+        # g: high strain
+        if np.any(hi_mask) and 'g_high' in strain_split:
+            g_hi = _weighted_avg_1d(
+                {T: G_by_T[T][hi_mask] for T in available_temps},
+                strain_split['g_high'], available_temps
+            )
+            if g_hi is not None:
+                g_avg[hi_mask] = g_hi
+
+        n_eff = np.ones(len(grid_strain), dtype=int)
+
+    # ── Legacy: equal-weight mean/median/max ────────────────
+    else:
+        F = np.vstack([F_by_T[T] for T in available_temps])
+        G = np.vstack([G_by_T[T] for T in available_temps])
+
+        if np.all(np.isnan(F)) or np.all(np.isnan(G)):
+            return None
+
+        with np.errstate(all='ignore'):
+            if avg_mode == 'mean':
+                f_avg = np.nanmean(F, axis=0)
+                g_avg = np.nanmean(G, axis=0)
+            elif avg_mode == 'median':
+                f_avg = np.nanmedian(F, axis=0)
+                g_avg = np.nanmedian(G, axis=0)
+            elif avg_mode == 'max':
+                f_avg = np.nanmax(F, axis=0)
+                g_avg = np.nanmax(G, axis=0)
+            else:
+                raise ValueError(f"Unknown avg_mode: {avg_mode}")
+
+        n_eff = np.sum(np.isfinite(F), axis=0)
 
     # Handle NaN values with forward-then-backward fill
-    # First, find valid values and fill NaN from edges
     valid_mask = np.isfinite(f_avg) & np.isfinite(g_avg) & (n_eff >= n_min)
 
     if not np.any(valid_mask):
-        # No valid data at all - use default values
         f_avg = np.ones_like(f_avg)
         g_avg = np.ones_like(g_avg)
     else:
-        # Forward fill: fill NaN with last valid value
         last_valid_f, last_valid_g = 1.0, 1.0
         for i in range(len(grid_strain)):
             if valid_mask[i]:
@@ -1143,7 +1296,6 @@ def average_fg_curves(
                 f_avg[i] = last_valid_f
                 g_avg[i] = last_valid_g
 
-        # Backward fill: fill remaining NaN at the beginning
         first_valid_idx = np.argmax(valid_mask)
         if first_valid_idx > 0:
             first_f = float(f_avg[first_valid_idx])
