@@ -9561,8 +9561,8 @@ $\begin{array}{lcc}
         # G Integrand: 에너지 손실 - 차가운→뜨거운 색
         g_cmap = 'YlOrBr'
 
-        # ===== E' / E'' 공유 컬러바 범위 계산 =====
-        # 모든 modulus 데이터의 공통 범위를 사용하여 절대값 차이를 시각화
+        # ===== E' / E'' 각각 독립 컬러바 범위 계산 =====
+        # E' >> E'' 이므로 공유 범위 사용 시 차이가 안 보임 → 독립 범위 사용
         E_s_safe = np.maximum(E_storage, 1e-10)
         log_E_s = np.log10(E_s_safe)
         E_ll_safe = np.maximum(E_loss_lin, 1e-10) if E_loss_lin is not None else np.full_like(E_storage, 1e-10)
@@ -9572,17 +9572,14 @@ $\begin{array}{lcc}
         E_snl_safe = np.maximum(E_storage_nl, 1e-10)
         log_E_snl = np.log10(E_snl_safe)
 
-        # E' / E'' 전체 범위에서 공유 vmin/vmax
-        all_log_modulus = [log_E_s, log_E_snl]
-        if E_loss_lin is not None:
-            all_log_modulus.append(log_E_ll)
-        all_log_modulus.append(log_E_l)
-        modulus_vmin = min(np.nanmin(m) for m in all_log_modulus)
-        modulus_vmax = max(np.nanmax(m) for m in all_log_modulus)
-        # 최소 범위 보장 (너무 좁으면 보기 어려움)
-        if modulus_vmax - modulus_vmin < 0.5:
-            modulus_vmin -= 0.25
-            modulus_vmax += 0.25
+        def _modulus_range(log_data):
+            """각 modulus 데이터의 독립 vmin/vmax 계산."""
+            vmin = np.nanmin(log_data)
+            vmax = np.nanmax(log_data)
+            if vmax - vmin < 0.5:
+                vmin -= 0.25
+                vmax += 0.25
+            return vmin, vmax
 
         # v=1 m/s 인덱스 찾기 (모든 그래프 주석에 사용)
         v_1ms_idx = int(np.argmin(np.abs(v - 1.0)))
@@ -9610,9 +9607,10 @@ $\begin{array}{lcc}
             transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 2: E' Storage Modulus (linear, 순수) — Blues, 공유 범위
+        # Plot 2: E' Storage Modulus (linear, 순수) — Blues, 독립 범위
+        Es_vmin, Es_vmax = _modulus_range(log_E_s)
         im2 = self.ax_E_storage.pcolormesh(V, Q, log_E_s, cmap=E_storage_cmap, shading='auto',
-                                            vmin=modulus_vmin, vmax=modulus_vmax)
+                                            vmin=Es_vmin, vmax=Es_vmax)
         self.ax_E_storage.set_title("E' Storage [log Pa]", fontweight='bold', fontsize=9)
         self.ax_E_storage.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_storage.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9627,10 +9625,11 @@ $\begin{array}{lcc}
             transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 3: E'' Loss Modulus (linear, 순수) — Reds, 공유 범위
+        # Plot 3: E'' Loss Modulus (linear, 순수) — Reds, 독립 범위
         if E_loss_lin is not None:
+            Ell_vmin, Ell_vmax = _modulus_range(log_E_ll)
             im3 = self.ax_E_loss_linear.pcolormesh(V, Q, log_E_ll, cmap=E_loss_cmap, shading='auto',
-                                                    vmin=modulus_vmin, vmax=modulus_vmax)
+                                                    vmin=Ell_vmin, vmax=Ell_vmax)
             self.ax_E_loss_linear.set_title("E'' Loss [log Pa]", fontweight='bold', fontsize=9)
             self.ax_E_loss_linear.set_xlabel('log₁₀(v)', fontsize=8)
             self.ax_E_loss_linear.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9645,9 +9644,10 @@ $\begin{array}{lcc}
                 transform=self.ax_E_loss_linear.transAxes, fontsize=7, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
-        # Plot 4: E''×g Loss Modulus (nonlinear, g 적용) — Reds, 공유 범위
+        # Plot 4: E''×g Loss Modulus (nonlinear, g 적용) — Reds, 독립 범위
+        Elg_vmin, Elg_vmax = _modulus_range(log_E_l)
         im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, log_E_l, cmap=E_loss_cmap, shading='auto',
-                                                    vmin=modulus_vmin, vmax=modulus_vmax)
+                                                    vmin=Elg_vmin, vmax=Elg_vmax)
         self.ax_E_loss_nonlinear.set_title("E''×g [log Pa]", fontweight='bold', fontsize=9)
         self.ax_E_loss_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_loss_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
@@ -9663,9 +9663,10 @@ $\begin{array}{lcc}
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Row 2 =====
-        # Plot 5: E'×f Storage Modulus (nonlinear, f 적용) — Blues, 공유 범위
+        # Plot 5: E'×f Storage Modulus (nonlinear, f 적용) — Blues, 독립 범위
+        Esnl_vmin, Esnl_vmax = _modulus_range(log_E_snl)
         im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, log_E_snl, cmap=E_storage_cmap, shading='auto',
-                                                      vmin=modulus_vmin, vmax=modulus_vmax)
+                                                      vmin=Esnl_vmin, vmax=Esnl_vmax)
         self.ax_E_storage_nonlinear.set_title("E'×f [log Pa]", fontweight='bold', fontsize=9)
         self.ax_E_storage_nonlinear.set_xlabel('log₁₀(v)', fontsize=8)
         self.ax_E_storage_nonlinear.set_ylabel('log₁₀(q)', fontsize=8)
