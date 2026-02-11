@@ -6584,7 +6584,7 @@ $\begin{array}{lcc}
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Arial', 8)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.59")
+        self.gamma_var = tk.StringVar(value="0.6")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Arial', 8)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="36")
@@ -7692,15 +7692,11 @@ $\begin{array}{lcc}
             # G(q) = (1/8) ∫∫ q'³ C(q') |E_eff(q'v cosφ)|² / ((1-ν²)sigma_0)² dφ dq'
             # where |E_eff|² = (E'×f(ε))² + (E''×g(ε))²
 
-            # PSD_NORMALIZATION_FACTOR & gamma 조건부 적용:
-            # - 선형 모드 (비선형 체크 해제): norm=1.667, gamma=0.59
-            # - 비선형 모드 (비선형 체크): norm=1.0, gamma=0.74
+            # PSD_NORMALIZATION_FACTOR 조건부 적용 (gamma는 GUI 입력값 사용)
             if use_fg:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.0
-                gamma = 0.74
             else:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.667
-                gamma = 0.59
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
@@ -8525,7 +8521,7 @@ $\begin{array}{lcc}
         try:
             current_gamma = float(self.gamma_var.get())
         except:
-            current_gamma = 0.5
+            current_gamma = 0.6
 
         try:
             current_strain_factor = float(self.strain_factor_var.get())
@@ -10784,7 +10780,7 @@ $\begin{array}{lcc}
         sigma_0 = float(self.sigma_0_var.get()) * 1e6 if hasattr(self, 'sigma_0_var') else 0.3e6
         temperature = float(self.temperature_var.get()) if hasattr(self, 'temperature_var') else 20.0
         poisson = float(self.poisson_var.get()) if hasattr(self, 'poisson_var') else 0.5
-        gamma = float(self.gamma_var.get()) if hasattr(self, 'gamma_var') else 0.5
+        gamma = float(self.gamma_var.get()) if hasattr(self, 'gamma_var') else 0.6
         n_phi = int(self.n_phi_var.get()) if hasattr(self, 'n_phi_var') else 72
 
         self._log_debug(f"  • sigma_0 (공칭 압력): {sigma_0/1e6:.3f} MPa = {sigma_0:.2e} Pa")
