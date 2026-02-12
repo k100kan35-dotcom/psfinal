@@ -6,6 +6,9 @@ Windows에서 실행: python build_exe.py
 import PyInstaller.__main__
 import os
 import sys
+import shutil
+import subprocess
+import time
 
 # 프로젝트와 100% 무관한 대형 ML/DL 패키지만 제외
 EXCLUDES = [
@@ -46,8 +49,56 @@ EXCLUDE_MISC = [
     'pytest',
 ]
 
+def _kill_old_exe(exe_path):
+    """빌드 전 기존 EXE를 정리 (OneDrive 동기화 잠금 방지)"""
+    if not os.path.exists(exe_path):
+        return
+
+    exe_name = os.path.basename(exe_path)
+
+    # 1) 실행 중인 EXE 프로세스 강제 종료 (Windows)
+    if sys.platform == 'win32':
+        try:
+            subprocess.run(
+                ['taskkill', '/F', '/IM', exe_name],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            time.sleep(1)
+        except FileNotFoundError:
+            pass
+
+    # 2) 기존 EXE 삭제 시도 (최대 5회, OneDrive 해제 대기)
+    for attempt in range(5):
+        try:
+            os.remove(exe_path)
+            print(f"  [CLEAN] Removed old {exe_name}")
+            return
+        except PermissionError:
+            wait = 2 * (attempt + 1)
+            print(f"  [WAIT] {exe_name} locked (attempt {attempt+1}/5), "
+                  f"waiting {wait}s for OneDrive to release...")
+            time.sleep(wait)
+        except FileNotFoundError:
+            return
+
+    # 3) 그래도 안 되면 dist 폴더 자체를 교체
+    print(f"  [WARN] Cannot delete {exe_name}. Renaming dist/ and creating fresh one.")
+    dist_dir = os.path.dirname(exe_path)
+    backup = dist_dir + f'_old_{int(time.time())}'
+    try:
+        os.rename(dist_dir, backup)
+    except OSError:
+        pass
+
+
 def build():
     sep = ';' if sys.platform == 'win32' else ':'
+
+    # ===== 빌드 전 기존 EXE 정리 (OneDrive 잠금 방지) =====
+    exe_name = 'PerssonFrictionModel.exe' if sys.platform == 'win32' else 'PerssonFrictionModel'
+    exe_path = os.path.join('dist', exe_name)
+    _kill_old_exe(exe_path)
 
     args = [
         'main.py',
@@ -100,6 +151,10 @@ def build():
         '--hidden-import', 'tempfile',
         '--hidden-import', 'csv',
         '--hidden-import', 're',
+
+        # ===== hidden imports: importlib_resources =====
+        '--hidden-import', 'importlib_resources',
+        '--hidden-import', 'importlib_resources.trees',
 
         # ===== pkg_resources / jaraco 의존성 =====
         # jaraco는 namespace package → hidden-import만 사용
@@ -158,8 +213,6 @@ def build():
 
     PyInstaller.__main__.run(args)
 
-    exe_name = 'PerssonFrictionModel.exe' if sys.platform == 'win32' else 'PerssonFrictionModel'
-    exe_path = os.path.join('dist', exe_name)
     if os.path.exists(exe_path):
         size_mb = os.path.getsize(exe_path) / (1024 * 1024)
         print(f"\nBuild SUCCESS: {exe_path}")
