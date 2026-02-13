@@ -46,12 +46,12 @@ matplotlib.rcParams.update({
     'axes.unicode_minus': False,       # ASCII 마이너스 (유니코드 − 깨짐 방지)
     'text.usetex': False,              # LaTeX 비활성화
     'mathtext.fontset': 'dejavusans',  # 수식 폰트: DejaVu Sans (matplotlib 내장, 항상 존재)
-    'font.size': 9,
-    'axes.titlesize': 9,
-    'axes.labelsize': 9,
-    'xtick.labelsize': 8,
-    'ytick.labelsize': 8,
-    'legend.fontsize': 7,
+    'font.size': 12,
+    'axes.titlesize': 13,
+    'axes.labelsize': 12,
+    'xtick.labelsize': 11,
+    'ytick.labelsize': 11,
+    'legend.fontsize': 10,
 })
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
@@ -189,15 +189,15 @@ class PerssonModelGUI_V2:
     }
 
     FONTS = {
-        'heading':   ('Segoe UI', 13, 'bold'),
-        'subheading':('Segoe UI', 11, 'bold'),
-        'body':      ('Segoe UI', 10),
-        'body_bold': ('Segoe UI', 10, 'bold'),
-        'small':     ('Segoe UI', 9),
-        'small_bold':('Segoe UI', 9, 'bold'),
-        'tiny':      ('Segoe UI', 8),
-        'mono':      ('Consolas', 10),
-        'mono_small':('Consolas', 9),
+        'heading':   ('Segoe UI', 16, 'bold'),
+        'subheading':('Segoe UI', 14, 'bold'),
+        'body':      ('Segoe UI', 12),
+        'body_bold': ('Segoe UI', 12, 'bold'),
+        'small':     ('Segoe UI', 11),
+        'small_bold':('Segoe UI', 11, 'bold'),
+        'tiny':      ('Segoe UI', 10),
+        'mono':      ('Consolas', 12),
+        'mono_small':('Consolas', 11),
     }
 
     def __init__(self, root):
@@ -554,10 +554,10 @@ class PerssonModelGUI_V2:
         header.pack_propagate(False)
         tk.Label(header, text="Persson Friction Model",
                  bg=self.COLORS['sidebar'], fg='#FFFFFF',
-                 font=('Segoe UI', 14, 'bold')).pack(side=tk.LEFT, padx=16)
+                 font=('Segoe UI', 17, 'bold')).pack(side=tk.LEFT, padx=16)
         tk.Label(header, text="v3.0",
                  bg=self.COLORS['sidebar'], fg=self.COLORS['text_secondary'],
-                 font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(0, 8))
+                 font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=(0, 8))
 
         # Create notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
@@ -638,7 +638,7 @@ class PerssonModelGUI_V2:
             "• Top PSD: 상부 표면만 (h>0)\n"
             "  (Ref: J. Chem. Phys. 162, 074704)"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 13), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. Data Loading
         load_frame = ttk.LabelFrame(left_scrollable, text="1. 데이터 로드", padding=5)
@@ -647,7 +647,7 @@ class PerssonModelGUI_V2:
         # File path display
         self.psd_profile_file_var = tk.StringVar(value="(파일 선택 안됨)")
         ttk.Label(load_frame, textvariable=self.psd_profile_file_var,
-                  font=('Segoe UI', 9), foreground='#64748B').pack(fill=tk.X)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(fill=tk.X)
 
         # Load button
         ttk.Button(load_frame, text="프로파일 데이터 로드 (.txt, .csv)",
@@ -656,11 +656,11 @@ class PerssonModelGUI_V2:
         # ===== 내장 PSD 선택 섹션 =====
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 내장 PSD 데이터 선택 ─",
-                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 12, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         preset_psd_frame = ttk.Frame(load_frame)
         preset_psd_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.preset_psd_var = tk.StringVar(value="(선택...)")
         self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
                                               state='readonly', width=25)
@@ -674,7 +674,7 @@ class PerssonModelGUI_V2:
         # Direct PSD loading section
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 또는: PSD 파일 직접 로드 ─",
-                  font=('Segoe UI', 9), foreground='#2563EB').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 12), foreground='#2563EB').pack(anchor=tk.CENTER)
 
         # PSD 직접 로드 버튼 + 리스트에 추가 버튼
         psd_direct_btn_frame = ttk.Frame(load_frame)
@@ -689,14 +689,14 @@ class PerssonModelGUI_V2:
 
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
-                  font=('Segoe UI', 9), foreground='#64748B').pack(fill=tk.X)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(fill=tk.X)
 
         # PSD 확정 버튼 (직접 로드 바로 아래)
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         apply_frame_top = ttk.Frame(load_frame)
         apply_frame_top.pack(fill=tk.X, pady=2)
         self.apply_psd_type_var = tk.StringVar(value="full")
-        ttk.Label(apply_frame_top, text="적용할 PSD:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(apply_frame_top, text="적용할 PSD:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="Full", variable=self.apply_psd_type_var,
                         value="full").pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="Top", variable=self.apply_psd_type_var,
@@ -714,15 +714,15 @@ class PerssonModelGUI_V2:
         col_frame = ttk.Frame(load_frame)
         col_frame.pack(fill=tk.X, pady=2)
 
-        ttk.Label(col_frame, text="X열:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(col_frame, text="X열:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.profile_x_col_var = tk.StringVar(value="0")
         ttk.Entry(col_frame, textvariable=self.profile_x_col_var, width=3).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(col_frame, text="H열:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(col_frame, text="H열:", font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_h_col_var = tk.StringVar(value="1")
         ttk.Entry(col_frame, textvariable=self.profile_h_col_var, width=3).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(col_frame, text="Skip:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(col_frame, text="Skip:", font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_skip_var = tk.StringVar(value="0")
         ttk.Entry(col_frame, textvariable=self.profile_skip_var, width=3).pack(side=tk.LEFT, padx=2)
 
@@ -732,13 +732,13 @@ class PerssonModelGUI_V2:
 
         unit_row1 = ttk.Frame(unit_frame)
         unit_row1.pack(fill=tk.X)
-        ttk.Label(unit_row1, text="X 단위:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(unit_row1, text="X 단위:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.profile_x_unit_var = tk.StringVar(value="um")
         unit_combo_x = ttk.Combobox(unit_row1, textvariable=self.profile_x_unit_var,
                                      values=['m', 'mm', 'um', 'nm'], width=6, state='readonly')
         unit_combo_x.pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(unit_row1, text="H 단위:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(unit_row1, text="H 단위:", font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_h_unit_var = tk.StringVar(value="um")
         unit_combo_h = ttk.Combobox(unit_row1, textvariable=self.profile_h_unit_var,
                                      values=['m', 'mm', 'um', 'nm'], width=6, state='readonly')
@@ -747,7 +747,7 @@ class PerssonModelGUI_V2:
         # Data info
         self.profile_data_info_var = tk.StringVar(value="데이터: -")
         ttk.Label(load_frame, textvariable=self.profile_data_info_var,
-                  font=('Segoe UI', 9)).pack(fill=tk.X, pady=2)
+                  font=('Segoe UI', 12)).pack(fill=tk.X, pady=2)
 
         # 3. PSD Calculation Settings
         calc_frame = ttk.LabelFrame(left_scrollable, text="2. PSD 계산 설정", padding=5)
@@ -756,7 +756,7 @@ class PerssonModelGUI_V2:
         # Detrend method
         detrend_row = ttk.Frame(calc_frame)
         detrend_row.pack(fill=tk.X, pady=2)
-        ttk.Label(detrend_row, text="Detrend:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(detrend_row, text="Detrend:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.profile_detrend_var = tk.StringVar(value="mean")
         ttk.Combobox(detrend_row, textvariable=self.profile_detrend_var,
                      values=['mean', 'linear', 'quadratic'], width=10, state='readonly').pack(side=tk.LEFT, padx=5)
@@ -764,7 +764,7 @@ class PerssonModelGUI_V2:
         # Window function
         window_row = ttk.Frame(calc_frame)
         window_row.pack(fill=tk.X, pady=2)
-        ttk.Label(window_row, text="Window:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(window_row, text="Window:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.profile_window_var = tk.StringVar(value="hann")
         ttk.Combobox(window_row, textvariable=self.profile_window_var,
                      values=['hann', 'hamming', 'blackman', 'none'], width=10, state='readonly').pack(side=tk.LEFT, padx=5)
@@ -789,7 +789,7 @@ class PerssonModelGUI_V2:
         ttk.Checkbutton(bin_frame, text="로그 구간 평균화",
                         variable=self.apply_binning_var).pack(side=tk.LEFT)
 
-        ttk.Label(bin_frame, text="점/decade:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(bin_frame, text="점/decade:", font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=(10, 0))
         self.points_per_decade_var = tk.StringVar(value="20")
         ttk.Entry(bin_frame, textvariable=self.points_per_decade_var, width=4).pack(side=tk.LEFT, padx=2)
 
@@ -805,11 +805,11 @@ class PerssonModelGUI_V2:
         range_row = ttk.Frame(fit_frame)
         range_row.pack(fill=tk.X, pady=2)
 
-        ttk.Label(range_row, text="q_min:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(range_row, text="q_min:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.fit_q_min_var = tk.StringVar(value="auto")
         ttk.Entry(range_row, textvariable=self.fit_q_min_var, width=8).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(range_row, text="q_max:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(range_row, text="q_max:", font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=(10, 0))
         self.fit_q_max_var = tk.StringVar(value="auto")
         ttk.Entry(range_row, textvariable=self.fit_q_max_var, width=8).pack(side=tk.LEFT, padx=2)
 
@@ -821,7 +821,7 @@ class PerssonModelGUI_V2:
         # PSD to fit
         fit_target_row = ttk.Frame(fit_frame)
         fit_target_row.pack(fill=tk.X, pady=2)
-        ttk.Label(fit_target_row, text="피팅 대상:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(fit_target_row, text="피팅 대상:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.fit_target_var = tk.StringVar(value="full")
         ttk.Radiobutton(fit_target_row, text="Full", variable=self.fit_target_var,
                         value="full").pack(side=tk.LEFT)
@@ -837,7 +837,7 @@ class PerssonModelGUI_V2:
         extrap_frame.pack(fill=tk.X, pady=3)
 
         ttk.Label(extrap_frame, text="※ 피팅 결과를 사용하여 q1까지 PSD 외삽",
-                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(anchor=tk.W)
 
         # Enable extrapolation
         self.enable_q1_extrap_var = tk.BooleanVar(value=False)
@@ -847,15 +847,15 @@ class PerssonModelGUI_V2:
         # Target q1 input
         q1_row = ttk.Frame(extrap_frame)
         q1_row.pack(fill=tk.X, pady=2)
-        ttk.Label(q1_row, text="Target q1:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="Target q1:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.target_q1_extrap_var = tk.StringVar(value="1e6")
         ttk.Entry(q1_row, textvariable=self.target_q1_extrap_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 12)).pack(side=tk.LEFT)
 
         # Extrapolation points per decade
         extrap_pts_row = ttk.Frame(extrap_frame)
         extrap_pts_row.pack(fill=tk.X, pady=2)
-        ttk.Label(extrap_pts_row, text="외삽 pts/decade:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(extrap_pts_row, text="외삽 pts/decade:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.extrap_pts_per_decade_var = tk.StringVar(value="20")
         ttk.Entry(extrap_pts_row, textvariable=self.extrap_pts_per_decade_var, width=5).pack(side=tk.LEFT, padx=5)
 
@@ -868,7 +868,7 @@ class PerssonModelGUI_V2:
         param_psd_frame.pack(fill=tk.X, pady=3)
 
         ttk.Label(param_psd_frame, text="※ H, q0, C(q0), q1으로 Self-Affine PSD 생성",
-                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(anchor=tk.W)
 
         # Enable parameter PSD overlay
         self.enable_param_psd_var = tk.BooleanVar(value=False)
@@ -878,38 +878,38 @@ class PerssonModelGUI_V2:
         # H input
         h_row = ttk.Frame(param_psd_frame)
         h_row.pack(fill=tk.X, pady=2)
-        ttk.Label(h_row, text="H (Hurst):", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
+        ttk.Label(h_row, text="H (Hurst):", font=('Segoe UI', 13), width=10).pack(side=tk.LEFT)
         self.param_H_var = tk.StringVar(value="0.8")
         ttk.Entry(h_row, textvariable=self.param_H_var, width=10).pack(side=tk.LEFT, padx=5)
 
         # q0 input
         q0_row = ttk.Frame(param_psd_frame)
         q0_row.pack(fill=tk.X, pady=2)
-        ttk.Label(q0_row, text="q0:", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
+        ttk.Label(q0_row, text="q0:", font=('Segoe UI', 13), width=10).pack(side=tk.LEFT)
         self.param_q0_var = tk.StringVar(value="1e4")
         ttk.Entry(q0_row, textvariable=self.param_q0_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(q0_row, text="1/m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(q0_row, text="1/m", font=('Segoe UI', 12)).pack(side=tk.LEFT)
 
         # q1 input
         q1_row = ttk.Frame(param_psd_frame)
         q1_row.pack(fill=tk.X, pady=2)
-        ttk.Label(q1_row, text="q1:", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="q1:", font=('Segoe UI', 13), width=10).pack(side=tk.LEFT)
         self.param_q1_var = tk.StringVar(value="1e9")
         ttk.Entry(q1_row, textvariable=self.param_q1_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 12)).pack(side=tk.LEFT)
 
         # h0 (h_rms) input - C(q0) will be auto-calculated
         h0_row = ttk.Frame(param_psd_frame)
         h0_row.pack(fill=tk.X, pady=2)
-        ttk.Label(h0_row, text="h0 (h_rms):", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
+        ttk.Label(h0_row, text="h0 (h_rms):", font=('Segoe UI', 13), width=10).pack(side=tk.LEFT)
         self.param_h0_var = tk.StringVar(value="1e-6")
         ttk.Entry(h0_row, textvariable=self.param_h0_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(h0_row, text="m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(h0_row, text="m", font=('Segoe UI', 12)).pack(side=tk.LEFT)
 
         # Points per decade
         ppd_row = ttk.Frame(param_psd_frame)
         ppd_row.pack(fill=tk.X, pady=2)
-        ttk.Label(ppd_row, text="pts/decade:", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
+        ttk.Label(ppd_row, text="pts/decade:", font=('Segoe UI', 13), width=10).pack(side=tk.LEFT)
         self.param_ppd_var = tk.StringVar(value="20")
         ttk.Entry(ppd_row, textvariable=self.param_ppd_var, width=10).pack(side=tk.LEFT, padx=5)
 
@@ -925,7 +925,7 @@ class PerssonModelGUI_V2:
         result_frame = ttk.LabelFrame(left_scrollable, text="6. 결과", padding=5)
         result_frame.pack(fill=tk.X, pady=3)
 
-        self.psd_profile_result_text = tk.Text(result_frame, height=12, width=45, font=('Consolas', 10))
+        self.psd_profile_result_text = tk.Text(result_frame, height=12, width=45, font=('Consolas', 13))
         self.psd_profile_result_text.pack(fill=tk.BOTH, expand=True)
 
         # 7. Export Options
@@ -1088,7 +1088,7 @@ class PerssonModelGUI_V2:
         phi = n_top / len(h_detrended)
         self.ax_profile_hist.axvspan(0, np.max(h_detrended) * 1e6, alpha=0.2, color='green',
                                       label=f'Top (φ={phi:.2f})')
-        self.ax_profile_hist.legend(fontsize=8)
+        self.ax_profile_hist.legend(fontsize=11)
 
         self.fig_psd_profile.tight_layout()
         self.canvas_psd_profile.draw()
@@ -1184,7 +1184,7 @@ class PerssonModelGUI_V2:
         self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)')
         self.ax_hrms_parseval.set_ylabel('누적 h_rms (μm)')
         self.ax_hrms_parseval.grid(True, alpha=0.3, which='both')
-        self.ax_hrms_parseval.legend(fontsize=8)
+        self.ax_hrms_parseval.legend(fontsize=11)
 
         # Plot 2D isotropic PSD
         self.ax_psd_2d.clear()
@@ -1239,7 +1239,7 @@ class PerssonModelGUI_V2:
         self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)')
         self.ax_psd_2d.set_ylabel('C(q) (m^4)')
         self.ax_psd_2d.grid(True, alpha=0.3, which='both')
-        self.ax_psd_2d.legend(fontsize=8, loc='lower left')
+        self.ax_psd_2d.legend(fontsize=11, loc='lower left')
 
         self.fig_psd_profile.tight_layout()
         self.canvas_psd_profile.draw()
@@ -1937,7 +1937,7 @@ class PerssonModelGUI_V2:
             "  - 수평 이동 aT: 주파수 시프트\n"
             "  - 수직 이동 bT: 모듈러스 시프트 (밀도/엔트로피 보정)"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 13), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. File Loading
         load_frame = ttk.LabelFrame(left_frame, text="데이터 로드", padding=5)
@@ -1952,12 +1952,12 @@ class PerssonModelGUI_V2:
         # ===== 내장 마스터 커브/aT 선택 섹션 =====
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 내장 데이터 선택 ─",
-                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 12, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         # 내장 마스터 커브 선택
         preset_mc_frame = ttk.Frame(load_frame)
         preset_mc_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(preset_mc_frame, text="마스터커브:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(preset_mc_frame, text="마스터커브:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.preset_mc_var = tk.StringVar(value="(선택...)")
         self.preset_mc_combo = ttk.Combobox(preset_mc_frame, textvariable=self.preset_mc_var,
                                              state='readonly', width=20)
@@ -1968,7 +1968,7 @@ class PerssonModelGUI_V2:
         # 내장 aT 선택
         preset_aT_frame = ttk.Frame(load_frame)
         preset_aT_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.preset_aT_var = tk.StringVar(value="(선택...)")
         self.preset_aT_combo = ttk.Combobox(preset_aT_frame, textvariable=self.preset_aT_var,
                                              state='readonly', width=20)
@@ -1983,7 +1983,7 @@ class PerssonModelGUI_V2:
         # Persson 정품 마스터 커브 직접 로드 버튼
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 또는: 완성된 마스터 커브 직접 로드 ─",
-                  font=('Segoe UI', 9), foreground='#2563EB').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 12), foreground='#2563EB').pack(anchor=tk.CENTER)
 
         # 마스터 커브 직접 로드 버튼 + 리스트에 추가 버튼
         mc_direct_btn_frame = ttk.Frame(load_frame)
@@ -2023,12 +2023,12 @@ class PerssonModelGUI_V2:
 
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
-                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(anchor=tk.W)
 
         # aT 정보 표시
         self.mc_aT_info_var = tk.StringVar(value="aT: 미로드")
         ttk.Label(load_frame, textvariable=self.mc_aT_info_var,
-                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(anchor=tk.W)
 
         # 마스터 커브 비교 버튼
         self.mc_compare_var = tk.BooleanVar(value=False)
@@ -2053,14 +2053,14 @@ class PerssonModelGUI_V2:
         # Reference temperature
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
-        ttk.Label(row1, text="기준 온도 Tref (°C):", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="기준 온도 Tref (°C):", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.mc_tref_var = tk.StringVar(value="20.0")
         ttk.Entry(row1, textvariable=self.mc_tref_var, width=10).pack(side=tk.RIGHT)
 
         # bT mode
         row2 = ttk.Frame(settings_frame)
         row2.pack(fill=tk.X, pady=2)
-        ttk.Label(row2, text="bT 계산 방법:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="bT 계산 방법:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.mc_bt_mode_var = tk.StringVar(value="optimize")
         bt_combo = ttk.Combobox(
             row2, textvariable=self.mc_bt_mode_var,
@@ -2079,12 +2079,12 @@ class PerssonModelGUI_V2:
 
         ttk.Label(settings_frame,
                   text="optimize: 수치 최적화 / theoretical: T/Tref 공식",
-                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 11), foreground='#64748B').pack(anchor=tk.W)
 
         # Optimization target selection
         row3 = ttk.Frame(settings_frame)
         row3.pack(fill=tk.X, pady=2)
-        ttk.Label(row3, text="최적화 대상:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row3, text="최적화 대상:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.mc_target_var = tk.StringVar(value="E_storage")
         target_combo = ttk.Combobox(
             row3, textvariable=self.mc_target_var,
@@ -2094,7 +2094,7 @@ class PerssonModelGUI_V2:
         target_combo.pack(side=tk.RIGHT)
         ttk.Label(settings_frame,
                   text="E_storage: E' / E_loss: E'' / tan_delta: tanδ",
-                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 11), foreground='#64748B').pack(anchor=tk.W)
 
         # Smoothing control for master curve
         smooth_frame = ttk.LabelFrame(settings_frame, text="마스터 커브 스무딩", padding=3)
@@ -2110,7 +2110,7 @@ class PerssonModelGUI_V2:
         # Smoothing window slider
         slider_frame = ttk.Frame(smooth_frame)
         slider_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(slider_frame, text="스무딩 강도:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(slider_frame, text="스무딩 강도:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.mc_smooth_window_var = tk.IntVar(value=11)
         self.mc_smooth_slider = ttk.Scale(
             slider_frame,
@@ -2396,7 +2396,7 @@ class PerssonModelGUI_V2:
 
         # Add legend with limited entries
         if len(temps) <= 8:
-            self.ax_mc_raw.legend(fontsize=6, loc='upper left', ncol=2)
+            self.ax_mc_raw.legend(fontsize=9, loc='upper left', ncol=2)
 
         self.fig_mc.tight_layout()
         self.canvas_mc.draw()
@@ -2668,10 +2668,10 @@ class PerssonModelGUI_V2:
             # Combined legend
             lines = [line1, line2]
             labels = [l.get_label() for l in lines]
-            self.ax_mc_bT.legend(lines, labels, loc='upper right', fontsize=8)
+            self.ax_mc_bT.legend(lines, labels, loc='upper right', fontsize=11)
             self.ax_mc_bT.set_title('시프트 팩터 aT & bT (Persson)', fontweight='bold')
         else:
-            self.ax_mc_bT.legend(loc='upper right', fontsize=8)
+            self.ax_mc_bT.legend(loc='upper right', fontsize=11)
             self.ax_mc_bT.set_title('시프트 팩터 aT (Persson)', fontweight='bold')
 
         self.fig_mc.tight_layout()
@@ -2998,13 +2998,13 @@ class PerssonModelGUI_V2:
         self.ax_mc_master.set_ylabel("E', E'' (MPa)")
         smooth_info = f" (w={data.get('smooth_window', 'N/A')})" if data.get('smoothed') else ""
         self.ax_mc_master.set_title(f"★ Persson 마스터 커브{smooth_info}", fontweight='bold')
-        self.ax_mc_master.legend(loc='upper left', fontsize=8)
+        self.ax_mc_master.legend(loc='upper left', fontsize=11)
         self.ax_mc_master.grid(True, alpha=0.3)
 
         self.ax_mc_aT.set_xlabel('주파수 f (Hz)')
         self.ax_mc_aT.set_ylabel('tan δ = E\'\'/E\'')
         self.ax_mc_aT.set_title('tan δ 비교', fontweight='bold')
-        self.ax_mc_aT.legend(loc='upper right', fontsize=8)
+        self.ax_mc_aT.legend(loc='upper right', fontsize=11)
         self.ax_mc_aT.grid(True, alpha=0.3)
         self.ax_mc_aT.axhline(y=1.0, color='gray', linestyle='--', alpha=0.5)
 
@@ -3113,7 +3113,7 @@ class PerssonModelGUI_V2:
             print("="*60)
         else:
             self.ax_mc_bT.text(0.5, 0.5, "비교 데이터 없음\n(정품과 생성 둘 다 필요)",
-                              ha='center', va='center', fontsize=10, transform=self.ax_mc_bT.transAxes)
+                              ha='center', va='center', fontsize=13, transform=self.ax_mc_bT.transAxes)
             self.ax_mc_bT.set_title("E'' 비율 비교", fontweight='bold')
 
         self.fig_mc.tight_layout()
@@ -3270,7 +3270,7 @@ class PerssonModelGUI_V2:
                               'k-', linewidth=2, label="E' (Master)")
         self.ax_mc_master.plot(master_curve['f'], master_curve['E_loss'],
                               'k--', linewidth=2, label="E'' (Master)")
-        self.ax_mc_master.legend(fontsize=8)
+        self.ax_mc_master.legend(fontsize=11)
 
         # Plot 2: aT vs Temperature
         self.ax_mc_aT.set_title('수평 이동 계수 aT', fontweight='bold')
@@ -3287,7 +3287,7 @@ class PerssonModelGUI_V2:
             log_aT_fit = -wlf_result['C1'] * (T_fit - T_ref) / (wlf_result['C2'] + (T_fit - T_ref))
             self.ax_mc_aT.plot(T_fit, log_aT_fit, 'r-', linewidth=2,
                               label=f"WLF (C1={wlf_result['C1']:.2f}, C2={wlf_result['C2']:.1f})")
-        self.ax_mc_aT.legend(fontsize=8)
+        self.ax_mc_aT.legend(fontsize=11)
         self.ax_mc_aT.axhline(0, color='gray', linestyle=':', alpha=0.5)
         self.ax_mc_aT.axvline(T_ref, color='green', linestyle='--', alpha=0.5, label=f'Tref={T_ref}°C')
 
@@ -3307,7 +3307,7 @@ class PerssonModelGUI_V2:
 
         self.ax_mc_bT.axhline(1, color='gray', linestyle=':', alpha=0.5)
         self.ax_mc_bT.axvline(T_ref, color='green', linestyle='--', alpha=0.5)
-        self.ax_mc_bT.legend(fontsize=8)
+        self.ax_mc_bT.legend(fontsize=11)
 
         self.fig_mc.tight_layout()
         self.canvas_mc.draw()
@@ -3441,7 +3441,7 @@ class PerssonModelGUI_V2:
             self.ax_mc_master.plot(self.master_curve_gen.master_f, self.master_curve_gen.master_E_loss,
                                   'k--', linewidth=2, label="E'' (Master)")
 
-        self.ax_mc_master.legend(fontsize=8, loc='best')
+        self.ax_mc_master.legend(fontsize=11, loc='best')
         self.fig_mc.tight_layout()
         self.canvas_mc.draw()
 
@@ -3683,7 +3683,7 @@ class PerssonModelGUI_V2:
         ttk.Label(instruction, text=
             "계산 매개변수를 설정합니다: 압력, 속도 범위 (로그 스케일), 온도.\n"
             "속도 범위: 0.0001~10 m/s (로그 간격)로 주파수 스윕을 수행합니다.",
-            font=('Segoe UI', 10)
+            font=('Segoe UI', 13)
         ).pack()
 
         # Create main container with 2 columns
@@ -3797,7 +3797,7 @@ class PerssonModelGUI_V2:
         norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
         ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
         ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.5625",
-                  font=('Segoe UI', 8), foreground='#64748B').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
+                  font=('Segoe UI', 11), foreground='#64748B').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
         row += 1
 
         # ===== h'rms (ξ) / q1 모드 선택 섹션 =====
@@ -3812,7 +3812,7 @@ class PerssonModelGUI_V2:
         # 설명 라벨
         desc_label = ttk.Label(mode_frame,
             text="※ h'rms = ξ = RMS slope (경사), ξ² = 2π∫k³C(k)dk",
-            font=('Segoe UI', 8), foreground='#64748B')
+            font=('Segoe UI', 11), foreground='#64748B')
         desc_label.pack(fill=tk.X, pady=(0, 5))
 
         # 모드 선택 라디오 버튼
@@ -3880,7 +3880,7 @@ class PerssonModelGUI_V2:
         ttk.Label(q1_result_row, text="→ 계산된 q1:").pack(side=tk.LEFT)
         self.calculated_q1_var = tk.StringVar(value="(계산 후 표시)")
         self.calculated_q1_label = ttk.Label(q1_result_row, textvariable=self.calculated_q1_var,
-                                             font=('Arial', 9, 'bold'), foreground='#2563EB')
+                                             font=('Arial', 12, 'bold'), foreground='#2563EB')
         self.calculated_q1_label.pack(side=tk.LEFT, padx=5)
         ttk.Label(q1_result_row, text="(1/m)").pack(side=tk.LEFT)
 
@@ -3890,7 +3890,7 @@ class PerssonModelGUI_V2:
         ttk.Label(hrms_result_row, text="→ 계산된 h'rms (ξ):").pack(side=tk.LEFT)
         self.calculated_hrms_var = tk.StringVar(value="(계산 후 표시)")
         self.calculated_hrms_label = ttk.Label(hrms_result_row, textvariable=self.calculated_hrms_var,
-                                               font=('Arial', 9, 'bold'), foreground='#059669')
+                                               font=('Arial', 12, 'bold'), foreground='#059669')
         self.calculated_hrms_label.pack(side=tk.LEFT, padx=5)
         ttk.Label(hrms_result_row, text="(무차원)").pack(side=tk.LEFT)
 
@@ -3920,52 +3920,70 @@ class PerssonModelGUI_V2:
         self.calc_status_label = ttk.Label(
             status_display_frame,
             text="대기 중 | v = - m/s | q 범위 = - ~ - (1/m) | f 범위 = - ~ - (Hz)",
-            font=('Arial', 10, 'bold'),
+            font=('Arial', 13, 'bold'),
             foreground='#2563EB'
         )
         self.calc_status_label.pack()
 
-        # Create figure for calculation progress with three vertical subplots
-        self.fig_calc_progress = Figure(figsize=(8, 15), dpi=100)
+        # Create figure for calculation progress with 2x2 subplots
+        self.fig_calc_progress = Figure(figsize=(12, 10), dpi=100)
 
-        # Top: PSD(q) - wavenumber based (static)
-        self.ax_psd_q = self.fig_calc_progress.add_subplot(311)
+        # Top-left: PSD(q) with integration progress
+        self.ax_psd_q = self.fig_calc_progress.add_subplot(221)
 
-        # Middle: DMA master curve (animated with frequency range)
-        self.ax_dma_progress = self.fig_calc_progress.add_subplot(312)
+        # Top-right: DMA master curve with frequency window
+        self.ax_dma_progress = self.fig_calc_progress.add_subplot(222)
 
-        # Bottom: PSD(f) - frequency based (animated)
-        self.ax_psd_f = self.fig_calc_progress.add_subplot(313)
+        # Bottom-left: G(q) curves accumulating per velocity (KEY)
+        self.ax_gq_live = self.fig_calc_progress.add_subplot(223)
+
+        # Bottom-right: Contact area A(q)/A₀ evolution
+        self.ax_contact_live = self.fig_calc_progress.add_subplot(224)
 
         self.canvas_calc_progress = FigureCanvasTkAgg(self.fig_calc_progress, viz_frame)
         self.canvas_calc_progress.draw()
         self.canvas_calc_progress.get_tk_widget().pack(fill=tk.BOTH, expand=True)
 
-        # Initialize PSD(q) plot - top
-        self.ax_psd_q.set_xlabel('파수 q (1/m)', fontsize=9, fontweight='bold')
-        self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontsize=9, fontweight='bold')
+        # Initialize PSD(q) plot - top-left
+        self.ax_psd_q.set_xlabel('파수 q (1/m)', fontweight='bold')
+        self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontweight='bold')
         self.ax_psd_q.set_xscale('log')
         self.ax_psd_q.set_yscale('log')
         self.ax_psd_q.grid(True, alpha=0.3)
-        self.ax_psd_q.set_title('PSD (파수 기준)', fontsize=10, fontweight='bold')
+        self.ax_psd_q.set_title('PSD C(q)', fontweight='bold')
 
-        # Initialize DMA plot - middle
-        self.ax_dma_progress.set_xlabel('주파수 f (Hz)', fontsize=9, fontweight='bold')
-        self.ax_dma_progress.set_ylabel('탄성률 (Pa)', fontsize=9, fontweight='bold')
+        # Initialize DMA plot - top-right
+        self.ax_dma_progress.set_xlabel('주파수 f (Hz)', fontweight='bold')
+        self.ax_dma_progress.set_ylabel('탄성률 (Pa)', fontweight='bold')
         self.ax_dma_progress.set_xscale('log')
         self.ax_dma_progress.set_yscale('log')
         self.ax_dma_progress.grid(True, alpha=0.3)
-        self.ax_dma_progress.set_title('DMA 마스터 곡선', fontsize=10, fontweight='bold')
+        self.ax_dma_progress.set_title('DMA 마스터 곡선', fontweight='bold')
 
-        # Initialize PSD(f) plot - bottom
-        self.ax_psd_f.set_xlabel('주파수 f (Hz)', fontsize=9, fontweight='bold')
-        self.ax_psd_f.set_ylabel('PSD C(f) (변환)', fontsize=9, fontweight='bold')
-        self.ax_psd_f.set_xscale('log')
-        self.ax_psd_f.set_yscale('log')
-        self.ax_psd_f.grid(True, alpha=0.3)
-        self.ax_psd_f.set_title('PSD (주파수 기준)', fontsize=10, fontweight='bold')
+        # Initialize G(q) live plot - bottom-left
+        self.ax_gq_live.set_xlabel('파수 q (1/m)', fontweight='bold')
+        self.ax_gq_live.set_ylabel('G(q)', fontweight='bold')
+        self.ax_gq_live.set_xscale('log')
+        self.ax_gq_live.set_yscale('log')
+        self.ax_gq_live.grid(True, alpha=0.3)
+        self.ax_gq_live.set_title('실시간 G(q) 적분 누적', fontweight='bold')
+        self.ax_gq_live.text(0.5, 0.5, '계산 대기 중...',
+                             transform=self.ax_gq_live.transAxes,
+                             ha='center', va='center', fontsize=14,
+                             color='#94A3B8', style='italic')
 
-        self.fig_calc_progress.tight_layout()
+        # Initialize contact area live plot - bottom-right
+        self.ax_contact_live.set_xlabel('파수 q (1/m)', fontweight='bold')
+        self.ax_contact_live.set_ylabel('A(q)/A₀', fontweight='bold')
+        self.ax_contact_live.set_xscale('log')
+        self.ax_contact_live.grid(True, alpha=0.3)
+        self.ax_contact_live.set_title('접촉 면적비 A(q)/A₀ 변화', fontweight='bold')
+        self.ax_contact_live.text(0.5, 0.5, '계산 대기 중...',
+                                  transform=self.ax_contact_live.transAxes,
+                                  ha='center', va='center', fontsize=14,
+                                  color='#94A3B8', style='italic')
+
+        self.fig_calc_progress.tight_layout(pad=2.5)
 
         # Save button for calculation progress plot in left panel
         save_btn_frame = ttk.Frame(left_panel)
@@ -4187,7 +4205,7 @@ class PerssonModelGUI_V2:
         ttk.Label(instruction, text=
             "G(q,v) 2D 행렬 계산 결과: 다중 속도 G(q) 곡선, 히트맵, 접촉 면적.\n"
             "모든 속도가 컬러 코딩되어 하나의 그래프에 표시됩니다.",
-            font=('Segoe UI', 10)
+            font=('Segoe UI', 13)
         ).pack()
 
         # Plot area
@@ -4217,13 +4235,13 @@ class PerssonModelGUI_V2:
         C = self.COLORS
         self.status_var = tk.StringVar(value="Ready")
 
-        status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=28)
+        status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=36)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
         status_frame.pack_propagate(False)
 
         # Status indicator dot
         tk.Label(status_frame, text="\u25CF", bg=C['statusbar_bg'],
-                 fg=C['success'], font=('Segoe UI', 8)).pack(side=tk.LEFT, padx=(12, 4))
+                 fg=C['success'], font=('Segoe UI', 11)).pack(side=tk.LEFT, padx=(12, 4))
 
         # Status text
         tk.Label(status_frame, textvariable=self.status_var,
@@ -4761,25 +4779,26 @@ class PerssonModelGUI_V2:
             except (ValueError, AttributeError):
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
 
-            # Initialize calculation progress plots (3 subplots)
+            # Initialize calculation progress plots (2x2 layout)
             try:
-                # Clear all three subplots
+                # Clear all four subplots
                 self.ax_psd_q.clear()
                 self.ax_dma_progress.clear()
-                self.ax_psd_f.clear()
+                self.ax_gq_live.clear()
+                self.ax_contact_live.clear()
 
-                # TOP SUBPLOT: Plot PSD(q) - wavenumber based (static)
-                # Include plateau region (q < q0) if available
+                # Colour map for velocity-indexed curves
+                _n_v_total = len(v_array)
+                _cmap = plt.get_cmap('plasma')
+
+                # TOP-LEFT: PSD(q) with integration range
                 if self.psd_model is not None:
-                    # Determine plot range including plateau region
                     if hasattr(self.psd_model, 'q_data') and len(self.psd_model.q_data) > 0:
-                        # Use full q_data range which includes plateau
                         q_plot_min = min(self.psd_model.q_data)
                         q_plot_max = max(self.psd_model.q_data[self.psd_model.q_data <= q_max]) if np.any(self.psd_model.q_data <= q_max) else q_max
                         q_plot_max = max(q_plot_max, q_max)
                     elif hasattr(self.psd_model, 'q0'):
-                        # If q0 is defined, extend plot range to include plateau
-                        q_plot_min = self.psd_model.q0 / 10  # Show some plateau region
+                        q_plot_min = self.psd_model.q0 / 10
                         q_plot_max = q_max
                     else:
                         q_plot_min = q_min
@@ -4787,165 +4806,213 @@ class PerssonModelGUI_V2:
 
                     q_plot = np.logspace(np.log10(q_plot_min), np.log10(q_plot_max), 300)
                     C_q = self.psd_model(q_plot)
+                    self.ax_psd_q.loglog(q_plot, C_q, color='#3B82F6', linewidth=2.5, label='C(q)')
 
-                    # Plot full PSD including plateau
-                    self.ax_psd_q.loglog(q_plot, C_q, 'b-', linewidth=2, label='PSD C(q)')
-
-                    # Highlight plateau region (q < q0) if q0 is defined
                     if hasattr(self.psd_model, 'q0'):
                         q0_psd = self.psd_model.q0
                         if q_plot_min < q0_psd:
-                            self.ax_psd_q.axvspan(q_plot_min, q0_psd, alpha=0.2, facecolor='yellow',
-                                                 edgecolor='orange', linewidth=1, label=f'플래토 (q < q0={q0_psd:.1e})')
-                            # Mark q0 with vertical line
-                            self.ax_psd_q.axvline(x=q0_psd, color='orange', linestyle='--', linewidth=1.5, alpha=0.7)
+                            self.ax_psd_q.axvspan(q_plot_min, q0_psd, alpha=0.10, facecolor='#F59E0B',
+                                                 label=f'플래토 (q<q₀)')
+                            self.ax_psd_q.axvline(x=q0_psd, color='#F59E0B', linestyle='--', linewidth=1.2, alpha=0.6)
 
-                    # Highlight the q range being used for calculation
-                    self.ax_psd_q.axvspan(q_min, q_max, alpha=0.15, facecolor='cyan',
-                                         edgecolor='blue', linewidth=1.5, label=f'계산 q 범위')
+                    # Integration range shading
+                    self.ax_psd_q.axvspan(q_min, q_max, alpha=0.08, facecolor='#06B6D4',
+                                         edgecolor='#0891B2', linewidth=1.5, label='적분 q 범위')
+                    self.ax_psd_q.set_xlabel('파수 q (1/m)', fontweight='bold')
+                    self.ax_psd_q.set_ylabel('C(q) (m⁴)', fontweight='bold')
+                    self.ax_psd_q.set_xscale('log'); self.ax_psd_q.set_yscale('log')
+                    self.ax_psd_q.grid(True, alpha=0.25, linewidth=0.5)
+                    self.ax_psd_q.legend(loc='upper right', fontsize=10)
+                    self.ax_psd_q.set_title('PSD C(q) — 적분 범위 표시', fontweight='bold')
 
-                    self.ax_psd_q.set_xlabel('파수 q (1/m)', fontsize=10, fontweight='bold')
-                    self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontsize=10, fontweight='bold')
-                    self.ax_psd_q.set_xscale('log')
-                    self.ax_psd_q.set_yscale('log')
-                    self.ax_psd_q.grid(True, alpha=0.3)
-                    self.ax_psd_q.legend(loc='upper right', fontsize=7)
-                    self.ax_psd_q.set_title('PSD (파수 기준) - 플래토 영역 포함', fontsize=11, fontweight='bold')
-
-                # MIDDLE SUBPLOT: Plot DMA master curve
+                # TOP-RIGHT: DMA master curve
                 if self.material is not None:
                     omega_plot = np.logspace(-2, 8, 200)
-                    f_plot = omega_plot / (2 * np.pi)  # Convert to Hz
+                    f_plot = omega_plot / (2 * np.pi)
                     E_prime = self.material.get_storage_modulus(omega_plot)
                     E_double_prime = self.material.get_loss_modulus(omega_plot)
+                    self.ax_dma_progress.plot(f_plot, E_prime, color='#3B82F6', linewidth=2.5, label="E'")
+                    self.ax_dma_progress.plot(f_plot, E_double_prime, color='#EF4444', linewidth=2, linestyle='--', label="E''")
+                    self.ax_dma_progress.set_xlabel('주파수 f (Hz)', fontweight='bold')
+                    self.ax_dma_progress.set_ylabel('탄성률 (Pa)', fontweight='bold')
+                    self.ax_dma_progress.set_xscale('log'); self.ax_dma_progress.set_yscale('log')
+                    self.ax_dma_progress.grid(True, alpha=0.25, linewidth=0.5)
+                    self.ax_dma_progress.legend(loc='best')
+                    self.ax_dma_progress.set_title('DMA 마스터 곡선 — 주파수 윈도우', fontweight='bold')
 
-                    self.ax_dma_progress.plot(f_plot, E_prime, 'b-', linewidth=2, label="E' (저장 탄성률)")
-                    self.ax_dma_progress.plot(f_plot, E_double_prime, 'r--', linewidth=2, label="E'' (손실 탄성률)")
+                # BOTTOM-LEFT: G(q) live accumulation placeholder
+                self.ax_gq_live.set_xlabel('파수 q (1/m)', fontweight='bold')
+                self.ax_gq_live.set_ylabel('G(q)', fontweight='bold')
+                self.ax_gq_live.set_xscale('log'); self.ax_gq_live.set_yscale('log')
+                self.ax_gq_live.grid(True, alpha=0.25, linewidth=0.5)
+                self.ax_gq_live.set_title('실시간 G(q) 적분 누적', fontweight='bold')
+                self.ax_gq_live.text(0.5, 0.5, '적분 시작 대기 중 …',
+                                     transform=self.ax_gq_live.transAxes,
+                                     ha='center', va='center', fontsize=14,
+                                     color='#94A3B8', style='italic')
 
-                    self.ax_dma_progress.set_xlabel('주파수 f (Hz)', fontsize=10, fontweight='bold')
-                    self.ax_dma_progress.set_ylabel('탄성률 (Pa)', fontsize=10, fontweight='bold')
-                    self.ax_dma_progress.set_xscale('log')
-                    self.ax_dma_progress.set_yscale('log')
-                    self.ax_dma_progress.grid(True, alpha=0.3)
-                    self.ax_dma_progress.legend(loc='best', fontsize=8)
-                    self.ax_dma_progress.set_title('DMA 마스터 곡선', fontsize=11, fontweight='bold')
+                # BOTTOM-RIGHT: Contact area placeholder
+                self.ax_contact_live.set_xlabel('파수 q (1/m)', fontweight='bold')
+                self.ax_contact_live.set_ylabel('A(q)/A₀', fontweight='bold')
+                self.ax_contact_live.set_xscale('log')
+                self.ax_contact_live.grid(True, alpha=0.25, linewidth=0.5)
+                self.ax_contact_live.set_title('접촉 면적비 A(q)/A₀ 변화', fontweight='bold')
+                self.ax_contact_live.text(0.5, 0.5, '적분 시작 대기 중 …',
+                                          transform=self.ax_contact_live.transAxes,
+                                          ha='center', va='center', fontsize=14,
+                                          color='#94A3B8', style='italic')
 
-                # BOTTOM SUBPLOT: Initialize PSD(f) plot - will be updated during animation
-                if self.psd_model is not None:
-                    # Plot a placeholder that will be updated during calculation
-                    # Use initial velocity to show what PSD(f) looks like
-                    v_init = v_min
-                    f_plot_range = np.logspace(-3, 6, 200)  # Wide frequency range
-                    # Convert f to q: q = 2*pi*f/v
-                    q_from_f = 2 * np.pi * f_plot_range / v_init
-                    # Evaluate PSD at these q values (only for valid range)
-                    C_f_init = np.zeros_like(f_plot_range)
-                    valid_mask = (q_from_f >= q_min) & (q_from_f <= q_max)
-                    C_f_init[valid_mask] = self.psd_model(q_from_f[valid_mask])
-                    C_f_init[~valid_mask] = np.nan
-
-                    self.ax_psd_f.loglog(f_plot_range, C_f_init, 'g-', linewidth=2,
-                                        label=f'PSD(f) @ v={v_init:.4f} m/s', alpha=0.3)
-
-                    self.ax_psd_f.set_xlabel('주파수 f (Hz)', fontsize=10, fontweight='bold')
-                    self.ax_psd_f.set_ylabel('PSD C(f)', fontsize=10, fontweight='bold')
-                    self.ax_psd_f.set_xscale('log')
-                    self.ax_psd_f.set_yscale('log')
-                    self.ax_psd_f.grid(True, alpha=0.3)
-                    self.ax_psd_f.legend(loc='best', fontsize=8)
-                    self.ax_psd_f.set_title('PSD (주파수 기준)', fontsize=11, fontweight='bold')
-
-                self.fig_calc_progress.tight_layout()
+                self.fig_calc_progress.tight_layout(pad=2.5)
                 self.canvas_calc_progress.draw()
             except Exception as e:
                 print(f"Error initializing plots: {e}")
                 import traceback
                 traceback.print_exc()
 
-            # Calculate G(q,v) 2D matrix with real-time visualization
-            def progress_callback(percent):
+            # ── Real-time visualisation callback ──────────────────────
+            # Track whether we've cleared the placeholder text
+            _placeholder_cleared = {'gq': False, 'contact': False}
+            # Keep track of previously swept DMA bands for trail effect
+            _prev_dma_bands = []
+
+            def progress_callback(percent, v_idx=None, current_v=None,
+                                  G_col=None, P_col=None):
                 self.progress_var.set(percent)
-                # Update status to show which velocity is being calculated
-                v_idx = int(percent / 100 * len(v_array))
-                if v_idx < len(v_array):
-                    current_v = v_array[v_idx]
-                    # Calculate frequency and wavenumber ranges
-                    omega_min = q_array[0] * current_v
-                    omega_max = q_array[-1] * current_v
-                    f_min = omega_min / (2 * np.pi)  # Convert to Hz
-                    f_max = omega_max / (2 * np.pi)  # Convert to Hz
-                    q_min_used = q_array[0]
-                    q_max_used = q_array[-1]
 
-                    # Update main status bar
-                    self.status_var.set(f"계산 중... v={current_v:.4f} m/s (f: {f_min:.2e} ~ {f_max:.2e} Hz)")
+                # Derive v_idx / current_v from percent if caller sent
+                # only percent (legacy fallback)
+                if v_idx is None:
+                    v_idx = max(0, int(percent / 100 * _n_v_total) - 1)
+                if current_v is None:
+                    current_v = v_array[min(v_idx, len(v_array) - 1)]
 
-                    # Update calculation status label
-                    self.calc_status_label.config(
-                        text=f"계산 중 ({percent:.0f}%) | v = {current_v:.4f} m/s | "
-                             f"q 범위 = {q_min_used:.2e} ~ {q_max_used:.2e} (1/m) | "
-                             f"f 범위 = {f_min:.2e} ~ {f_max:.2e} (Hz)",
-                        foreground='red'
-                    )
+                omega_min_cb = q_array[0] * current_v
+                omega_max_cb = q_array[-1] * current_v
+                f_min_cb = omega_min_cb / (2 * np.pi)
+                f_max_cb = omega_max_cb / (2 * np.pi)
 
-                    # Highlight frequency range on DMA plot (middle subplot)
+                # ── Status labels ─────────────────────────────
+                self.status_var.set(
+                    f"적분 중… v={current_v:.2e} m/s  "
+                    f"({v_idx+1}/{_n_v_total})  "
+                    f"f: {f_min_cb:.1e}–{f_max_cb:.1e} Hz"
+                )
+                self.calc_status_label.config(
+                    text=(f"적분 진행 {percent:.0f}%  |  "
+                          f"v = {current_v:.2e} m/s  ({v_idx+1}/{_n_v_total})  |  "
+                          f"f = {f_min_cb:.1e} ~ {f_max_cb:.1e} Hz"),
+                    foreground='#DC2626'
+                )
+
+                _color = _cmap(v_idx / max(1, _n_v_total - 1))
+
+                # ── DMA frequency window (top-right) ──────────
+                try:
+                    # Fade previous bands
+                    for old_band in _prev_dma_bands:
+                        try:
+                            old_band.set_alpha(max(0.03, old_band.get_alpha() * 0.5))
+                        except Exception:
+                            pass
+                    # Remove any current highlight
+                    for artist in self.ax_dma_progress.collections[:]:
+                        if hasattr(artist, '_is_highlight_current'):
+                            artist.remove()
+                    # Draw new active band with velocity colour
+                    band = self.ax_dma_progress.axvspan(
+                        f_min_cb, f_max_cb,
+                        alpha=0.25, facecolor=_color,
+                        edgecolor=(*_color[:3], 0.8), linewidth=1.5,
+                        zorder=0)
+                    band._is_highlight_current = True
+                    _prev_dma_bands.append(band)
+                except Exception:
+                    pass
+
+                # ── G(q) live accumulation (bottom-left) ──────
+                if G_col is not None:
                     try:
-                        # Remove ALL previous highlight bands from DMA plot
-                        for artist in self.ax_dma_progress.collections[:]:
-                            if hasattr(artist, '_is_highlight'):
-                                artist.remove()
+                        if not _placeholder_cleared['gq']:
+                            self.ax_gq_live.clear()
+                            self.ax_gq_live.set_xlabel('파수 q (1/m)', fontweight='bold')
+                            self.ax_gq_live.set_ylabel('G(q)', fontweight='bold')
+                            self.ax_gq_live.set_xscale('log')
+                            self.ax_gq_live.set_yscale('log')
+                            self.ax_gq_live.grid(True, alpha=0.25, linewidth=0.5)
+                            self.ax_gq_live.set_title('실시간 G(q) 적분 누적', fontweight='bold')
+                            _placeholder_cleared['gq'] = True
 
-                        # Add vertical band to show current frequency range on DMA
-                        band_dma = self.ax_dma_progress.axvspan(f_min, f_max,
-                                                                alpha=0.3, facecolor='yellow',
-                                                                edgecolor='orange', linewidth=2,
-                                                                zorder=0)  # Behind curves
-                        band_dma._is_highlight = True
+                        # Fade already-plotted curves
+                        for line in self.ax_gq_live.lines:
+                            line.set_alpha(max(0.12, line.get_alpha() * 0.7))
 
-                        self.canvas_calc_progress.draw()
-                    except Exception as e:
-                        print(f"Error updating DMA highlight: {e}")
+                        # Plot fresh G(q) curve
+                        valid = G_col > 0
+                        if np.any(valid):
+                            self.ax_gq_live.loglog(
+                                q_array[valid], G_col[valid],
+                                color=_color, linewidth=2.2, alpha=0.92,
+                                label=f'v={current_v:.1e}')
 
-                    # Update PSD(f) plot with current velocity (bottom subplot)
+                            # Fill under the latest curve for emphasis
+                            self.ax_gq_live.fill_between(
+                                q_array[valid], G_col[valid],
+                                alpha=0.08, color=_color)
+
+                        # Legend only every few curves to avoid clutter
+                        if v_idx % max(1, _n_v_total // 6) == 0 or v_idx == _n_v_total - 1:
+                            handles = [l for l in self.ax_gq_live.lines
+                                       if l.get_alpha() and l.get_alpha() > 0.5]
+                            if handles:
+                                self.ax_gq_live.legend(
+                                    handles=handles[-6:], loc='upper left',
+                                    fontsize=9, framealpha=0.7)
+                    except Exception:
+                        pass
+
+                # ── Contact area live (bottom-right) ──────────
+                if P_col is not None:
                     try:
-                        # Remove previous PSD(f) lines and highlights
-                        for line in self.ax_psd_f.lines[:]:
-                            if hasattr(line, '_is_psd_f_line'):
-                                line.remove()
-                        for artist in self.ax_psd_f.collections[:]:
-                            if hasattr(artist, '_is_highlight'):
-                                artist.remove()
+                        if not _placeholder_cleared['contact']:
+                            self.ax_contact_live.clear()
+                            self.ax_contact_live.set_xlabel('파수 q (1/m)', fontweight='bold')
+                            self.ax_contact_live.set_ylabel('A(q)/A₀', fontweight='bold')
+                            self.ax_contact_live.set_xscale('log')
+                            self.ax_contact_live.grid(True, alpha=0.25, linewidth=0.5)
+                            self.ax_contact_live.set_title('접촉 면적비 A(q)/A₀ 변화', fontweight='bold')
+                            _placeholder_cleared['contact'] = True
 
-                        # Plot PSD(f) for current velocity
-                        f_plot_range = np.logspace(np.log10(f_min) - 2, np.log10(f_max) + 2, 300)
-                        # Convert f to q: q = 2*pi*f/v
-                        q_from_f = 2 * np.pi * f_plot_range / current_v
-                        # Evaluate PSD at these q values
-                        C_f = np.zeros_like(f_plot_range)
-                        valid_mask = (q_from_f >= q_array[0]) & (q_from_f <= q_array[-1])
-                        if np.any(valid_mask):
-                            C_f[valid_mask] = self.psd_model(q_from_f[valid_mask])
-                            C_f[~valid_mask] = np.nan
+                        # Fade previous curves
+                        for line in self.ax_contact_live.lines:
+                            line.set_alpha(max(0.12, line.get_alpha() * 0.7))
 
-                            # Plot PSD(f) curve
-                            line = self.ax_psd_f.loglog(f_plot_range, C_f, 'g-', linewidth=2,
-                                                       label=f'v={current_v:.4f} m/s', alpha=0.7)[0]
-                            line._is_psd_f_line = True
+                        valid = np.isfinite(P_col) & (P_col > 0)
+                        if np.any(valid):
+                            self.ax_contact_live.plot(
+                                q_array[valid], P_col[valid],
+                                color=_color, linewidth=2.2, alpha=0.92,
+                                label=f'v={current_v:.1e}')
 
-                            # Highlight the frequency range being used
-                            band_psd = self.ax_psd_f.axvspan(f_min, f_max,
-                                                            alpha=0.3, facecolor='yellow',
-                                                            edgecolor='orange', linewidth=2,
-                                                            zorder=0)
-                            band_psd._is_highlight = True
+                            self.ax_contact_live.fill_between(
+                                q_array[valid], P_col[valid],
+                                alpha=0.06, color=_color)
 
-                            self.ax_psd_f.legend(loc='best', fontsize=8)
+                        if v_idx % max(1, _n_v_total // 6) == 0 or v_idx == _n_v_total - 1:
+                            handles = [l for l in self.ax_contact_live.lines
+                                       if l.get_alpha() and l.get_alpha() > 0.5]
+                            if handles:
+                                self.ax_contact_live.legend(
+                                    handles=handles[-6:], loc='upper right',
+                                    fontsize=9, framealpha=0.7)
+                    except Exception:
+                        pass
 
-                        self.canvas_calc_progress.draw()
-                    except Exception as e:
-                        print(f"Error updating PSD(f): {e}")
-                        import traceback
-                        traceback.print_exc()
+                # Redraw canvas once per callback
+                try:
+                    self.fig_calc_progress.tight_layout(pad=2.5)
+                    self.canvas_calc_progress.draw()
+                except Exception:
+                    pass
 
                 self.root.update()
 
@@ -4953,27 +5020,33 @@ class PerssonModelGUI_V2:
                 q_array, v_array, q_min=q_min, progress_callback=progress_callback
             )
 
-            # Clear highlights after calculation and show completion message
+            # ── Post-calculation: clean up and finalise plots ─────
             try:
-                # Remove all highlights from DMA plot
+                # Remove transient DMA bands
                 for artist in self.ax_dma_progress.collections[:]:
-                    if hasattr(artist, '_is_highlight'):
+                    if hasattr(artist, '_is_highlight_current') or hasattr(artist, '_is_highlight'):
                         artist.remove()
+                for band in _prev_dma_bands:
+                    try:
+                        band.remove()
+                    except Exception:
+                        pass
 
-                # Remove all highlights and lines from PSD(f) plot
-                for line in self.ax_psd_f.lines[:]:
-                    if hasattr(line, '_is_psd_f_line'):
-                        line.remove()
-                for artist in self.ax_psd_f.collections[:]:
-                    if hasattr(artist, '_is_highlight'):
-                        artist.remove()
+                # Final G(q) and Contact area — keep accumulated curves as-is,
+                # but ensure last curves are fully opaque
+                for line in self.ax_gq_live.lines[-1:]:
+                    line.set_alpha(1.0)
+                    line.set_linewidth(2.5)
+                for line in self.ax_contact_live.lines[-1:]:
+                    line.set_alpha(1.0)
+                    line.set_linewidth(2.5)
 
-                # Update status label to show completion
                 self.calc_status_label.config(
-                    text=f"계산 완료! | 총 {len(v_array)}개 속도 × {len(q_array)}개 파수",
+                    text=f"계산 완료!  |  총 {len(v_array)}개 속도 × {len(q_array)}개 파수",
                     foreground='#059669'
                 )
 
+                self.fig_calc_progress.tight_layout(pad=2.5)
                 self.canvas_calc_progress.draw()
             except Exception as e:
                 print(f"Error clearing highlights: {e}")
@@ -5044,10 +5117,10 @@ class PerssonModelGUI_V2:
         ax6 = self.fig_results.add_subplot(2, 3, 6)
 
         # Standard font settings for all plots
-        TITLE_FONT = 9
-        LABEL_FONT = 9
-        LEGEND_FONT = 7
-        TITLE_PAD = 5
+        TITLE_FONT = 13
+        LABEL_FONT = 12
+        LEGEND_FONT = 10
+        TITLE_PAD = 8
 
         # Plot 1: Multi-velocity G(q) curves (다중 속도 G(q) 곡선)
         cmap = plt.get_cmap('viridis')
@@ -5271,7 +5344,7 @@ class PerssonModelGUI_V2:
                       '높을수록 → 고무가 단단 → 응력 불균일 증가\n'
                       '낮을수록 → 고무가 말랑 → 완전 접촉에 가까움')
             props = dict(boxstyle='round', facecolor='wheat', alpha=0.3)
-            ax5.text(0.98, 0.02, textstr, transform=ax5.transAxes, fontsize=7,
+            ax5.text(0.98, 0.02, textstr, transform=ax5.transAxes, fontsize=10,
                     verticalalignment='bottom', horizontalalignment='right', bbox=props)
 
             # Fix axis formatter
@@ -5380,7 +5453,7 @@ class PerssonModelGUI_V2:
                           f"(목표 {target_slope_rms} 미달)")
 
             props = dict(boxstyle='round', facecolor='lightyellow', alpha=0.8, edgecolor='black')
-            ax6.text(0.02, 0.98, textstr, transform=ax6.transAxes, fontsize=8,
+            ax6.text(0.02, 0.98, textstr, transform=ax6.transAxes, fontsize=11,
                     verticalalignment='top', bbox=props)
 
             # Fix axis formatter
@@ -5390,7 +5463,7 @@ class PerssonModelGUI_V2:
                     ha='center', va='center', transform=ax6.transAxes, fontsize=LABEL_FONT)
             ax6.set_title('(f) Parseval 정리', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
 
-        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=11, y=0.98)
+        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=14, y=0.98)
         self.fig_results.tight_layout(rect=[0, 0.01, 1, 0.97], pad=1.5, h_pad=2.0, w_pad=1.5)
         self.canvas_results.draw()
 
@@ -5572,8 +5645,8 @@ class PerssonModelGUI_V2:
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Title
-        ttk.Label(main_frame, text="Available Graph Data", font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        ttk.Label(main_frame, text="Select data to export as txt files", font=('Segoe UI', 10)).pack(anchor=tk.W)
+        ttk.Label(main_frame, text="Available Graph Data", font=('Arial', 15, 'bold')).pack(anchor=tk.W)
+        ttk.Label(main_frame, text="Select data to export as txt files", font=('Segoe UI', 13)).pack(anchor=tk.W)
 
         # Listbox with scrollbar
         list_frame = ttk.Frame(main_frame)
@@ -5628,7 +5701,7 @@ class PerssonModelGUI_V2:
 
         # Status
         self.export_status_var = tk.StringVar(value="Select data and click Export")
-        ttk.Label(main_frame, textvariable=self.export_status_var, font=('Segoe UI', 10)).pack(anchor=tk.W)
+        ttk.Label(main_frame, textvariable=self.export_status_var, font=('Segoe UI', 13)).pack(anchor=tk.W)
 
     def _export_selected_graph_data(self, popup):
         """Export selected graph data to txt files."""
@@ -5946,7 +6019,7 @@ $\begin{array}{lcc}
             "  ξ²(q) = 2π ∫[q0→q] k³C(k)dk\n"
             "  ε(q) = factor × ξ(q)"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 13), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. Calculation Settings
         settings_frame = ttk.LabelFrame(left_frame, text="계산 설정", padding=5)
@@ -5955,12 +6028,12 @@ $\begin{array}{lcc}
         # Strain factor
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
-        ttk.Label(row1, text="Strain Factor:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="Strain Factor:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.strain_factor_var = tk.StringVar(value="0.5")
         ttk.Entry(row1, textvariable=self.strain_factor_var, width=8).pack(side=tk.RIGHT)
 
         ttk.Label(settings_frame, text="(ε = factor × ξ, Persson 권장: 0.5~1.0)",
-                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(anchor=tk.W)
 
         # q range - Tab 3 (계산 설정)의 q_min/q_max 사용
         q_frame = ttk.LabelFrame(settings_frame, text="q 범위 (계산 설정 탭 연동)", padding=3)
@@ -5968,20 +6041,20 @@ $\begin{array}{lcc}
 
         row_q1 = ttk.Frame(q_frame)
         row_q1.pack(fill=tk.X, pady=1)
-        ttk.Label(row_q1, text="q_min (1/m):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(row_q1, text="q_min (1/m):", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.rms_q_min_var = self.q_min_var  # 계산 설정 탭과 동일 변수 공유
-        ttk.Label(row_q1, textvariable=self.rms_q_min_var, font=('Segoe UI', 9, 'bold'),
+        ttk.Label(row_q1, textvariable=self.rms_q_min_var, font=('Segoe UI', 12, 'bold'),
                   foreground='#2563EB').pack(side=tk.RIGHT)
 
         row_q2 = ttk.Frame(q_frame)
         row_q2.pack(fill=tk.X, pady=1)
-        ttk.Label(row_q2, text="q_max (1/m):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(row_q2, text="q_max (1/m):", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.rms_q_max_var = self.q_max_var  # 계산 설정 탭과 동일 변수 공유
-        ttk.Label(row_q2, textvariable=self.rms_q_max_var, font=('Segoe UI', 9, 'bold'),
+        ttk.Label(row_q2, textvariable=self.rms_q_max_var, font=('Segoe UI', 12, 'bold'),
                   foreground='#2563EB').pack(side=tk.RIGHT)
 
         ttk.Label(q_frame, text="※ 계산 설정 탭의 q 범위가 자동 적용됨",
-                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 11), foreground='#64748B').pack(anchor=tk.W)
 
         # Target h'rms display (synced with Tab 2)
         target_frame = ttk.LabelFrame(settings_frame, text="목표 h'rms (Tab 2 연동)", padding=3)
@@ -5989,10 +6062,10 @@ $\begin{array}{lcc}
 
         row_target = ttk.Frame(target_frame)
         row_target.pack(fill=tk.X, pady=1)
-        ttk.Label(row_target, text="목표 ξ:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(row_target, text="목표 ξ:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.rms_target_xi_display = tk.StringVar(value="(Tab 2에서 설정)")
         self.rms_target_xi_label = ttk.Label(row_target, textvariable=self.rms_target_xi_display,
-                                             font=('Arial', 9, 'bold'), foreground='#2563EB')
+                                             font=('Arial', 12, 'bold'), foreground='#2563EB')
         self.rms_target_xi_label.pack(side=tk.RIGHT)
 
         # Refresh button for target value
@@ -6000,7 +6073,7 @@ $\begin{array}{lcc}
                    width=15).pack(pady=2)
 
         ttk.Label(target_frame, text="※ Tab 2에서 '목표 h'rms' 변경 시\n   이 버튼을 눌러 동기화하세요",
-                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 11), foreground='#64748B').pack(anchor=tk.W)
 
         # Calculate button
         calc_frame = ttk.Frame(settings_frame)
@@ -6248,7 +6321,7 @@ $\begin{array}{lcc}
             self.ax_rms_slope.axhline(y=xi_max_display, color='r', linestyle='--', alpha=0.5)
             self.ax_rms_slope.annotate(f'ξ_max={xi_max_display:.4f}',
                 xy=(q[-1], xi_max_display), xytext=(0.7, 0.9),
-                textcoords='axes fraction', fontsize=9,
+                textcoords='axes fraction', fontsize=12,
                 arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
 
         # Plot 2: Local Strain
@@ -6264,12 +6337,12 @@ $\begin{array}{lcc}
         self.ax_local_strain.axhline(y=1, color='g', linestyle=':', alpha=0.5, label='1%')
         self.ax_local_strain.axhline(y=10, color='orange', linestyle=':', alpha=0.5, label='10%')
         self.ax_local_strain.axhline(y=100, color='red', linestyle=':', alpha=0.5, label='100%')
-        self.ax_local_strain.legend(loc='lower right', fontsize=7)
+        self.ax_local_strain.legend(loc='lower right', fontsize=10)
 
         if len(strain) > 0 and strain[-1] > 0:
             self.ax_local_strain.annotate(f'ε_max={strain[-1]*100:.2f}%',
                 xy=(q[-1], strain[-1]*100), xytext=(0.7, 0.9),
-                textcoords='axes fraction', fontsize=9,
+                textcoords='axes fraction', fontsize=12,
                 arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
 
         # Plot 3: RMS Height
@@ -6284,7 +6357,7 @@ $\begin{array}{lcc}
         if len(hrms) > 0 and hrms[-1] > 0:
             self.ax_rms_height.annotate(f'h_rms={hrms[-1]*1e6:.2f}μm',
                 xy=(q[-1], hrms[-1]*1e6), xytext=(0.7, 0.9),
-                textcoords='axes fraction', fontsize=9,
+                textcoords='axes fraction', fontsize=12,
                 arrowprops=dict(arrowstyle='->', color='green', alpha=0.5))
 
         # Plot 4: PSD Reference
@@ -6463,7 +6536,7 @@ $\begin{array}{lcc}
 
         # ===== 내장 Strain Sweep 선택 =====
         ttk.Label(strain_frame, text="-- 내장 Strain Sweep --",
-                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 12, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         preset_ss_frame = ttk.Frame(strain_frame)
         preset_ss_frame.pack(fill=tk.X, pady=1)
@@ -6490,13 +6563,13 @@ $\begin{array}{lcc}
         ttk.Button(ss_btn_frame, text="-> 추가",
                    command=self._add_preset_strain_sweep, width=7).pack(side=tk.LEFT, padx=(3, 0))
 
-        self.strain_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Segoe UI', 9))
+        self.strain_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Segoe UI', 12))
         self.strain_file_label.pack(anchor=tk.W)
 
         # ===== 내장 f,g 곡선 선택 =====
         ttk.Separator(strain_frame, orient='horizontal').pack(fill=tk.X, pady=3)
         ttk.Label(strain_frame, text="-- 내장 f,g 곡선 --",
-                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 12, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         preset_fg_frame = ttk.Frame(strain_frame)
         preset_fg_frame.pack(fill=tk.X, pady=1)
@@ -6523,7 +6596,7 @@ $\begin{array}{lcc}
         ttk.Button(fg_btn_frame, text="-> 추가",
                    command=self._add_preset_fg, width=7).pack(side=tk.LEFT, padx=(3, 0))
 
-        self.fg_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Segoe UI', 9))
+        self.fg_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Segoe UI', 12))
         self.fg_file_label.pack(anchor=tk.W)
 
         # 2. f,g Calculation Settings
@@ -6533,10 +6606,10 @@ $\begin{array}{lcc}
         # Target frequency and E0 points in one row
         row1 = ttk.Frame(fg_settings_frame)
         row1.pack(fill=tk.X, pady=1)
-        ttk.Label(row1, text="주파수:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="주파수:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.fg_target_freq_var = tk.StringVar(value="1.0")
         ttk.Entry(row1, textvariable=self.fg_target_freq_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Label(row1, text="Hz  E0점:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="Hz  E0점:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.e0_points_var = tk.StringVar(value="1")
         ttk.Entry(row1, textvariable=self.e0_points_var, width=4).pack(side=tk.LEFT, padx=2)
 
@@ -6551,7 +6624,7 @@ $\begin{array}{lcc}
         # Grid max strain and Persson grid
         row2 = ttk.Frame(fg_settings_frame)
         row2.pack(fill=tk.X, pady=1)
-        ttk.Label(row2, text="Grid Max(%):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="Grid Max(%):", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.extend_strain_var = tk.StringVar(value="40")
         ttk.Entry(row2, textvariable=self.extend_strain_var, width=5).pack(side=tk.LEFT, padx=2)
         self.use_persson_grid_var = tk.BooleanVar(value=True)
@@ -6573,10 +6646,10 @@ $\begin{array}{lcc}
         # Split strain setting (RANK 1 default: 14.2%)
         split_row = ttk.Frame(persson_avg_frame)
         split_row.pack(fill=tk.X, pady=1)
-        ttk.Label(split_row, text="Split(%):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(split_row, text="Split(%):", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.split_strain_var = tk.StringVar(value="14.2")
         ttk.Entry(split_row, textvariable=self.split_strain_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Label(split_row, text="RANK1 최적", font=('Segoe UI', 8), foreground='#2563EB').pack(side=tk.LEFT, padx=2)
+        ttk.Label(split_row, text="RANK1 최적", font=('Segoe UI', 11), foreground='#2563EB').pack(side=tk.LEFT, padx=2)
 
         # RANK 1 weight info display
         info_frame = ttk.Frame(persson_avg_frame)
@@ -6585,7 +6658,7 @@ $\begin{array}{lcc}
             "f: low(0.02°C:10%,29.9°C:90%) high(29.9°C:30%,49.99°C:70%)\n"
             "g: low(0.02°C:35%,49.99°C:65%) high(29.9°C:55%,49.99°C:45%)"
         )
-        ttk.Label(info_frame, text=weight_info, font=('Arial', 6),
+        ttk.Label(info_frame, text=weight_info, font=('Arial', 9),
                   foreground='#64748B', justify=tk.LEFT).pack(anchor=tk.W)
 
         # Persson average f,g 계산 button
@@ -6600,7 +6673,7 @@ $\begin{array}{lcc}
         # Status label for Persson average
         self.persson_avg_status_var = tk.StringVar(value="(미계산)")
         ttk.Label(persson_avg_frame, textvariable=self.persson_avg_status_var,
-                  font=('Segoe UI', 9), foreground='#059669').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#059669').pack(anchor=tk.W)
 
         # Hidden listboxes for internal compatibility (not displayed)
         _hidden_frame = ttk.Frame(left_panel)
@@ -6631,7 +6704,7 @@ $\begin{array}{lcc}
         # Strain estimation in same frame
         strain_row = ttk.Frame(mu_settings_frame)
         strain_row.pack(fill=tk.X, pady=1)
-        ttk.Label(strain_row, text="Strain:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(strain_row, text="Strain:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.strain_est_method_var = tk.StringVar(value="rms_slope")
         strain_combo = ttk.Combobox(strain_row, textvariable=self.strain_est_method_var,
                      values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly")
@@ -6640,7 +6713,7 @@ $\begin{array}{lcc}
         self.fixed_strain_var = tk.StringVar(value="1.0")
         self.fixed_strain_entry = ttk.Entry(strain_row, textvariable=self.fixed_strain_var, width=5)
         self.fixed_strain_entry.pack(side=tk.LEFT)
-        self.fixed_strain_label = ttk.Label(strain_row, text="%", font=('Segoe UI', 9))
+        self.fixed_strain_label = ttk.Label(strain_row, text="%", font=('Segoe UI', 12))
         self.fixed_strain_label.pack(side=tk.LEFT)
 
         # Callback to show/hide fixed strain entry based on method
@@ -6659,10 +6732,10 @@ $\begin{array}{lcc}
         # Integration parameters in single row
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
-        ttk.Label(integ_row, text="γ:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(integ_row, text="γ:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.gamma_var = tk.StringVar(value="0.60")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
-        ttk.Label(integ_row, text="φ점:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(integ_row, text="φ점:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="14")
         ttk.Entry(integ_row, textvariable=self.n_phi_var, width=5).pack(side=tk.LEFT, padx=2)
 
@@ -6685,16 +6758,16 @@ $\begin{array}{lcc}
         temp_row1_wrapper.pack(fill=tk.X, pady=1)
         temp_row1 = ttk.Frame(temp_row1_wrapper)
         temp_row1.pack(fill=tk.X)
-        ttk.Label(temp_row1, text="계산 온도:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(temp_row1, text="계산 온도:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.mu_calc_temp_var = tk.StringVar(value="20.0")
         self.mu_calc_temp_entry = ttk.Entry(temp_row1, textvariable=self.mu_calc_temp_var, width=8)
         self.mu_calc_temp_entry.pack(side=tk.LEFT, padx=2)
-        ttk.Label(temp_row1, text="°C", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(temp_row1, text="°C", font=('Segoe UI', 13)).pack(side=tk.LEFT)
 
         # aT status display
         self.mu_aT_status_var = tk.StringVar(value="aT: 미로드 (Tref에서 계산)")
         ttk.Label(temp_frame, textvariable=self.mu_aT_status_var,
-                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 12), foreground='#64748B').pack(anchor=tk.W)
 
         # Temperature apply button
         temp_row2 = ttk.Frame(temp_frame)
@@ -6705,7 +6778,7 @@ $\begin{array}{lcc}
         # G calculation status
         self.g_calc_status_var = tk.StringVar(value="")
         self.g_calc_status_label = ttk.Label(temp_frame, textvariable=self.g_calc_status_var,
-                  font=('Segoe UI', 9), foreground='#2563EB')
+                  font=('Segoe UI', 12), foreground='#2563EB')
         self.g_calc_status_label.pack(anchor=tk.W)
 
         # Calculate button and progress bar
@@ -6755,7 +6828,7 @@ $\begin{array}{lcc}
         # Gap display (A/A0 계산값 vs 참조값 차이)
         self.area_gap_var = tk.StringVar(value="A/A0 Gap: 계산 후 표시")
         ttk.Label(ref_frame, textvariable=self.area_gap_var,
-                  font=('Segoe UI', 9), foreground='#2563EB').pack(anchor=tk.W, pady=2)
+                  font=('Segoe UI', 12), foreground='#2563EB').pack(anchor=tk.W, pady=2)
 
         # ============== Right Panel: Plots ==============
 
@@ -6797,14 +6870,14 @@ $\begin{array}{lcc}
             ref_mu = self.reference_mu_data['mu']
             self.ax_mu_v.semilogx(ref_v, ref_mu, 'r-', linewidth=1.5, alpha=0.5,
                                  label='참조 (Persson)')
-            self.ax_mu_v.legend(loc='upper left', fontsize=7)
+            self.ax_mu_v.legend(loc='upper left', fontsize=10)
 
         if hasattr(self, 'reference_area_data') and self.reference_area_data is not None:
             ref_v = self.reference_area_data['v']
             ref_area = self.reference_area_data['area']
             self.ax_mu_cumulative.semilogx(ref_v, ref_area, 'r-', linewidth=1.5, alpha=0.5,
                                             label='참조 A/A0 (Persson)')
-            self.ax_mu_cumulative.legend(loc='best', fontsize=7)
+            self.ax_mu_cumulative.legend(loc='best', fontsize=10)
 
         # Bottom-right: P(q) and S(q)
         self.ax_ps = self.fig_mu_visc.add_subplot(224)
@@ -6990,7 +7063,7 @@ $\begin{array}{lcc}
 
         self.ax_fg_curves.set_xlim(0, 1.0)
         self.ax_fg_curves.set_ylim(0, 1.1)
-        self.ax_fg_curves.legend(loc='upper right', fontsize=7, ncol=2)
+        self.ax_fg_curves.legend(loc='upper right', fontsize=10, ncol=2)
 
         self.canvas_mu_visc.draw()
 
@@ -7301,7 +7374,7 @@ $\begin{array}{lcc}
             self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='g(ε) Persson Avg')
             self.ax_fg_curves.axvline(split, color='green', linewidth=2, linestyle=':', alpha=0.8,
                                       label=f'Split @ {split*100:.1f}%')
-            self.ax_fg_curves.legend(loc='upper right', fontsize=7, ncol=2)
+            self.ax_fg_curves.legend(loc='upper right', fontsize=10, ncol=2)
         elif self.fg_averaged is not None:
             s = self.fg_averaged['strain']
             f_avg = self.fg_averaged['f_avg']
@@ -8140,7 +8213,7 @@ $\begin{array}{lcc}
             except Exception as e:
                 print(f"[DEBUG] 참조 μ_visc 플롯 오류: {e}")
 
-            self.ax_mu_v.legend(loc='upper left', fontsize=7)
+            self.ax_mu_v.legend(loc='upper left', fontsize=10)
 
             # Plot 2: Real Contact Area Ratio A/A0 = P(q_max) vs velocity
             P_qmax_array = np.zeros(len(v))
@@ -8186,10 +8259,10 @@ $\begin{array}{lcc}
             except Exception as e:
                 print(f"[DEBUG] 참조 A/A0 플롯 오류: {e}")
 
-            self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A0{title_suffix}', fontweight='bold', fontsize=8)
+            self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A0{title_suffix}', fontweight='bold', fontsize=11)
             self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
             self.ax_mu_cumulative.set_ylabel('A/A0 = P(q_max)')
-            self.ax_mu_cumulative.legend(loc='best', fontsize=7)
+            self.ax_mu_cumulative.legend(loc='best', fontsize=10)
             self.ax_mu_cumulative.grid(True, alpha=0.3)
 
             # Set y-axis to show data with padding (auto-scale based on actual data)
@@ -8222,12 +8295,12 @@ $\begin{array}{lcc}
             self.ax_ps.semilogx(q, S, 'r--', linewidth=1.5, label='S(q)')
             ax_twin.semilogx(q, cumulative, 'g-', linewidth=1.5, alpha=0.7, label='누적μ')
 
-            self.ax_ps.set_title('P(q), S(q) / 누적 μ', fontweight='bold', fontsize=9)
+            self.ax_ps.set_title('P(q), S(q) / 누적 μ', fontweight='bold', fontsize=12)
             self.ax_ps.set_xlabel('파수 q (1/m)')
             self.ax_ps.set_ylabel('P(q), S(q)', color='blue')
             ax_twin.set_ylabel('누적 μ', color='green')
-            self.ax_ps.legend(loc='upper left', fontsize=7)
-            ax_twin.legend(loc='upper right', fontsize=7)
+            self.ax_ps.legend(loc='upper left', fontsize=10)
+            ax_twin.legend(loc='upper right', fontsize=10)
             self.ax_ps.grid(True, alpha=0.3)
             self.ax_ps.set_ylim(0, 1.1)
 
@@ -8747,14 +8820,14 @@ $\begin{array}{lcc}
         desc_frame = ttk.Frame(dialog, padding=10)
         desc_frame.pack(fill=tk.X)
         ttk.Label(desc_frame, text="내보낼 데이터를 선택하세요.\n각 데이터는 별도의 CSV 파일로 저장됩니다.",
-                  font=('Segoe UI', 10)).pack(anchor=tk.W)
+                  font=('Segoe UI', 13)).pack(anchor=tk.W)
 
         # Checkbox frame
         check_frame = ttk.LabelFrame(dialog, text="데이터 선택", padding=10)
         check_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         # Data options - main results
-        main_label = ttk.Label(check_frame, text="[기본 결과 (v vs 값)]", font=('Arial', 9, 'bold'))
+        main_label = ttk.Label(check_frame, text="[기본 결과 (v vs 값)]", font=('Arial', 12, 'bold'))
         main_label.pack(anchor=tk.W, pady=(0, 5))
 
         main_options = [
@@ -8763,7 +8836,7 @@ $\begin{array}{lcc}
         ]
 
         # q-dependent data options
-        q_label = ttk.Label(check_frame, text="\n[q 의존성 데이터 (특정 속도)]", font=('Arial', 9, 'bold'))
+        q_label = ttk.Label(check_frame, text="\n[q 의존성 데이터 (특정 속도)]", font=('Arial', 12, 'bold'))
         q_label.pack(anchor=tk.W, pady=(5, 5))
 
         q_options = [
@@ -8794,7 +8867,7 @@ $\begin{array}{lcc}
         # Velocity selection for q-dependent data
         v_frame = ttk.Frame(check_frame)
         v_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(v_frame, text="q 데이터 속도 인덱스:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
+        ttk.Label(v_frame, text="q 데이터 속도 인덱스:", font=('Segoe UI', 12)).pack(side=tk.LEFT)
 
         v_array = self.mu_visc_results['v']
         n_v = len(v_array)
@@ -8814,7 +8887,7 @@ $\begin{array}{lcc}
             except:
                 pass
 
-        v_info_label = ttk.Label(v_frame, text=f"(v = {v_array[default_idx]:.2e} m/s)", font=('Segoe UI', 9))
+        v_info_label = ttk.Label(v_frame, text=f"(v = {v_array[default_idx]:.2e} m/s)", font=('Segoe UI', 12))
         v_info_label.pack(side=tk.LEFT)
         self.export_v_idx_var.trace('w', update_v_label)
 
@@ -9089,7 +9162,7 @@ $\begin{array}{lcc}
         inst_frame.pack(fill=tk.X)
         ttk.Label(inst_frame,
                   text="참조 데이터를 복사하여 붙여넣기 하세요.\n형식: 각 줄에 'log10(v) [탭 or 공백] 값' (예: -5.0  0.59)",
-                  font=('Segoe UI', 10)).pack(anchor=tk.W)
+                  font=('Segoe UI', 13)).pack(anchor=tk.W)
 
         # Create notebook for tabs
         notebook = ttk.Notebook(dialog)
@@ -9100,7 +9173,7 @@ $\begin{array}{lcc}
         notebook.add(mu_frame, text="μ_visc 참조 데이터")
 
         ttk.Label(mu_frame, text="μ_visc 참조 데이터 (log10(v) \\t mu_visc):",
-                  font=('Arial', 9, 'bold')).pack(anchor=tk.W)
+                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
         mu_text = tk.Text(mu_frame, height=20, font=("Courier", 9), wrap=tk.NONE)
         mu_scroll = ttk.Scrollbar(mu_frame, orient=tk.VERTICAL, command=mu_text.yview)
         mu_text.configure(yscrollcommand=mu_scroll.set)
@@ -9120,7 +9193,7 @@ $\begin{array}{lcc}
         notebook.add(area_frame, text="A/A0 참조 데이터")
 
         ttk.Label(area_frame, text="A/A0 참조 데이터 (log10(v) \\t A/A0):",
-                  font=('Arial', 9, 'bold')).pack(anchor=tk.W)
+                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
         area_text = tk.Text(area_frame, height=20, font=("Courier", 9), wrap=tk.NONE)
         area_scroll = ttk.Scrollbar(area_frame, orient=tk.VERTICAL, command=area_text.yview)
         area_text.configure(yscrollcommand=area_scroll.set)
@@ -9230,7 +9303,7 @@ $\begin{array}{lcc}
             "각 파수 q와 슬립 속도 v에서의 국소 변형률 ε(q,v)와 감소된 모듈러스를 시각화합니다.\n"
             "ω = q·v·cos(φ) 로 주파수가 결정되며, 해당 주파수에서의 모듈러스가 변형률에 따라 감소합니다."
         )
-        ttk.Label(control_frame, text=desc_text, font=('Segoe UI', 10)).pack(anchor=tk.W)
+        ttk.Label(control_frame, text=desc_text, font=('Segoe UI', 13)).pack(anchor=tk.W)
 
         # Control row
         ctrl_row = ttk.Frame(control_frame)
@@ -9322,20 +9395,20 @@ $\begin{array}{lcc}
             (self.ax_contact_nonlinear, "A/A0 (nonlinear)")
         ]
         for ax, title in heatmap_axes:
-            ax.set_title(title, fontweight='bold', fontsize=9)
-            ax.set_xlabel('log10(v) [m/s]', fontsize=8)
-            ax.set_ylabel('log10(q) [1/m]', fontsize=8)
+            ax.set_title(title, fontweight='bold', fontsize=12)
+            ax.set_xlabel('log10(v) [m/s]', fontsize=11)
+            ax.set_ylabel('log10(q) [1/m]', fontsize=11)
             ax.text(0.5, 0.5, 'No data',
                    ha='center', va='center', transform=ax.transAxes,
-                   fontsize=10, color='gray')
+                   fontsize=13, color='gray')
 
         # f,g factor graph placeholder
-        self.ax_fg_factors.set_title('f(ε), g(ε) Factors', fontweight='bold', fontsize=9)
-        self.ax_fg_factors.set_xlabel('Strain', fontsize=8)
-        self.ax_fg_factors.set_ylabel('Factor', fontsize=8)
+        self.ax_fg_factors.set_title('f(ε), g(ε) Factors', fontweight='bold', fontsize=12)
+        self.ax_fg_factors.set_xlabel('Strain', fontsize=11)
+        self.ax_fg_factors.set_ylabel('Factor', fontsize=11)
         self.ax_fg_factors.text(0.5, 0.5, 'No data',
                ha='center', va='center', transform=self.ax_fg_factors.transAxes,
-               fontsize=10, color='gray')
+               fontsize=13, color='gray')
 
         self.fig_strain_map.tight_layout()
         self.canvas_strain_map.draw()
@@ -9659,39 +9732,39 @@ $\begin{array}{lcc}
         strain_pct = np.nan_to_num(strain, nan=0.0) * 100
         im1 = self.ax_strain_contour.pcolormesh(V, Q, strain_pct, cmap=strain_cmap, shading='auto')
         self.ax_strain_contour.set_facecolor('white')
-        self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=9)
-        self.ax_strain_contour.set_xlabel('log10(v)', fontsize=8)
-        self.ax_strain_contour.set_ylabel('log10(q)', fontsize=8)
+        self.ax_strain_contour.set_title('Local Strain [%]', fontweight='bold', fontsize=12)
+        self.ax_strain_contour.set_xlabel('log10(v)', fontsize=11)
+        self.ax_strain_contour.set_ylabel('log10(q)', fontsize=11)
         cbar1 = self.fig_strain_map.colorbar(im1, ax=self.ax_strain_contour)
-        cbar1.set_label('%', fontsize=7)
+        cbar1.set_label('%', fontsize=10)
         self._strain_map_colorbars.append(cbar1)
         try:
             cs = self.ax_strain_contour.contour(V, Q, strain_pct,
                                                  levels=[1, 5, 10], colors='k', linewidths=0.5)
-            self.ax_strain_contour.clabel(cs, inline=True, fontsize=7, fmt='%.0f%%')
+            self.ax_strain_contour.clabel(cs, inline=True, fontsize=10, fmt='%.0f%%')
         except:
             pass
         strain_flat = strain.ravel()
         if len(strain_flat) > 0:
             self.ax_strain_contour.text(0.02, 0.98,
                 f'Mean:{np.mean(strain_flat)*100:.1f}%\nMax:{np.max(strain_flat)*100:.1f}%',
-                transform=self.ax_strain_contour.transAxes, fontsize=7, va='top',
+                transform=self.ax_strain_contour.transAxes, fontsize=10, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 2: E' Storage [MPa] — E' + E'×f 공유 LogNorm
         im2 = self.ax_E_storage.pcolormesh(V, Q, E_s_MPa, cmap=E_storage_cmap, shading='auto',
                                             norm=stor_norm)
         self.ax_E_storage.set_facecolor('white')
-        self.ax_E_storage.set_title("E' Storage [MPa]", fontweight='bold', fontsize=9)
-        self.ax_E_storage.set_xlabel('log10(v)', fontsize=8)
-        self.ax_E_storage.set_ylabel('log10(q)', fontsize=8)
+        self.ax_E_storage.set_title("E' Storage [MPa]", fontweight='bold', fontsize=12)
+        self.ax_E_storage.set_xlabel('log10(v)', fontsize=11)
+        self.ax_E_storage.set_ylabel('log10(q)', fontsize=11)
         cbar2 = self.fig_strain_map.colorbar(im2, ax=self.ax_E_storage)
-        cbar2.set_label('MPa', fontsize=7)
+        cbar2.set_label('MPa', fontsize=10)
         self._strain_map_colorbars.append(cbar2)
         E_s_at1 = E_s_MPa[:, v_1ms_idx]
         self.ax_E_storage.text(0.02, 0.98,
             f"v=1: {E_s_at1.min():.1f}~{E_s_at1.max():.1f} MPa",
-            transform=self.ax_E_storage.transAxes, fontsize=7, va='top',
+            transform=self.ax_E_storage.transAxes, fontsize=10, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 3: E'' Loss [MPa] — E'' + E''×g 공유 LogNorm
@@ -9699,32 +9772,32 @@ $\begin{array}{lcc}
             im3 = self.ax_E_loss_linear.pcolormesh(V, Q, E_ll_MPa, cmap=E_loss_cmap, shading='auto',
                                                     norm=loss_norm)
             self.ax_E_loss_linear.set_facecolor('white')
-            self.ax_E_loss_linear.set_title("E'' Loss [MPa]", fontweight='bold', fontsize=9)
-            self.ax_E_loss_linear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_E_loss_linear.set_ylabel('log10(q)', fontsize=8)
+            self.ax_E_loss_linear.set_title("E'' Loss [MPa]", fontweight='bold', fontsize=12)
+            self.ax_E_loss_linear.set_xlabel('log10(v)', fontsize=11)
+            self.ax_E_loss_linear.set_ylabel('log10(q)', fontsize=11)
             cbar3 = self.fig_strain_map.colorbar(im3, ax=self.ax_E_loss_linear)
-            cbar3.set_label('MPa', fontsize=7)
+            cbar3.set_label('MPa', fontsize=10)
             self._strain_map_colorbars.append(cbar3)
             E_ll_at1 = E_ll_MPa[:, v_1ms_idx]
             self.ax_E_loss_linear.text(0.02, 0.98,
                 f"v=1: {E_ll_at1.min():.2f}~{E_ll_at1.max():.1f} MPa",
-                transform=self.ax_E_loss_linear.transAxes, fontsize=7, va='top',
+                transform=self.ax_E_loss_linear.transAxes, fontsize=10, va='top',
                 bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 4: E''×g [MPa] — E'' + E''×g 공유 LogNorm
         im4 = self.ax_E_loss_nonlinear.pcolormesh(V, Q, E_lnl_MPa, cmap=E_loss_cmap, shading='auto',
                                                     norm=loss_norm)
         self.ax_E_loss_nonlinear.set_facecolor('white')
-        self.ax_E_loss_nonlinear.set_title("E''×g [MPa]", fontweight='bold', fontsize=9)
-        self.ax_E_loss_nonlinear.set_xlabel('log10(v)', fontsize=8)
-        self.ax_E_loss_nonlinear.set_ylabel('log10(q)', fontsize=8)
+        self.ax_E_loss_nonlinear.set_title("E''×g [MPa]", fontweight='bold', fontsize=12)
+        self.ax_E_loss_nonlinear.set_xlabel('log10(v)', fontsize=11)
+        self.ax_E_loss_nonlinear.set_ylabel('log10(q)', fontsize=11)
         cbar4 = self.fig_strain_map.colorbar(im4, ax=self.ax_E_loss_nonlinear)
-        cbar4.set_label('MPa', fontsize=7)
+        cbar4.set_label('MPa', fontsize=10)
         self._strain_map_colorbars.append(cbar4)
         E_lnl_at1 = E_lnl_MPa[:, v_1ms_idx]
         self.ax_E_loss_nonlinear.text(0.02, 0.98,
             f"v=1: {E_lnl_at1.min():.2f}~{E_lnl_at1.max():.1f} MPa",
-            transform=self.ax_E_loss_nonlinear.transAxes, fontsize=7, va='top',
+            transform=self.ax_E_loss_nonlinear.transAxes, fontsize=10, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Row 2 =====
@@ -9732,16 +9805,16 @@ $\begin{array}{lcc}
         im5 = self.ax_E_storage_nonlinear.pcolormesh(V, Q, E_snl_MPa, cmap=E_storage_cmap, shading='auto',
                                                       norm=stor_norm)
         self.ax_E_storage_nonlinear.set_facecolor('white')
-        self.ax_E_storage_nonlinear.set_title("E'×f [MPa]", fontweight='bold', fontsize=9)
-        self.ax_E_storage_nonlinear.set_xlabel('log10(v)', fontsize=8)
-        self.ax_E_storage_nonlinear.set_ylabel('log10(q)', fontsize=8)
+        self.ax_E_storage_nonlinear.set_title("E'×f [MPa]", fontweight='bold', fontsize=12)
+        self.ax_E_storage_nonlinear.set_xlabel('log10(v)', fontsize=11)
+        self.ax_E_storage_nonlinear.set_ylabel('log10(q)', fontsize=11)
         cbar5 = self.fig_strain_map.colorbar(im5, ax=self.ax_E_storage_nonlinear)
-        cbar5.set_label('MPa', fontsize=7)
+        cbar5.set_label('MPa', fontsize=10)
         self._strain_map_colorbars.append(cbar5)
         E_snl_at1 = E_snl_MPa[:, v_1ms_idx]
         self.ax_E_storage_nonlinear.text(0.02, 0.98,
             f"v=1: {E_snl_at1.min():.1f}~{E_snl_at1.max():.1f} MPa",
-            transform=self.ax_E_storage_nonlinear.transAxes, fontsize=7, va='top',
+            transform=self.ax_E_storage_nonlinear.transAxes, fontsize=10, va='top',
             bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Y축 크롭: G integrand가 유의미해지는 q부터만 표시 =====
@@ -9771,11 +9844,11 @@ $\begin{array}{lcc}
             s_plot = np.linspace(0, 0.5, 200)
             g_vals = np.array([self.g_interpolator(s) for s in s_plot])
             self.ax_fg_factors.plot(s_plot * 100, g_vals, 'r-', linewidth=2, label='g(ε)')
-        self.ax_fg_factors.set_title('f(ε), g(ε) Factors', fontweight='bold', fontsize=9)
-        self.ax_fg_factors.set_xlabel('Strain [%]', fontsize=8)
-        self.ax_fg_factors.set_ylabel('Factor', fontsize=8)
+        self.ax_fg_factors.set_title('f(ε), g(ε) Factors', fontweight='bold', fontsize=12)
+        self.ax_fg_factors.set_xlabel('Strain [%]', fontsize=11)
+        self.ax_fg_factors.set_ylabel('Factor', fontsize=11)
         self.ax_fg_factors.set_ylim(0, 1.1)
-        self.ax_fg_factors.legend(fontsize=7, loc='lower left')
+        self.ax_fg_factors.legend(fontsize=10, loc='lower left')
         self.ax_fg_factors.grid(True, alpha=0.3)
 
         # G integrand 공유 범위 계산 (linear + nonlinear)
@@ -9798,11 +9871,11 @@ $\begin{array}{lcc}
             log_G_lin_masked = _masked(g_lin_log)
             im7a = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_masked, cmap=g_cmap, shading='auto',
                                                           vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand_linear.set_title('G Integrand (lin) [log]', fontweight='bold', fontsize=9)
-            self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=8)
+            self.ax_G_integrand_linear.set_title('G Integrand (lin) [log]', fontweight='bold', fontsize=12)
+            self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=11)
+            self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=11)
             cbar7a = self.fig_strain_map.colorbar(im7a, ax=self.ax_G_integrand_linear)
-            cbar7a.set_label('log10(G)', fontsize=7)
+            cbar7a.set_label('log10(G)', fontsize=10)
             self._strain_map_colorbars.append(cbar7a)
             crop_axes.append(self.ax_G_integrand_linear)
 
@@ -9811,11 +9884,11 @@ $\begin{array}{lcc}
             log_G_nl_masked = _masked(g_nl_log)
             im7b = self.ax_G_integrand.pcolormesh(V, Q, log_G_nl_masked, cmap=g_cmap, shading='auto',
                                                    vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand.set_title('G Integrand (nl) [log]', fontweight='bold', fontsize=9)
-            self.ax_G_integrand.set_xlabel('log10(v)', fontsize=8)
-            self.ax_G_integrand.set_ylabel('log10(q)', fontsize=8)
+            self.ax_G_integrand.set_title('G Integrand (nl) [log]', fontweight='bold', fontsize=12)
+            self.ax_G_integrand.set_xlabel('log10(v)', fontsize=11)
+            self.ax_G_integrand.set_ylabel('log10(q)', fontsize=11)
             cbar7b = self.fig_strain_map.colorbar(im7b, ax=self.ax_G_integrand)
-            cbar7b.set_label('log10(G)', fontsize=7)
+            cbar7b.set_label('log10(G)', fontsize=10)
             self._strain_map_colorbars.append(cbar7b)
             crop_axes.append(self.ax_G_integrand)
 
@@ -9830,11 +9903,11 @@ $\begin{array}{lcc}
                 c_vmin, c_vmax = 0, 1
             im9 = self.ax_contact_linear.pcolormesh(V, Q, c_lin_masked, cmap=contact_cmap, shading='auto',
                                                      vmin=c_vmin, vmax=c_vmax)
-            self.ax_contact_linear.set_title('A/A0 (linear)', fontweight='bold', fontsize=9)
-            self.ax_contact_linear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_contact_linear.set_ylabel('log10(q)', fontsize=8)
+            self.ax_contact_linear.set_title('A/A0 (linear)', fontweight='bold', fontsize=12)
+            self.ax_contact_linear.set_xlabel('log10(v)', fontsize=11)
+            self.ax_contact_linear.set_ylabel('log10(q)', fontsize=11)
             cbar9 = self.fig_strain_map.colorbar(im9, ax=self.ax_contact_linear)
-            cbar9.set_label('A/A0', fontsize=7)
+            cbar9.set_label('A/A0', fontsize=10)
             self._strain_map_colorbars.append(cbar9)
             crop_axes.append(self.ax_contact_linear)
             P_lin_at1 = contact_lin[:, v_1ms_idx]
@@ -9842,7 +9915,7 @@ $\begin{array}{lcc}
             if len(P_lin_valid) > 0:
                 self.ax_contact_linear.text(0.02, 0.98,
                     f'v=1: {P_lin_valid.min():.3f}~{P_lin_valid.max():.3f}',
-                    transform=self.ax_contact_linear.transAxes, fontsize=7, va='top',
+                    transform=self.ax_contact_linear.transAxes, fontsize=10, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # Plot 10: A/A0 (nonlinear) — 유효 영역만
@@ -9856,11 +9929,11 @@ $\begin{array}{lcc}
                 c_nl_vmin, c_nl_vmax = 0, 1
             im10 = self.ax_contact_nonlinear.pcolormesh(V, Q, c_nl_masked, cmap=contact_cmap, shading='auto',
                                                          vmin=c_nl_vmin, vmax=c_nl_vmax)
-            self.ax_contact_nonlinear.set_title('A/A0 (nonlinear)', fontweight='bold', fontsize=9)
-            self.ax_contact_nonlinear.set_xlabel('log10(v)', fontsize=8)
-            self.ax_contact_nonlinear.set_ylabel('log10(q)', fontsize=8)
+            self.ax_contact_nonlinear.set_title('A/A0 (nonlinear)', fontweight='bold', fontsize=12)
+            self.ax_contact_nonlinear.set_xlabel('log10(v)', fontsize=11)
+            self.ax_contact_nonlinear.set_ylabel('log10(q)', fontsize=11)
             cbar10 = self.fig_strain_map.colorbar(im10, ax=self.ax_contact_nonlinear)
-            cbar10.set_label('A/A0', fontsize=7)
+            cbar10.set_label('A/A0', fontsize=10)
             self._strain_map_colorbars.append(cbar10)
             crop_axes.append(self.ax_contact_nonlinear)
             P_nl_at1 = contact_nl[:, v_1ms_idx]
@@ -9868,7 +9941,7 @@ $\begin{array}{lcc}
             if len(P_nl_valid) > 0:
                 self.ax_contact_nonlinear.text(0.02, 0.98,
                     f'v=1: {P_nl_valid.min():.3f}~{P_nl_valid.max():.3f}',
-                    transform=self.ax_contact_nonlinear.transAxes, fontsize=7, va='top',
+                    transform=self.ax_contact_nonlinear.transAxes, fontsize=10, va='top',
                     bbox=dict(boxstyle='round', fc='white', alpha=0.8))
 
         # ===== Y축 크롭 적용: G integrand, A/A0 — 유효 데이터 영역만 =====
@@ -9903,7 +9976,7 @@ $\begin{array}{lcc}
         desc_frame = ttk.Frame(dialog, padding=10)
         desc_frame.pack(fill=tk.X)
         ttk.Label(desc_frame, text="내보낼 데이터를 선택하세요.\n각 데이터는 별도의 CSV 파일로 저장됩니다.",
-                  font=('Segoe UI', 10)).pack(anchor=tk.W)
+                  font=('Segoe UI', 13)).pack(anchor=tk.W)
 
         # Checkbox frame
         check_frame = ttk.LabelFrame(dialog, text="데이터 선택", padding=10)
@@ -10039,7 +10112,7 @@ $\begin{array}{lcc}
             "2. G(q) 피적분: q³C(q)×(각도적분) vs q\n"
             "3. μ_visc 각도 적분 vs 속도"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 13), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. Calculation Settings
         settings_frame = ttk.LabelFrame(left_frame, text="계산 설정", padding=5)
@@ -10048,24 +10121,24 @@ $\begin{array}{lcc}
         # q value selection for angle integrand
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
-        ttk.Label(row1, text="q 값 (1/m):", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="q 값 (1/m):", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.integrand_q_var = tk.StringVar(value="1e4, 1e5, 1e6")
         ttk.Entry(row1, textvariable=self.integrand_q_var, width=15).pack(side=tk.RIGHT)
 
         ttk.Label(settings_frame, text="(쉼표로 구분, 예: 1e4, 1e5, 1e6)",
-                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
+                  font=('Segoe UI', 11), foreground='#64748B').pack(anchor=tk.W)
 
         # Velocity selection
         row2 = ttk.Frame(settings_frame)
         row2.pack(fill=tk.X, pady=2)
-        ttk.Label(row2, text="속도 v (m/s):", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="속도 v (m/s):", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.integrand_v_var = tk.StringVar(value="0.01")
         ttk.Entry(row2, textvariable=self.integrand_v_var, width=15).pack(side=tk.RIGHT)
 
         # Number of angle points
         row3 = ttk.Frame(settings_frame)
         row3.pack(fill=tk.X, pady=2)
-        ttk.Label(row3, text="각도 분할 수:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
+        ttk.Label(row3, text="각도 분할 수:", font=('Segoe UI', 13)).pack(side=tk.LEFT)
         self.integrand_nangle_var = tk.StringVar(value="72")
         ttk.Entry(row3, textvariable=self.integrand_nangle_var, width=8).pack(side=tk.RIGHT)
 
@@ -10313,8 +10386,8 @@ $\begin{array}{lcc}
                     self.integrand_result_text.insert(tk.END, f"  ε(q) = {strain_at_q:.4f}\n")
                 self.integrand_result_text.insert(tk.END, "\n")
 
-            self.ax_angle_integrand.legend(fontsize=8)
-            self.ax_mu_integrand.legend(fontsize=8)
+            self.ax_angle_integrand.legend(fontsize=11)
+            self.ax_mu_integrand.legend(fontsize=11)
 
             self.integrand_progress_var.set(50)
             self.root.update_idletasks()
@@ -10373,7 +10446,7 @@ $\begin{array}{lcc}
                     self.ax_q_integrand.axvline(q, color='r', linestyle='--', alpha=0.5)
                     self.ax_q_integrand.plot(q, G_integrand_values[idx], 'ro', markersize=8)
 
-            self.ax_q_integrand.legend(fontsize=8)
+            self.ax_q_integrand.legend(fontsize=11)
 
             self.integrand_progress_var.set(70)
             self.root.update_idletasks()
@@ -10400,7 +10473,7 @@ $\begin{array}{lcc}
             # Mark current velocity
             self.ax_freq_range.axvline(v, color='g', linestyle='-', linewidth=2, alpha=0.7, label=f'현재 v = {v:.2e}')
 
-            self.ax_freq_range.legend(fontsize=7, loc='lower right')
+            self.ax_freq_range.legend(fontsize=10, loc='lower right')
 
             # Frequency range info text
             self.freq_range_text.insert(tk.END, f"선택 q = {q_ref:.2e} 1/m, v = {v:.2e} m/s\n")
@@ -10666,7 +10739,7 @@ $\begin{array}{lcc}
         ttk.Label(instruction, text=
             "이 탭에서는 μ_visc 계산 과정의 모든 중간 변수 값을 확인할 수 있습니다.\n"
             "문제 진단 및 계산 검증에 사용하세요. '진단 실행' 버튼으로 상세 분석을 수행합니다.",
-            font=('Segoe UI', 10)
+            font=('Segoe UI', 13)
         ).pack()
 
         # Control buttons

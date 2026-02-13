@@ -693,10 +693,20 @@ class GCalculator:
             G_matrix[:, j] = results['G']
             P_matrix[:, j] = results['contact_area_ratio']
 
-            # Progress callback
+            # Progress callback – pass per-velocity results for live
+            # visualisation.  The extra arguments are optional so existing
+            # callers that only accept *percent* keep working.
             if progress_callback:
                 progress = int((j + 1) / n_v * 100)
-                progress_callback(progress)
+                try:
+                    progress_callback(
+                        progress, j, v,
+                        results['G'].copy(),
+                        results['contact_area_ratio'].copy(),
+                    )
+                except TypeError:
+                    # Fallback for callbacks that only accept (percent,)
+                    progress_callback(progress)
 
         # Restore original velocity
         self.velocity = original_velocity
