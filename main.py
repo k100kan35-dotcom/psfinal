@@ -162,11 +162,54 @@ matplotlib.rcParams['figure.titlesize'] = 14
 class PerssonModelGUI_V2:
     """Enhanced GUI for Persson friction model (Work Instruction v2.1)."""
 
+    # ── Modern Color Palette ──
+    COLORS = {
+        'bg':           '#F0F2F5',   # 전체 배경 (연한 회색-블루)
+        'surface':      '#FFFFFF',   # 카드/패널 배경
+        'sidebar':      '#1B2A4A',   # 사이드바 / 헤더 (딥 네이비)
+        'sidebar_text': '#E2E8F0',   # 사이드바 텍스트
+        'primary':      '#2563EB',   # 메인 액센트 (블루)
+        'primary_hover':'#1D4ED8',
+        'primary_fg':   '#FFFFFF',
+        'success':      '#059669',   # 녹색 (확정/완료)
+        'success_fg':   '#FFFFFF',
+        'danger':       '#DC2626',   # 적색 (중요/경고)
+        'danger_fg':    '#FFFFFF',
+        'warning':      '#D97706',   # 오렌지 (주의)
+        'text':         '#1E293B',   # 메인 텍스트
+        'text_secondary':'#64748B',  # 보조 텍스트
+        'border':       '#CBD5E1',   # 테두리
+        'tab_active':   '#FFFFFF',   # 선택된 탭
+        'tab_inactive': '#E2E8F0',   # 비선택 탭
+        'input_bg':     '#FFFFFF',   # 입력 필드 배경
+        'input_border': '#94A3B8',   # 입력 필드 테두리
+        'statusbar_bg': '#1E293B',   # 상태바 배경
+        'statusbar_fg': '#94A3B8',   # 상태바 텍스트
+        'highlight':    '#DBEAFE',   # 강조 배경 (연한 블루)
+    }
+
+    FONTS = {
+        'heading':   ('Segoe UI', 13, 'bold'),
+        'subheading':('Segoe UI', 11, 'bold'),
+        'body':      ('Segoe UI', 10),
+        'body_bold': ('Segoe UI', 10, 'bold'),
+        'small':     ('Segoe UI', 9),
+        'small_bold':('Segoe UI', 9, 'bold'),
+        'tiny':      ('Segoe UI', 8),
+        'mono':      ('Consolas', 10),
+        'mono_small':('Consolas', 9),
+    }
+
     def __init__(self, root):
         """Initialize enhanced GUI."""
         self.root = root
-        self.root.title("Persson 마찰 계산기 v3.0")
+        self.root.title("Persson Friction Model  v3.0")
         self.root.geometry("1600x1000")
+        self.root.configure(bg=self.COLORS['bg'])
+        self.root.minsize(1200, 700)
+
+        # ── Apply modern theme ──
+        self._setup_modern_theme()
 
         # Initialize variables
         self.material = None
@@ -227,6 +270,137 @@ class PerssonModelGUI_V2:
 
         # Load default measured data
         self._load_default_data()
+
+    # ================================================================
+    #  THEME / STYLE  CONFIGURATION
+    # ================================================================
+    def _setup_modern_theme(self):
+        """Configure ttk styles for a modern, professional look."""
+        C = self.COLORS
+        F = self.FONTS
+        style = ttk.Style(self.root)
+
+        # Base theme
+        try:
+            style.theme_use('clam')
+        except tk.TclError:
+            pass
+
+        # ── Global defaults ──
+        style.configure('.', background=C['bg'], foreground=C['text'],
+                        font=F['body'], borderwidth=0)
+
+        # ── TFrame ──
+        style.configure('TFrame', background=C['bg'])
+        style.configure('Card.TFrame', background=C['surface'], relief='flat')
+
+        # ── TLabel ──
+        style.configure('TLabel', background=C['bg'], foreground=C['text'],
+                        font=F['body'])
+        style.configure('Heading.TLabel', font=F['heading'], foreground=C['sidebar'])
+        style.configure('Sub.TLabel', font=F['subheading'], foreground=C['text'])
+        style.configure('Small.TLabel', font=F['small'], foreground=C['text_secondary'])
+        style.configure('Tiny.TLabel', font=F['tiny'], foreground=C['text_secondary'])
+        style.configure('Status.TLabel', background=C['statusbar_bg'],
+                        foreground=C['statusbar_fg'], font=F['small'],
+                        padding=(12, 6))
+
+        # ── TLabelframe ──
+        style.configure('TLabelframe', background=C['surface'],
+                        relief='flat', borderwidth=1, bordercolor=C['border'])
+        style.configure('TLabelframe.Label', background=C['surface'],
+                        foreground=C['primary'], font=F['small_bold'])
+
+        # ── TNotebook (Tabs) ──
+        style.configure('TNotebook', background=C['bg'], borderwidth=0,
+                        tabmargins=[4, 4, 4, 0])
+        style.configure('TNotebook.Tab', background=C['tab_inactive'],
+                        foreground=C['text_secondary'], font=F['small_bold'],
+                        padding=[14, 6], borderwidth=0)
+        style.map('TNotebook.Tab',
+                  background=[('selected', C['tab_active']),
+                              ('active', C['highlight'])],
+                  foreground=[('selected', C['primary']),
+                              ('active', C['text'])],
+                  expand=[('selected', [0, 0, 0, 2])])
+
+        # ── TButton (Default) ──
+        style.configure('TButton', font=F['body'], padding=[12, 5],
+                        background=C['surface'], foreground=C['text'],
+                        borderwidth=1, relief='flat', anchor='center')
+        style.map('TButton',
+                  background=[('active', C['highlight']),
+                              ('pressed', C['border'])],
+                  relief=[('pressed', 'flat')])
+
+        # ── Accent.TButton (Primary action - blue) ──
+        style.configure('Accent.TButton', font=F['body_bold'],
+                        background=C['primary'], foreground=C['primary_fg'],
+                        padding=[14, 6], borderwidth=0, relief='flat')
+        style.map('Accent.TButton',
+                  background=[('active', C['primary_hover']),
+                              ('pressed', C['sidebar']),
+                              ('disabled', C['border'])],
+                  foreground=[('disabled', C['text_secondary'])])
+
+        # ── Success.TButton (Confirm - green) ──
+        style.configure('Success.TButton', font=F['body_bold'],
+                        background=C['success'], foreground=C['success_fg'],
+                        padding=[14, 6], borderwidth=0, relief='flat')
+        style.map('Success.TButton',
+                  background=[('active', '#047857'), ('pressed', '#065F46'),
+                              ('disabled', C['border'])],
+                  foreground=[('disabled', C['text_secondary'])])
+
+        # ── Danger.TButton (Warning action - red) ──
+        style.configure('Danger.TButton', font=F['body_bold'],
+                        background=C['danger'], foreground=C['danger_fg'],
+                        padding=[14, 6], borderwidth=0, relief='flat')
+        style.map('Danger.TButton',
+                  background=[('active', '#B91C1C'), ('pressed', '#991B1B'),
+                              ('disabled', C['border'])],
+                  foreground=[('disabled', C['text_secondary'])])
+
+        # ── TEntry ──
+        style.configure('TEntry', fieldbackground=C['input_bg'],
+                        foreground=C['text'], borderwidth=1,
+                        relief='solid', padding=[6, 4])
+        style.map('TEntry',
+                  fieldbackground=[('focus', '#F0F7FF'), ('readonly', C['bg'])],
+                  bordercolor=[('focus', C['primary'])])
+
+        # ── TCombobox ──
+        style.configure('TCombobox', fieldbackground=C['input_bg'],
+                        foreground=C['text'], padding=[6, 4])
+        style.map('TCombobox',
+                  fieldbackground=[('readonly', C['input_bg']),
+                                   ('focus', '#F0F7FF')])
+
+        # ── TCheckbutton / TRadiobutton ──
+        style.configure('TCheckbutton', background=C['bg'],
+                        foreground=C['text'], font=F['body'])
+        style.configure('TRadiobutton', background=C['bg'],
+                        foreground=C['text'], font=F['body'])
+        # Inside LabelFrames (surface bg)
+        style.configure('Surface.TCheckbutton', background=C['surface'],
+                        foreground=C['text'], font=F['body'])
+        style.configure('Surface.TRadiobutton', background=C['surface'],
+                        foreground=C['text'], font=F['body'])
+
+        # ── Horizontal.TProgressbar ──
+        style.configure('Horizontal.TProgressbar',
+                        troughcolor=C['border'], background=C['primary'],
+                        thickness=6, borderwidth=0)
+
+        # ── TSeparator ──
+        style.configure('TSeparator', background=C['border'])
+
+        # ── TScrollbar ──
+        style.configure('Vertical.TScrollbar', background=C['bg'],
+                        troughcolor=C['bg'], borderwidth=0, arrowsize=12)
+        style.map('Vertical.TScrollbar',
+                  background=[('active', C['border']),
+                              ('pressed', C['input_border'])])
 
     def _load_default_data(self):
         """Load default measured data on startup."""
@@ -344,92 +518,72 @@ class PerssonModelGUI_V2:
 
     def _create_menu(self):
         """Create menu bar."""
-        menubar = tk.Menu(self.root)
+        C = self.COLORS
+        menu_cfg = dict(
+            bg=C['surface'], fg=C['text'], activebackground=C['primary'],
+            activeforeground=C['primary_fg'], relief='flat', borderwidth=0,
+            font=self.FONTS['body'],
+        )
+
+        menubar = tk.Menu(self.root, **menu_cfg)
         self.root.config(menu=menubar)
 
         # File menu
-        file_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="File", menu=file_menu)
-        file_menu.add_command(label="Load DMA Data", command=self._load_material)
-        # PSD loading removed - must use Tab 0 (PSD 생성)
+        file_menu = tk.Menu(menubar, tearoff=0, **menu_cfg)
+        menubar.add_cascade(label="  File  ", menu=file_menu)
+        file_menu.add_command(label="  Load DMA Data", command=self._load_material)
         file_menu.add_separator()
-        file_menu.add_command(label="Save Results (CSV)", command=self._save_detailed_csv)
-        file_menu.add_command(label="Export All", command=self._export_all_results)
-        file_menu.add_command(label="Graph Data Export...", command=self._show_graph_data_export_popup)
+        file_menu.add_command(label="  Save Results (CSV)", command=self._save_detailed_csv)
+        file_menu.add_command(label="  Export All", command=self._export_all_results)
+        file_menu.add_command(label="  Graph Data Export...", command=self._show_graph_data_export_popup)
         file_menu.add_separator()
-        file_menu.add_command(label="Exit", command=self.root.quit)
+        file_menu.add_command(label="  Exit", command=self.root.quit)
 
         # Help menu
-        help_menu = tk.Menu(menubar, tearoff=0)
-        menubar.add_cascade(label="Help", menu=help_menu)
-        help_menu.add_command(label="User Guide", command=self._show_help)
-        help_menu.add_command(label="About", command=self._show_about)
+        help_menu = tk.Menu(menubar, tearoff=0, **menu_cfg)
+        menubar.add_cascade(label="  Help  ", menu=help_menu)
+        help_menu.add_command(label="  User Guide", command=self._show_help)
+        help_menu.add_command(label="  About", command=self._show_about)
 
     def _create_main_layout(self):
         """Create main application layout with tabs."""
+
+        # ── Header bar ──
+        header = tk.Frame(self.root, bg=self.COLORS['sidebar'], height=44)
+        header.pack(fill=tk.X, side=tk.TOP)
+        header.pack_propagate(False)
+        tk.Label(header, text="Persson Friction Model",
+                 bg=self.COLORS['sidebar'], fg='#FFFFFF',
+                 font=('Segoe UI', 14, 'bold')).pack(side=tk.LEFT, padx=16)
+        tk.Label(header, text="v3.0",
+                 bg=self.COLORS['sidebar'], fg=self.COLORS['text_secondary'],
+                 font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(0, 8))
+
         # Create notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
-        self.notebook.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 0))
 
-        # Tab 0: PSD from Profile (NEW - First Tab)
-        self.tab_psd_profile = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_psd_profile, text="0. PSD 생성")
-        self._create_psd_profile_tab(self.tab_psd_profile)
+        # ── Tab definitions ──
+        tabs = [
+            ('tab_psd_profile',     'PSD 생성',           self._create_psd_profile_tab),
+            ('tab_master_curve',    '마스터 커브',         self._create_master_curve_tab),
+            ('tab_parameters',      '계산 설정',           self._create_parameters_tab),
+            ('tab_results',         'G(q,v) 결과',        self._create_results_tab),
+            ('tab_rms_slope',       "h'rms / Strain",     self._create_rms_slope_tab),
+            ('tab_mu_visc',         'μ_visc 계산',        self._create_mu_visc_tab),
+            ('tab_strain_map',      'Strain Map',         self._create_strain_map_tab),
+            ('tab_integrand',       '피적분함수',          self._create_integrand_tab),
+            ('tab_equations',       '수식 정리',           self._create_equations_tab),
+            ('tab_variables',       '변수 관계',           self._create_variables_tab),
+            ('tab_debug',           '디버그',              self._create_debug_tab),
+            ('tab_friction_factors','영향 인자',           self._create_friction_factors_tab),
+        ]
 
-        # Tab 1: Master Curve Generation
-        self.tab_master_curve = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_master_curve, text="1. 마스터 커브 생성")
-        self._create_master_curve_tab(self.tab_master_curve)
-
-        # Tab 2: Calculation Parameters
-        self.tab_parameters = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_parameters, text="2. 계산 설정")
-        self._create_parameters_tab(self.tab_parameters)
-
-        # Tab 3: G(q,v) Results
-        self.tab_results = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_results, text="3. G(q,v) 결과")
-        self._create_results_tab(self.tab_results)
-
-        # Tab 4: h'rms / Local Strain
-        self.tab_rms_slope = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_rms_slope, text="4. h'rms/Local Strain")
-        self._create_rms_slope_tab(self.tab_rms_slope)
-
-        # Tab 5: mu_visc Calculation
-        self.tab_mu_visc = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_mu_visc, text="5. μ_visc 계산")
-        self._create_mu_visc_tab(self.tab_mu_visc)
-
-        # Tab 6: Local Strain Map
-        self.tab_strain_map = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_strain_map, text="6. Local Strain Map")
-        self._create_strain_map_tab(self.tab_strain_map)
-
-        # Tab 7: Integrand Visualization
-        self.tab_integrand = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_integrand, text="7. 피적분함수 분석")
-        self._create_integrand_tab(self.tab_integrand)
-
-        # Tab 8: Equations Summary
-        self.tab_equations = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_equations, text="8. 수식 정리")
-        self._create_equations_tab(self.tab_equations)
-
-        # Tab 9: Variable Relationship
-        self.tab_variables = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_variables, text="9. 변수 관계")
-        self._create_variables_tab(self.tab_variables)
-
-        # Tab 10: Debug Log
-        self.tab_debug = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_debug, text="10. 디버그 로그")
-        self._create_debug_tab(self.tab_debug)
-
-        # Tab 11: Friction Factor Analysis
-        self.tab_friction_factors = ttk.Frame(self.notebook)
-        self.notebook.add(self.tab_friction_factors, text="11. 마찰계수 영향 인자")
-        self._create_friction_factors_tab(self.tab_friction_factors)
+        for attr, label, builder in tabs:
+            frame = ttk.Frame(self.notebook)
+            setattr(self, attr, frame)
+            self.notebook.add(frame, text=f'  {label}  ')
+            builder(frame)
 
         # Initialize debug log storage
         self.debug_log_messages = []
@@ -484,7 +638,7 @@ class PerssonModelGUI_V2:
             "• Top PSD: 상부 표면만 (h>0)\n"
             "  (Ref: J. Chem. Phys. 162, 074704)"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Arial', 9), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. Data Loading
         load_frame = ttk.LabelFrame(left_scrollable, text="1. 데이터 로드", padding=5)
@@ -493,7 +647,7 @@ class PerssonModelGUI_V2:
         # File path display
         self.psd_profile_file_var = tk.StringVar(value="(파일 선택 안됨)")
         ttk.Label(load_frame, textvariable=self.psd_profile_file_var,
-                  font=('Arial', 8), foreground='gray').pack(fill=tk.X)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(fill=tk.X)
 
         # Load button
         ttk.Button(load_frame, text="프로파일 데이터 로드 (.txt, .csv)",
@@ -502,11 +656,11 @@ class PerssonModelGUI_V2:
         # ===== 내장 PSD 선택 섹션 =====
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 내장 PSD 데이터 선택 ─",
-                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         preset_psd_frame = ttk.Frame(load_frame)
         preset_psd_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.preset_psd_var = tk.StringVar(value="(선택...)")
         self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
                                               state='readonly', width=25)
@@ -520,30 +674,29 @@ class PerssonModelGUI_V2:
         # Direct PSD loading section
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 또는: PSD 파일 직접 로드 ─",
-                  font=('Arial', 8), foreground='blue').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 9), foreground='#2563EB').pack(anchor=tk.CENTER)
 
         # PSD 직접 로드 버튼 + 리스트에 추가 버튼
         psd_direct_btn_frame = ttk.Frame(load_frame)
         psd_direct_btn_frame.pack(fill=tk.X, pady=2)
 
-        btn_frame_psd_load = tk.Frame(psd_direct_btn_frame, bg='red', padx=2, pady=2)
-        btn_frame_psd_load.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        ttk.Button(btn_frame_psd_load, text="★ PSD 직접 로드 (q, C(q))",
-                   command=self._load_psd_direct).pack(fill=tk.X)
+        ttk.Button(psd_direct_btn_frame, text="PSD 직접 로드 (q, C(q))",
+                   command=self._load_psd_direct,
+                   style='Accent.TButton').pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(psd_direct_btn_frame, text="→ 리스트에 추가",
                    command=self._add_preset_psd, width=14).pack(side=tk.LEFT, padx=(5, 0))
 
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
-                  font=('Arial', 8), foreground='gray').pack(fill=tk.X)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(fill=tk.X)
 
         # PSD 확정 버튼 (직접 로드 바로 아래)
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         apply_frame_top = ttk.Frame(load_frame)
         apply_frame_top.pack(fill=tk.X, pady=2)
         self.apply_psd_type_var = tk.StringVar(value="full")
-        ttk.Label(apply_frame_top, text="적용할 PSD:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(apply_frame_top, text="적용할 PSD:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="Full", variable=self.apply_psd_type_var,
                         value="full").pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="Top", variable=self.apply_psd_type_var,
@@ -552,25 +705,24 @@ class PerssonModelGUI_V2:
                         value="param").pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="직접로드", variable=self.apply_psd_type_var,
                         value="direct").pack(side=tk.LEFT)
-        # PSD 확정 버튼 (빨간 테두리)
-        btn_frame_psd_apply = tk.Frame(load_frame, bg='red', padx=2, pady=2)
-        btn_frame_psd_apply.pack(fill=tk.X, pady=2)
-        ttk.Button(btn_frame_psd_apply, text="▶ PSD 확정 → 계산에 사용",
-                   command=self._apply_profile_psd_to_tab3).pack(fill=tk.X)
+        # PSD 확정 버튼
+        ttk.Button(load_frame, text="PSD 확정  \u2192  계산에 사용",
+                   command=self._apply_profile_psd_to_tab3,
+                   style='Success.TButton').pack(fill=tk.X, pady=2)
 
         # Column settings
         col_frame = ttk.Frame(load_frame)
         col_frame.pack(fill=tk.X, pady=2)
 
-        ttk.Label(col_frame, text="X열:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(col_frame, text="X열:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.profile_x_col_var = tk.StringVar(value="0")
         ttk.Entry(col_frame, textvariable=self.profile_x_col_var, width=3).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(col_frame, text="H열:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(col_frame, text="H열:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_h_col_var = tk.StringVar(value="1")
         ttk.Entry(col_frame, textvariable=self.profile_h_col_var, width=3).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(col_frame, text="Skip:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(col_frame, text="Skip:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_skip_var = tk.StringVar(value="0")
         ttk.Entry(col_frame, textvariable=self.profile_skip_var, width=3).pack(side=tk.LEFT, padx=2)
 
@@ -580,13 +732,13 @@ class PerssonModelGUI_V2:
 
         unit_row1 = ttk.Frame(unit_frame)
         unit_row1.pack(fill=tk.X)
-        ttk.Label(unit_row1, text="X 단위:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(unit_row1, text="X 단위:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.profile_x_unit_var = tk.StringVar(value="um")
         unit_combo_x = ttk.Combobox(unit_row1, textvariable=self.profile_x_unit_var,
                                      values=['m', 'mm', 'um', 'nm'], width=6, state='readonly')
         unit_combo_x.pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(unit_row1, text="H 단위:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(unit_row1, text="H 단위:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_h_unit_var = tk.StringVar(value="um")
         unit_combo_h = ttk.Combobox(unit_row1, textvariable=self.profile_h_unit_var,
                                      values=['m', 'mm', 'um', 'nm'], width=6, state='readonly')
@@ -595,7 +747,7 @@ class PerssonModelGUI_V2:
         # Data info
         self.profile_data_info_var = tk.StringVar(value="데이터: -")
         ttk.Label(load_frame, textvariable=self.profile_data_info_var,
-                  font=('Arial', 8)).pack(fill=tk.X, pady=2)
+                  font=('Segoe UI', 9)).pack(fill=tk.X, pady=2)
 
         # 3. PSD Calculation Settings
         calc_frame = ttk.LabelFrame(left_scrollable, text="2. PSD 계산 설정", padding=5)
@@ -604,7 +756,7 @@ class PerssonModelGUI_V2:
         # Detrend method
         detrend_row = ttk.Frame(calc_frame)
         detrend_row.pack(fill=tk.X, pady=2)
-        ttk.Label(detrend_row, text="Detrend:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(detrend_row, text="Detrend:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.profile_detrend_var = tk.StringVar(value="mean")
         ttk.Combobox(detrend_row, textvariable=self.profile_detrend_var,
                      values=['mean', 'linear', 'quadratic'], width=10, state='readonly').pack(side=tk.LEFT, padx=5)
@@ -612,7 +764,7 @@ class PerssonModelGUI_V2:
         # Window function
         window_row = ttk.Frame(calc_frame)
         window_row.pack(fill=tk.X, pady=2)
-        ttk.Label(window_row, text="Window:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(window_row, text="Window:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.profile_window_var = tk.StringVar(value="hann")
         ttk.Combobox(window_row, textvariable=self.profile_window_var,
                      values=['hann', 'hamming', 'blackman', 'none'], width=10, state='readonly').pack(side=tk.LEFT, padx=5)
@@ -637,7 +789,7 @@ class PerssonModelGUI_V2:
         ttk.Checkbutton(bin_frame, text="로그 구간 평균화",
                         variable=self.apply_binning_var).pack(side=tk.LEFT)
 
-        ttk.Label(bin_frame, text="점/decade:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(bin_frame, text="점/decade:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
         self.points_per_decade_var = tk.StringVar(value="20")
         ttk.Entry(bin_frame, textvariable=self.points_per_decade_var, width=4).pack(side=tk.LEFT, padx=2)
 
@@ -653,11 +805,11 @@ class PerssonModelGUI_V2:
         range_row = ttk.Frame(fit_frame)
         range_row.pack(fill=tk.X, pady=2)
 
-        ttk.Label(range_row, text="q_min:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(range_row, text="q_min:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.fit_q_min_var = tk.StringVar(value="auto")
         ttk.Entry(range_row, textvariable=self.fit_q_min_var, width=8).pack(side=tk.LEFT, padx=2)
 
-        ttk.Label(range_row, text="q_max:", font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+        ttk.Label(range_row, text="q_max:", font=('Segoe UI', 10)).pack(side=tk.LEFT, padx=(10, 0))
         self.fit_q_max_var = tk.StringVar(value="auto")
         ttk.Entry(range_row, textvariable=self.fit_q_max_var, width=8).pack(side=tk.LEFT, padx=2)
 
@@ -669,7 +821,7 @@ class PerssonModelGUI_V2:
         # PSD to fit
         fit_target_row = ttk.Frame(fit_frame)
         fit_target_row.pack(fill=tk.X, pady=2)
-        ttk.Label(fit_target_row, text="피팅 대상:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(fit_target_row, text="피팅 대상:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.fit_target_var = tk.StringVar(value="full")
         ttk.Radiobutton(fit_target_row, text="Full", variable=self.fit_target_var,
                         value="full").pack(side=tk.LEFT)
@@ -685,7 +837,7 @@ class PerssonModelGUI_V2:
         extrap_frame.pack(fill=tk.X, pady=3)
 
         ttk.Label(extrap_frame, text="※ 피팅 결과를 사용하여 q1까지 PSD 외삽",
-                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
 
         # Enable extrapolation
         self.enable_q1_extrap_var = tk.BooleanVar(value=False)
@@ -695,15 +847,15 @@ class PerssonModelGUI_V2:
         # Target q1 input
         q1_row = ttk.Frame(extrap_frame)
         q1_row.pack(fill=tk.X, pady=2)
-        ttk.Label(q1_row, text="Target q1:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="Target q1:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.target_q1_extrap_var = tk.StringVar(value="1e6")
         ttk.Entry(q1_row, textvariable=self.target_q1_extrap_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(q1_row, text="1/m", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
 
         # Extrapolation points per decade
         extrap_pts_row = ttk.Frame(extrap_frame)
         extrap_pts_row.pack(fill=tk.X, pady=2)
-        ttk.Label(extrap_pts_row, text="외삽 pts/decade:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(extrap_pts_row, text="외삽 pts/decade:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.extrap_pts_per_decade_var = tk.StringVar(value="20")
         ttk.Entry(extrap_pts_row, textvariable=self.extrap_pts_per_decade_var, width=5).pack(side=tk.LEFT, padx=5)
 
@@ -716,7 +868,7 @@ class PerssonModelGUI_V2:
         param_psd_frame.pack(fill=tk.X, pady=3)
 
         ttk.Label(param_psd_frame, text="※ H, q0, C(q0), q1으로 Self-Affine PSD 생성",
-                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
 
         # Enable parameter PSD overlay
         self.enable_param_psd_var = tk.BooleanVar(value=False)
@@ -726,38 +878,38 @@ class PerssonModelGUI_V2:
         # H input
         h_row = ttk.Frame(param_psd_frame)
         h_row.pack(fill=tk.X, pady=2)
-        ttk.Label(h_row, text="H (Hurst):", font=('Arial', 9), width=10).pack(side=tk.LEFT)
+        ttk.Label(h_row, text="H (Hurst):", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
         self.param_H_var = tk.StringVar(value="0.8")
         ttk.Entry(h_row, textvariable=self.param_H_var, width=10).pack(side=tk.LEFT, padx=5)
 
         # q0 input
         q0_row = ttk.Frame(param_psd_frame)
         q0_row.pack(fill=tk.X, pady=2)
-        ttk.Label(q0_row, text="q0:", font=('Arial', 9), width=10).pack(side=tk.LEFT)
+        ttk.Label(q0_row, text="q0:", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
         self.param_q0_var = tk.StringVar(value="1e4")
         ttk.Entry(q0_row, textvariable=self.param_q0_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(q0_row, text="1/m", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(q0_row, text="1/m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
 
         # q1 input
         q1_row = ttk.Frame(param_psd_frame)
         q1_row.pack(fill=tk.X, pady=2)
-        ttk.Label(q1_row, text="q1:", font=('Arial', 9), width=10).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="q1:", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
         self.param_q1_var = tk.StringVar(value="1e9")
         ttk.Entry(q1_row, textvariable=self.param_q1_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(q1_row, text="1/m", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
 
         # h0 (h_rms) input - C(q0) will be auto-calculated
         h0_row = ttk.Frame(param_psd_frame)
         h0_row.pack(fill=tk.X, pady=2)
-        ttk.Label(h0_row, text="h0 (h_rms):", font=('Arial', 9), width=10).pack(side=tk.LEFT)
+        ttk.Label(h0_row, text="h0 (h_rms):", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
         self.param_h0_var = tk.StringVar(value="1e-6")
         ttk.Entry(h0_row, textvariable=self.param_h0_var, width=10).pack(side=tk.LEFT, padx=5)
-        ttk.Label(h0_row, text="m", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(h0_row, text="m", font=('Segoe UI', 9)).pack(side=tk.LEFT)
 
         # Points per decade
         ppd_row = ttk.Frame(param_psd_frame)
         ppd_row.pack(fill=tk.X, pady=2)
-        ttk.Label(ppd_row, text="pts/decade:", font=('Arial', 9), width=10).pack(side=tk.LEFT)
+        ttk.Label(ppd_row, text="pts/decade:", font=('Segoe UI', 10), width=10).pack(side=tk.LEFT)
         self.param_ppd_var = tk.StringVar(value="20")
         ttk.Entry(ppd_row, textvariable=self.param_ppd_var, width=10).pack(side=tk.LEFT, padx=5)
 
@@ -773,7 +925,7 @@ class PerssonModelGUI_V2:
         result_frame = ttk.LabelFrame(left_scrollable, text="6. 결과", padding=5)
         result_frame.pack(fill=tk.X, pady=3)
 
-        self.psd_profile_result_text = tk.Text(result_frame, height=12, width=45, font=('Consolas', 9))
+        self.psd_profile_result_text = tk.Text(result_frame, height=12, width=45, font=('Consolas', 10))
         self.psd_profile_result_text.pack(fill=tk.BOTH, expand=True)
 
         # 7. Export Options
@@ -1637,7 +1789,7 @@ class PerssonModelGUI_V2:
             if hasattr(self, 'psd_status_var'):
                 self.psd_status_var.set(f"✓ PSD 설정됨: {psd_type_str}")
             if hasattr(self, 'psd_status_label'):
-                self.psd_status_label.config(foreground='green')
+                self.psd_status_label.config(foreground='#059669')
             if hasattr(self, 'psd_q_range_var'):
                 self.psd_q_range_var.set(f"{q[0]:.2e} ~ {q[-1]:.2e} (1/m)")
             if hasattr(self, 'psd_H_var'):
@@ -1728,7 +1880,7 @@ class PerssonModelGUI_V2:
         left_container.pack_propagate(False)
 
         # Create canvas and scrollbar for scrolling
-        mc_canvas = tk.Canvas(left_container, highlightthickness=0, bg='#f0f0f0')
+        mc_canvas = tk.Canvas(left_container, highlightthickness=0, bg='#F0F2F5')
         mc_scrollbar = ttk.Scrollbar(left_container, orient="vertical", command=mc_canvas.yview)
 
         # Create inner frame for content
@@ -1785,7 +1937,7 @@ class PerssonModelGUI_V2:
             "  - 수평 이동 aT: 주파수 시프트\n"
             "  - 수직 이동 bT: 모듈러스 시프트 (밀도/엔트로피 보정)"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Arial', 9), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. File Loading
         load_frame = ttk.LabelFrame(left_frame, text="데이터 로드", padding=5)
@@ -1800,12 +1952,12 @@ class PerssonModelGUI_V2:
         # ===== 내장 마스터 커브/aT 선택 섹션 =====
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 내장 데이터 선택 ─",
-                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         # 내장 마스터 커브 선택
         preset_mc_frame = ttk.Frame(load_frame)
         preset_mc_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(preset_mc_frame, text="마스터커브:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(preset_mc_frame, text="마스터커브:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.preset_mc_var = tk.StringVar(value="(선택...)")
         self.preset_mc_combo = ttk.Combobox(preset_mc_frame, textvariable=self.preset_mc_var,
                                              state='readonly', width=20)
@@ -1816,7 +1968,7 @@ class PerssonModelGUI_V2:
         # 내장 aT 선택
         preset_aT_frame = ttk.Frame(load_frame)
         preset_aT_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.preset_aT_var = tk.StringVar(value="(선택...)")
         self.preset_aT_combo = ttk.Combobox(preset_aT_frame, textvariable=self.preset_aT_var,
                                              state='readonly', width=20)
@@ -1831,19 +1983,18 @@ class PerssonModelGUI_V2:
         # Persson 정품 마스터 커브 직접 로드 버튼
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=5)
         ttk.Label(load_frame, text="─ 또는: 완성된 마스터 커브 직접 로드 ─",
-                  font=('Arial', 8), foreground='blue').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 9), foreground='#2563EB').pack(anchor=tk.CENTER)
 
         # 마스터 커브 직접 로드 버튼 + 리스트에 추가 버튼
         mc_direct_btn_frame = ttk.Frame(load_frame)
         mc_direct_btn_frame.pack(fill=tk.X, pady=2)
 
-        btn_frame_mc_load = tk.Frame(mc_direct_btn_frame, bg='red', padx=2, pady=2)
-        btn_frame_mc_load.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(
-            btn_frame_mc_load,
-            text="★ 마스터 커브 로드 (f, E', E'')",
-            command=self._load_persson_master_curve
-        ).pack(fill=tk.X)
+            mc_direct_btn_frame,
+            text="마스터 커브 로드 (f, E', E'')",
+            command=self._load_persson_master_curve,
+            style='Accent.TButton'
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(mc_direct_btn_frame, text="→ 리스트에 추가",
                    command=self._add_preset_mastercurve, width=14).pack(side=tk.LEFT, padx=(5, 0))
@@ -1852,34 +2003,32 @@ class PerssonModelGUI_V2:
         aT_direct_btn_frame = ttk.Frame(load_frame)
         aT_direct_btn_frame.pack(fill=tk.X, pady=2)
 
-        btn_frame_aT_load = tk.Frame(aT_direct_btn_frame, bg='red', padx=2, pady=2)
-        btn_frame_aT_load.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(
-            btn_frame_aT_load,
+            aT_direct_btn_frame,
             text="aT 시프트 팩터 로드 (T, aT)",
-            command=self._load_persson_aT
-        ).pack(fill=tk.X)
+            command=self._load_persson_aT,
+            style='Accent.TButton'
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(aT_direct_btn_frame, text="→ 리스트에 추가",
                    command=self._add_preset_aT, width=14).pack(side=tk.LEFT, padx=(5, 0))
 
-        # Persson 정품 마스터 커브 확정 버튼 (빨간 테두리)
+        # Persson 정품 마스터 커브 확정 버튼
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=3)
-        btn_frame_mc_apply = tk.Frame(load_frame, bg='red', padx=2, pady=2)
-        btn_frame_mc_apply.pack(fill=tk.X, pady=2)
         ttk.Button(
-            btn_frame_mc_apply, text="★ Persson 정품 마스터 커브 확정 → Tab 3",
-            command=self._use_persson_master_curve_for_calc
-        ).pack(fill=tk.X)
+            load_frame, text="마스터 커브 확정  \u2192  계산에 사용",
+            command=self._use_persson_master_curve_for_calc,
+            style='Success.TButton'
+        ).pack(fill=tk.X, pady=2)
 
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
-                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
 
         # aT 정보 표시
         self.mc_aT_info_var = tk.StringVar(value="aT: 미로드")
         ttk.Label(load_frame, textvariable=self.mc_aT_info_var,
-                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
 
         # 마스터 커브 비교 버튼
         self.mc_compare_var = tk.BooleanVar(value=False)
@@ -1904,14 +2053,14 @@ class PerssonModelGUI_V2:
         # Reference temperature
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
-        ttk.Label(row1, text="기준 온도 Tref (°C):", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="기준 온도 Tref (°C):", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.mc_tref_var = tk.StringVar(value="20.0")
         ttk.Entry(row1, textvariable=self.mc_tref_var, width=10).pack(side=tk.RIGHT)
 
         # bT mode
         row2 = ttk.Frame(settings_frame)
         row2.pack(fill=tk.X, pady=2)
-        ttk.Label(row2, text="bT 계산 방법:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="bT 계산 방법:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.mc_bt_mode_var = tk.StringVar(value="optimize")
         bt_combo = ttk.Combobox(
             row2, textvariable=self.mc_bt_mode_var,
@@ -1930,12 +2079,12 @@ class PerssonModelGUI_V2:
 
         ttk.Label(settings_frame,
                   text="optimize: 수치 최적화 / theoretical: T/Tref 공식",
-                  font=('Arial', 7), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
 
         # Optimization target selection
         row3 = ttk.Frame(settings_frame)
         row3.pack(fill=tk.X, pady=2)
-        ttk.Label(row3, text="최적화 대상:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row3, text="최적화 대상:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.mc_target_var = tk.StringVar(value="E_storage")
         target_combo = ttk.Combobox(
             row3, textvariable=self.mc_target_var,
@@ -1945,7 +2094,7 @@ class PerssonModelGUI_V2:
         target_combo.pack(side=tk.RIGHT)
         ttk.Label(settings_frame,
                   text="E_storage: E' / E_loss: E'' / tan_delta: tanδ",
-                  font=('Arial', 7), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
 
         # Smoothing control for master curve
         smooth_frame = ttk.LabelFrame(settings_frame, text="마스터 커브 스무딩", padding=3)
@@ -1961,7 +2110,7 @@ class PerssonModelGUI_V2:
         # Smoothing window slider
         slider_frame = ttk.Frame(smooth_frame)
         slider_frame.pack(fill=tk.X, pady=2)
-        ttk.Label(slider_frame, text="스무딩 강도:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(slider_frame, text="스무딩 강도:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.mc_smooth_window_var = tk.IntVar(value=11)
         self.mc_smooth_slider = ttk.Scale(
             slider_frame,
@@ -3534,7 +3683,7 @@ class PerssonModelGUI_V2:
         ttk.Label(instruction, text=
             "계산 매개변수를 설정합니다: 압력, 속도 범위 (로그 스케일), 온도.\n"
             "속도 범위: 0.0001~10 m/s (로그 간격)로 주파수 스윕을 수행합니다.",
-            font=('Arial', 10)
+            font=('Segoe UI', 10)
         ).pack()
 
         # Create main container with 2 columns
@@ -3553,15 +3702,14 @@ class PerssonModelGUI_V2:
         calc_section = ttk.Frame(left_panel)
         calc_section.pack(fill=tk.X, pady=(0, 5))
 
-        # G(q,v) 계산 실행 버튼 (빨간 테두리)
-        calc_btn_wrapper = tk.Frame(calc_section, bg='red', padx=2, pady=2)
-        calc_btn_wrapper.pack(fill=tk.X, pady=2)
+        # G(q,v) 계산 실행 버튼
         self.calc_button = ttk.Button(
-            calc_btn_wrapper,
-            text="▶ G(q,v) 계산 실행",
-            command=self._run_calculation
+            calc_section,
+            text="G(q,v) 계산 실행",
+            command=self._run_calculation,
+            style='Accent.TButton'
         )
-        self.calc_button.pack(fill=tk.X)
+        self.calc_button.pack(fill=tk.X, pady=2)
 
         # Progress bar
         self.progress_var = tk.IntVar()
@@ -3625,8 +3773,8 @@ class PerssonModelGUI_V2:
         row += 1
         ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.q_max_var = tk.StringVar(value="1.0e+6")
-        # q_max 입력 필드 (빨간 테두리)
-        qmax_entry_frame = tk.Frame(input_frame, bg='red', padx=2, pady=2)
+        # q_max 입력 필드 (강조)
+        qmax_entry_frame = tk.Frame(input_frame, bg=self.COLORS['primary'], padx=1, pady=1)
         qmax_entry_frame.grid(row=row, column=1, pady=5)
         ttk.Entry(qmax_entry_frame, textvariable=self.q_max_var, width=15).pack()
 
@@ -3645,18 +3793,18 @@ class PerssonModelGUI_V2:
         row += 1
         ttk.Label(input_frame, text="G 보정 계수 (Norm Factor):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.g_norm_factor_var = tk.StringVar(value="1.5625")
-        norm_entry_frame = tk.Frame(input_frame, bg='red', padx=2, pady=2)
+        norm_entry_frame = tk.Frame(input_frame, bg=self.COLORS['warning'], padx=1, pady=1)
         norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
         ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
         ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.5625",
-                  font=('Arial', 7), foreground='gray').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
+                  font=('Segoe UI', 8), foreground='#64748B').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
         row += 1
 
         # ===== h'rms (ξ) / q1 모드 선택 섹션 =====
         # h'rms = ξ = RMS slope (경사), NOT h_rms (height)
         row += 1
-        # 모드 선택 섹션 (빨간 테두리)
-        mode_wrapper = tk.Frame(input_frame, bg='red', padx=2, pady=2)
+        # 모드 선택 섹션 (강조)
+        mode_wrapper = tk.Frame(input_frame, bg=self.COLORS['primary'], padx=1, pady=1)
         mode_wrapper.grid(row=row, column=0, columnspan=2, sticky=tk.EW, pady=10)
         mode_frame = ttk.LabelFrame(mode_wrapper, text="h'rms (ξ, slope) / q1 결정 모드", padding=5)
         mode_frame.pack(fill=tk.X)
@@ -3664,7 +3812,7 @@ class PerssonModelGUI_V2:
         # 설명 라벨
         desc_label = ttk.Label(mode_frame,
             text="※ h'rms = ξ = RMS slope (경사), ξ² = 2π∫k³C(k)dk",
-            font=('Arial', 7), foreground='gray')
+            font=('Segoe UI', 8), foreground='#64748B')
         desc_label.pack(fill=tk.X, pady=(0, 5))
 
         # 모드 선택 라디오 버튼
@@ -3707,12 +3855,11 @@ class PerssonModelGUI_V2:
         # 계산 버튼
         calc_btn_frame = ttk.Frame(mode_frame)
         calc_btn_frame.pack(fill=tk.X, pady=5)
-        # h'rms/q1 계산 버튼 (빨간 테두리)
-        hrms_calc_wrapper = tk.Frame(calc_btn_frame, bg='red', padx=2, pady=2)
-        hrms_calc_wrapper.pack(side=tk.LEFT, padx=5)
-        self.hrms_q1_calc_btn = ttk.Button(hrms_calc_wrapper, text="h'rms/q1 계산",
-                                           command=self._calculate_hrms_q1)
-        self.hrms_q1_calc_btn.pack()
+        # h'rms/q1 계산 버튼
+        self.hrms_q1_calc_btn = ttk.Button(calc_btn_frame, text="h'rms/q1 계산",
+                                           command=self._calculate_hrms_q1,
+                                           style='Accent.TButton')
+        self.hrms_q1_calc_btn.pack(side=tk.LEFT, padx=5)
 
         # 초기 모드 UI 상태 적용 (모드2: q1 활성, h'rms 비활성) - 버튼 생성 후 호출
         self._on_hrms_q1_mode_changed()
@@ -3733,7 +3880,7 @@ class PerssonModelGUI_V2:
         ttk.Label(q1_result_row, text="→ 계산된 q1:").pack(side=tk.LEFT)
         self.calculated_q1_var = tk.StringVar(value="(계산 후 표시)")
         self.calculated_q1_label = ttk.Label(q1_result_row, textvariable=self.calculated_q1_var,
-                                             font=('Arial', 9, 'bold'), foreground='blue')
+                                             font=('Arial', 9, 'bold'), foreground='#2563EB')
         self.calculated_q1_label.pack(side=tk.LEFT, padx=5)
         ttk.Label(q1_result_row, text="(1/m)").pack(side=tk.LEFT)
 
@@ -3743,7 +3890,7 @@ class PerssonModelGUI_V2:
         ttk.Label(hrms_result_row, text="→ 계산된 h'rms (ξ):").pack(side=tk.LEFT)
         self.calculated_hrms_var = tk.StringVar(value="(계산 후 표시)")
         self.calculated_hrms_label = ttk.Label(hrms_result_row, textvariable=self.calculated_hrms_var,
-                                               font=('Arial', 9, 'bold'), foreground='green')
+                                               font=('Arial', 9, 'bold'), foreground='#059669')
         self.calculated_hrms_label.pack(side=tk.LEFT, padx=5)
         ttk.Label(hrms_result_row, text="(무차원)").pack(side=tk.LEFT)
 
@@ -3774,7 +3921,7 @@ class PerssonModelGUI_V2:
             status_display_frame,
             text="대기 중 | v = - m/s | q 범위 = - ~ - (1/m) | f 범위 = - ~ - (Hz)",
             font=('Arial', 10, 'bold'),
-            foreground='blue'
+            foreground='#2563EB'
         )
         self.calc_status_label.pack()
 
@@ -4040,7 +4187,7 @@ class PerssonModelGUI_V2:
         ttk.Label(instruction, text=
             "G(q,v) 2D 행렬 계산 결과: 다중 속도 G(q) 곡선, 히트맵, 접촉 면적.\n"
             "모든 속도가 컬러 코딩되어 하나의 그래프에 표시됩니다.",
-            font=('Arial', 10)
+            font=('Segoe UI', 10)
         ).pack()
 
         # Plot area
@@ -4066,15 +4213,27 @@ class PerssonModelGUI_V2:
         ).pack(side=tk.LEFT, padx=5)
 
     def _create_status_bar(self):
-        """Create status bar."""
-        self.status_var = tk.StringVar(value="준비")
-        status_bar = ttk.Label(
-            self.root,
-            textvariable=self.status_var,
-            relief=tk.SUNKEN,
-            anchor=tk.W
-        )
-        status_bar.pack(side=tk.BOTTOM, fill=tk.X)
+        """Create modern status bar."""
+        C = self.COLORS
+        self.status_var = tk.StringVar(value="Ready")
+
+        status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=28)
+        status_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        status_frame.pack_propagate(False)
+
+        # Status indicator dot
+        tk.Label(status_frame, text="\u25CF", bg=C['statusbar_bg'],
+                 fg=C['success'], font=('Segoe UI', 8)).pack(side=tk.LEFT, padx=(12, 4))
+
+        # Status text
+        tk.Label(status_frame, textvariable=self.status_var,
+                 bg=C['statusbar_bg'], fg=C['statusbar_fg'],
+                 font=self.FONTS['small'], anchor=tk.W).pack(side=tk.LEFT, fill=tk.X, expand=True)
+
+        # Version badge
+        tk.Label(status_frame, text="Persson Model v3.0",
+                 bg=C['statusbar_bg'], fg='#475569',
+                 font=self.FONTS['tiny']).pack(side=tk.RIGHT, padx=12)
 
     def _update_material_display(self):
         """Update material information (if needed)."""
@@ -4812,7 +4971,7 @@ class PerssonModelGUI_V2:
                 # Update status label to show completion
                 self.calc_status_label.config(
                     text=f"계산 완료! | 총 {len(v_array)}개 속도 × {len(q_array)}개 파수",
-                    foreground='green'
+                    foreground='#059669'
                 )
 
                 self.canvas_calc_progress.draw()
@@ -5414,7 +5573,7 @@ class PerssonModelGUI_V2:
 
         # Title
         ttk.Label(main_frame, text="Available Graph Data", font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        ttk.Label(main_frame, text="Select data to export as txt files", font=('Arial', 9)).pack(anchor=tk.W)
+        ttk.Label(main_frame, text="Select data to export as txt files", font=('Segoe UI', 10)).pack(anchor=tk.W)
 
         # Listbox with scrollbar
         list_frame = ttk.Frame(main_frame)
@@ -5469,7 +5628,7 @@ class PerssonModelGUI_V2:
 
         # Status
         self.export_status_var = tk.StringVar(value="Select data and click Export")
-        ttk.Label(main_frame, textvariable=self.export_status_var, font=('Arial', 9)).pack(anchor=tk.W)
+        ttk.Label(main_frame, textvariable=self.export_status_var, font=('Segoe UI', 10)).pack(anchor=tk.W)
 
     def _export_selected_graph_data(self, popup):
         """Export selected graph data to txt files."""
@@ -5787,7 +5946,7 @@ $\begin{array}{lcc}
             "  ξ²(q) = 2π ∫[q0→q] k³C(k)dk\n"
             "  ε(q) = factor × ξ(q)"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Arial', 9), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. Calculation Settings
         settings_frame = ttk.LabelFrame(left_frame, text="계산 설정", padding=5)
@@ -5796,12 +5955,12 @@ $\begin{array}{lcc}
         # Strain factor
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
-        ttk.Label(row1, text="Strain Factor:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="Strain Factor:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.strain_factor_var = tk.StringVar(value="0.5")
         ttk.Entry(row1, textvariable=self.strain_factor_var, width=8).pack(side=tk.RIGHT)
 
         ttk.Label(settings_frame, text="(ε = factor × ξ, Persson 권장: 0.5~1.0)",
-                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
 
         # q range - Tab 3 (계산 설정)의 q_min/q_max 사용
         q_frame = ttk.LabelFrame(settings_frame, text="q 범위 (계산 설정 탭 연동)", padding=3)
@@ -5809,20 +5968,20 @@ $\begin{array}{lcc}
 
         row_q1 = ttk.Frame(q_frame)
         row_q1.pack(fill=tk.X, pady=1)
-        ttk.Label(row_q1, text="q_min (1/m):", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(row_q1, text="q_min (1/m):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.rms_q_min_var = self.q_min_var  # 계산 설정 탭과 동일 변수 공유
-        ttk.Label(row_q1, textvariable=self.rms_q_min_var, font=('Arial', 8, 'bold'),
-                  foreground='blue').pack(side=tk.RIGHT)
+        ttk.Label(row_q1, textvariable=self.rms_q_min_var, font=('Segoe UI', 9, 'bold'),
+                  foreground='#2563EB').pack(side=tk.RIGHT)
 
         row_q2 = ttk.Frame(q_frame)
         row_q2.pack(fill=tk.X, pady=1)
-        ttk.Label(row_q2, text="q_max (1/m):", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(row_q2, text="q_max (1/m):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.rms_q_max_var = self.q_max_var  # 계산 설정 탭과 동일 변수 공유
-        ttk.Label(row_q2, textvariable=self.rms_q_max_var, font=('Arial', 8, 'bold'),
-                  foreground='blue').pack(side=tk.RIGHT)
+        ttk.Label(row_q2, textvariable=self.rms_q_max_var, font=('Segoe UI', 9, 'bold'),
+                  foreground='#2563EB').pack(side=tk.RIGHT)
 
         ttk.Label(q_frame, text="※ 계산 설정 탭의 q 범위가 자동 적용됨",
-                  font=('Arial', 7), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
 
         # Target h'rms display (synced with Tab 2)
         target_frame = ttk.LabelFrame(settings_frame, text="목표 h'rms (Tab 2 연동)", padding=3)
@@ -5830,10 +5989,10 @@ $\begin{array}{lcc}
 
         row_target = ttk.Frame(target_frame)
         row_target.pack(fill=tk.X, pady=1)
-        ttk.Label(row_target, text="목표 ξ:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(row_target, text="목표 ξ:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.rms_target_xi_display = tk.StringVar(value="(Tab 2에서 설정)")
         self.rms_target_xi_label = ttk.Label(row_target, textvariable=self.rms_target_xi_display,
-                                             font=('Arial', 9, 'bold'), foreground='blue')
+                                             font=('Arial', 9, 'bold'), foreground='#2563EB')
         self.rms_target_xi_label.pack(side=tk.RIGHT)
 
         # Refresh button for target value
@@ -5841,7 +6000,7 @@ $\begin{array}{lcc}
                    width=15).pack(pady=2)
 
         ttk.Label(target_frame, text="※ Tab 2에서 '목표 h'rms' 변경 시\n   이 버튼을 눌러 동기화하세요",
-                  font=('Arial', 7), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
 
         # Calculate button
         calc_frame = ttk.Frame(settings_frame)
@@ -6304,7 +6463,7 @@ $\begin{array}{lcc}
 
         # ===== 내장 Strain Sweep 선택 =====
         ttk.Label(strain_frame, text="-- 내장 Strain Sweep --",
-                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         preset_ss_frame = ttk.Frame(strain_frame)
         preset_ss_frame.pack(fill=tk.X, pady=1)
@@ -6321,24 +6480,23 @@ $\begin{array}{lcc}
         ss_btn_frame = ttk.Frame(strain_frame)
         ss_btn_frame.pack(fill=tk.X, pady=1)
 
-        strain_load_wrapper = tk.Frame(ss_btn_frame, bg='red', padx=2, pady=2)
-        strain_load_wrapper.pack(side=tk.LEFT, fill=tk.X, expand=True)
         ttk.Button(
-            strain_load_wrapper,
+            ss_btn_frame,
             text="Strain Sweep 로드",
             command=self._load_strain_sweep_data,
-        ).pack(fill=tk.X)
+            style='Accent.TButton'
+        ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(ss_btn_frame, text="-> 추가",
                    command=self._add_preset_strain_sweep, width=7).pack(side=tk.LEFT, padx=(3, 0))
 
-        self.strain_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Arial', 8))
+        self.strain_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Segoe UI', 9))
         self.strain_file_label.pack(anchor=tk.W)
 
         # ===== 내장 f,g 곡선 선택 =====
         ttk.Separator(strain_frame, orient='horizontal').pack(fill=tk.X, pady=3)
         ttk.Label(strain_frame, text="-- 내장 f,g 곡선 --",
-                  font=('Arial', 8, 'bold'), foreground='green').pack(anchor=tk.CENTER)
+                  font=('Segoe UI', 9, 'bold'), foreground='#059669').pack(anchor=tk.CENTER)
 
         preset_fg_frame = ttk.Frame(strain_frame)
         preset_fg_frame.pack(fill=tk.X, pady=1)
@@ -6365,7 +6523,7 @@ $\begin{array}{lcc}
         ttk.Button(fg_btn_frame, text="-> 추가",
                    command=self._add_preset_fg, width=7).pack(side=tk.LEFT, padx=(3, 0))
 
-        self.fg_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Arial', 8))
+        self.fg_file_label = ttk.Label(strain_frame, text="(파일 없음)", font=('Segoe UI', 9))
         self.fg_file_label.pack(anchor=tk.W)
 
         # 2. f,g Calculation Settings
@@ -6375,10 +6533,10 @@ $\begin{array}{lcc}
         # Target frequency and E0 points in one row
         row1 = ttk.Frame(fg_settings_frame)
         row1.pack(fill=tk.X, pady=1)
-        ttk.Label(row1, text="주파수:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="주파수:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.fg_target_freq_var = tk.StringVar(value="1.0")
         ttk.Entry(row1, textvariable=self.fg_target_freq_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Label(row1, text="Hz  E0점:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="Hz  E0점:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.e0_points_var = tk.StringVar(value="1")
         ttk.Entry(row1, textvariable=self.e0_points_var, width=4).pack(side=tk.LEFT, padx=2)
 
@@ -6393,21 +6551,20 @@ $\begin{array}{lcc}
         # Grid max strain and Persson grid
         row2 = ttk.Frame(fg_settings_frame)
         row2.pack(fill=tk.X, pady=1)
-        ttk.Label(row2, text="Grid Max(%):", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="Grid Max(%):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.extend_strain_var = tk.StringVar(value="40")
         ttk.Entry(row2, textvariable=self.extend_strain_var, width=5).pack(side=tk.LEFT, padx=2)
         self.use_persson_grid_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(row2, text="Persson Grid", variable=self.use_persson_grid_var).pack(side=tk.LEFT)
 
-        # Compute f,g button (빨간 테두리)
-        fg_calc_wrapper = tk.Frame(fg_settings_frame, bg='red', padx=2, pady=2)
-        fg_calc_wrapper.pack(anchor=tk.W, pady=2)
+        # Compute f,g button
         ttk.Button(
-            fg_calc_wrapper,
+            fg_settings_frame,
             text="f,g 계산",
             command=self._compute_fg_curves,
+            style='Accent.TButton',
             width=15
-        ).pack()
+        ).pack(anchor=tk.W, pady=2)
 
         # 3. Persson Average f,g (RANK 1 최적 가중치 자동 적용)
         persson_avg_frame = ttk.LabelFrame(left_panel, text="3) Persson average f,g", padding=5)
@@ -6416,10 +6573,10 @@ $\begin{array}{lcc}
         # Split strain setting (RANK 1 default: 14.2%)
         split_row = ttk.Frame(persson_avg_frame)
         split_row.pack(fill=tk.X, pady=1)
-        ttk.Label(split_row, text="Split(%):", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(split_row, text="Split(%):", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.split_strain_var = tk.StringVar(value="14.2")
         ttk.Entry(split_row, textvariable=self.split_strain_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Label(split_row, text="RANK1 최적", font=('Arial', 7), foreground='blue').pack(side=tk.LEFT, padx=2)
+        ttk.Label(split_row, text="RANK1 최적", font=('Segoe UI', 8), foreground='#2563EB').pack(side=tk.LEFT, padx=2)
 
         # RANK 1 weight info display
         info_frame = ttk.Frame(persson_avg_frame)
@@ -6429,22 +6586,21 @@ $\begin{array}{lcc}
             "g: low(0.02°C:35%,49.99°C:65%) high(29.9°C:55%,49.99°C:45%)"
         )
         ttk.Label(info_frame, text=weight_info, font=('Arial', 6),
-                  foreground='gray', justify=tk.LEFT).pack(anchor=tk.W)
+                  foreground='#64748B', justify=tk.LEFT).pack(anchor=tk.W)
 
-        # Persson average f,g 계산 button (빨간 테두리)
-        persson_avg_wrapper = tk.Frame(persson_avg_frame, bg='red', padx=2, pady=2)
-        persson_avg_wrapper.pack(anchor=tk.W, pady=3)
+        # Persson average f,g 계산 button
         ttk.Button(
-            persson_avg_wrapper,
+            persson_avg_frame,
             text="Persson average f,g 계산",
             command=self._persson_average_fg,
+            style='Accent.TButton',
             width=25
-        ).pack()
+        ).pack(anchor=tk.W, pady=3)
 
         # Status label for Persson average
         self.persson_avg_status_var = tk.StringVar(value="(미계산)")
         ttk.Label(persson_avg_frame, textvariable=self.persson_avg_status_var,
-                  font=('Arial', 8), foreground='green').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#059669').pack(anchor=tk.W)
 
         # Hidden listboxes for internal compatibility (not displayed)
         _hidden_frame = ttk.Frame(left_panel)
@@ -6464,8 +6620,8 @@ $\begin{array}{lcc}
         mu_settings_frame = ttk.LabelFrame(left_panel, text="4) μ_visc 계산", padding=5)
         mu_settings_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        # Nonlinear correction - single row (빨간 테두리)
-        nonlinear_wrapper = tk.Frame(mu_settings_frame, bg='red', padx=2, pady=2)
+        # Nonlinear correction - single row (강조)
+        nonlinear_wrapper = tk.Frame(mu_settings_frame, bg=self.COLORS['warning'], padx=1, pady=1)
         nonlinear_wrapper.pack(fill=tk.X, pady=1)
         nonlinear_row = ttk.Frame(nonlinear_wrapper)
         nonlinear_row.pack(fill=tk.X)
@@ -6475,7 +6631,7 @@ $\begin{array}{lcc}
         # Strain estimation in same frame
         strain_row = ttk.Frame(mu_settings_frame)
         strain_row.pack(fill=tk.X, pady=1)
-        ttk.Label(strain_row, text="Strain:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(strain_row, text="Strain:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.strain_est_method_var = tk.StringVar(value="rms_slope")
         strain_combo = ttk.Combobox(strain_row, textvariable=self.strain_est_method_var,
                      values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly")
@@ -6484,7 +6640,7 @@ $\begin{array}{lcc}
         self.fixed_strain_var = tk.StringVar(value="1.0")
         self.fixed_strain_entry = ttk.Entry(strain_row, textvariable=self.fixed_strain_var, width=5)
         self.fixed_strain_entry.pack(side=tk.LEFT)
-        self.fixed_strain_label = ttk.Label(strain_row, text="%", font=('Arial', 8))
+        self.fixed_strain_label = ttk.Label(strain_row, text="%", font=('Segoe UI', 9))
         self.fixed_strain_label.pack(side=tk.LEFT)
 
         # Callback to show/hide fixed strain entry based on method
@@ -6492,7 +6648,7 @@ $\begin{array}{lcc}
             method = self.strain_est_method_var.get()
             if method == 'rms_slope':
                 self.fixed_strain_entry.config(state='disabled')
-                self.fixed_strain_label.config(foreground='gray')
+                self.fixed_strain_label.config(foreground='#64748B')
             else:
                 self.fixed_strain_entry.config(state='normal')
                 self.fixed_strain_label.config(foreground='black')
@@ -6503,10 +6659,10 @@ $\begin{array}{lcc}
         # Integration parameters in single row
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
-        ttk.Label(integ_row, text="γ:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(integ_row, text="γ:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.gamma_var = tk.StringVar(value="0.60")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
-        ttk.Label(integ_row, text="φ점:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(integ_row, text="φ점:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="14")
         ttk.Entry(integ_row, textvariable=self.n_phi_var, width=5).pack(side=tk.LEFT, padx=2)
 
@@ -6524,21 +6680,21 @@ $\begin{array}{lcc}
         temp_frame = ttk.LabelFrame(mu_settings_frame, text="온도 시프트 (aT 적용)", padding=3)
         temp_frame.pack(fill=tk.X, pady=2)
 
-        # Temperature input row (빨간 테두리)
-        temp_row1_wrapper = tk.Frame(temp_frame, bg='red', padx=2, pady=2)
+        # Temperature input row (강조)
+        temp_row1_wrapper = tk.Frame(temp_frame, bg=self.COLORS['primary'], padx=1, pady=1)
         temp_row1_wrapper.pack(fill=tk.X, pady=1)
         temp_row1 = ttk.Frame(temp_row1_wrapper)
         temp_row1.pack(fill=tk.X)
-        ttk.Label(temp_row1, text="계산 온도:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(temp_row1, text="계산 온도:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.mu_calc_temp_var = tk.StringVar(value="20.0")
         self.mu_calc_temp_entry = ttk.Entry(temp_row1, textvariable=self.mu_calc_temp_var, width=8)
         self.mu_calc_temp_entry.pack(side=tk.LEFT, padx=2)
-        ttk.Label(temp_row1, text="°C", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(temp_row1, text="°C", font=('Segoe UI', 10)).pack(side=tk.LEFT)
 
         # aT status display
         self.mu_aT_status_var = tk.StringVar(value="aT: 미로드 (Tref에서 계산)")
         ttk.Label(temp_frame, textvariable=self.mu_aT_status_var,
-                  font=('Arial', 8), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 9), foreground='#64748B').pack(anchor=tk.W)
 
         # Temperature apply button
         temp_row2 = ttk.Frame(temp_frame)
@@ -6549,17 +6705,17 @@ $\begin{array}{lcc}
         # G calculation status
         self.g_calc_status_var = tk.StringVar(value="")
         self.g_calc_status_label = ttk.Label(temp_frame, textvariable=self.g_calc_status_var,
-                  font=('Arial', 8), foreground='blue')
+                  font=('Segoe UI', 9), foreground='#2563EB')
         self.g_calc_status_label.pack(anchor=tk.W)
 
         # Calculate button and progress bar
         calc_row = ttk.Frame(mu_settings_frame)
         calc_row.pack(fill=tk.X, pady=2)
-        # μ_visc 계산 버튼 (빨간 테두리)
-        mu_calc_wrapper = tk.Frame(calc_row, bg='red', padx=2, pady=2)
-        mu_calc_wrapper.pack(side=tk.LEFT, padx=2)
-        self.mu_calc_button = ttk.Button(mu_calc_wrapper, text="μ_visc 계산", command=self._calculate_mu_visc, width=15)
-        self.mu_calc_button.pack()
+        # μ_visc 계산 버튼
+        self.mu_calc_button = ttk.Button(calc_row, text="μ_visc 계산",
+                                         command=self._calculate_mu_visc, width=15,
+                                         style='Accent.TButton')
+        self.mu_calc_button.pack(side=tk.LEFT, padx=2)
 
         self.mu_progress_var = tk.IntVar()
         self.mu_progress_bar = ttk.Progressbar(calc_row, variable=self.mu_progress_var, maximum=100, length=150)
@@ -6599,7 +6755,7 @@ $\begin{array}{lcc}
         # Gap display (A/A0 계산값 vs 참조값 차이)
         self.area_gap_var = tk.StringVar(value="A/A0 Gap: 계산 후 표시")
         ttk.Label(ref_frame, textvariable=self.area_gap_var,
-                  font=('Arial', 8), foreground='blue').pack(anchor=tk.W, pady=2)
+                  font=('Segoe UI', 9), foreground='#2563EB').pack(anchor=tk.W, pady=2)
 
         # ============== Right Panel: Plots ==============
 
@@ -8591,7 +8747,7 @@ $\begin{array}{lcc}
         desc_frame = ttk.Frame(dialog, padding=10)
         desc_frame.pack(fill=tk.X)
         ttk.Label(desc_frame, text="내보낼 데이터를 선택하세요.\n각 데이터는 별도의 CSV 파일로 저장됩니다.",
-                  font=('Arial', 10)).pack(anchor=tk.W)
+                  font=('Segoe UI', 10)).pack(anchor=tk.W)
 
         # Checkbox frame
         check_frame = ttk.LabelFrame(dialog, text="데이터 선택", padding=10)
@@ -8638,7 +8794,7 @@ $\begin{array}{lcc}
         # Velocity selection for q-dependent data
         v_frame = ttk.Frame(check_frame)
         v_frame.pack(fill=tk.X, pady=5)
-        ttk.Label(v_frame, text="q 데이터 속도 인덱스:", font=('Arial', 8)).pack(side=tk.LEFT)
+        ttk.Label(v_frame, text="q 데이터 속도 인덱스:", font=('Segoe UI', 9)).pack(side=tk.LEFT)
 
         v_array = self.mu_visc_results['v']
         n_v = len(v_array)
@@ -8658,7 +8814,7 @@ $\begin{array}{lcc}
             except:
                 pass
 
-        v_info_label = ttk.Label(v_frame, text=f"(v = {v_array[default_idx]:.2e} m/s)", font=('Arial', 8))
+        v_info_label = ttk.Label(v_frame, text=f"(v = {v_array[default_idx]:.2e} m/s)", font=('Segoe UI', 9))
         v_info_label.pack(side=tk.LEFT)
         self.export_v_idx_var.trace('w', update_v_label)
 
@@ -8933,7 +9089,7 @@ $\begin{array}{lcc}
         inst_frame.pack(fill=tk.X)
         ttk.Label(inst_frame,
                   text="참조 데이터를 복사하여 붙여넣기 하세요.\n형식: 각 줄에 'log10(v) [탭 or 공백] 값' (예: -5.0  0.59)",
-                  font=('Arial', 9)).pack(anchor=tk.W)
+                  font=('Segoe UI', 10)).pack(anchor=tk.W)
 
         # Create notebook for tabs
         notebook = ttk.Notebook(dialog)
@@ -9074,7 +9230,7 @@ $\begin{array}{lcc}
             "각 파수 q와 슬립 속도 v에서의 국소 변형률 ε(q,v)와 감소된 모듈러스를 시각화합니다.\n"
             "ω = q·v·cos(φ) 로 주파수가 결정되며, 해당 주파수에서의 모듈러스가 변형률에 따라 감소합니다."
         )
-        ttk.Label(control_frame, text=desc_text, font=('Arial', 9)).pack(anchor=tk.W)
+        ttk.Label(control_frame, text=desc_text, font=('Segoe UI', 10)).pack(anchor=tk.W)
 
         # Control row
         ctrl_row = ttk.Frame(control_frame)
@@ -9747,7 +9903,7 @@ $\begin{array}{lcc}
         desc_frame = ttk.Frame(dialog, padding=10)
         desc_frame.pack(fill=tk.X)
         ttk.Label(desc_frame, text="내보낼 데이터를 선택하세요.\n각 데이터는 별도의 CSV 파일로 저장됩니다.",
-                  font=('Arial', 10)).pack(anchor=tk.W)
+                  font=('Segoe UI', 10)).pack(anchor=tk.W)
 
         # Checkbox frame
         check_frame = ttk.LabelFrame(dialog, text="데이터 선택", padding=10)
@@ -9883,7 +10039,7 @@ $\begin{array}{lcc}
             "2. G(q) 피적분: q³C(q)×(각도적분) vs q\n"
             "3. μ_visc 각도 적분 vs 속도"
         )
-        ttk.Label(desc_frame, text=desc_text, font=('Arial', 9), justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(desc_frame, text=desc_text, font=('Segoe UI', 10), justify=tk.LEFT).pack(anchor=tk.W)
 
         # 2. Calculation Settings
         settings_frame = ttk.LabelFrame(left_frame, text="계산 설정", padding=5)
@@ -9892,24 +10048,24 @@ $\begin{array}{lcc}
         # q value selection for angle integrand
         row1 = ttk.Frame(settings_frame)
         row1.pack(fill=tk.X, pady=2)
-        ttk.Label(row1, text="q 값 (1/m):", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row1, text="q 값 (1/m):", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.integrand_q_var = tk.StringVar(value="1e4, 1e5, 1e6")
         ttk.Entry(row1, textvariable=self.integrand_q_var, width=15).pack(side=tk.RIGHT)
 
         ttk.Label(settings_frame, text="(쉼표로 구분, 예: 1e4, 1e5, 1e6)",
-                  font=('Arial', 7), foreground='gray').pack(anchor=tk.W)
+                  font=('Segoe UI', 8), foreground='#64748B').pack(anchor=tk.W)
 
         # Velocity selection
         row2 = ttk.Frame(settings_frame)
         row2.pack(fill=tk.X, pady=2)
-        ttk.Label(row2, text="속도 v (m/s):", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row2, text="속도 v (m/s):", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.integrand_v_var = tk.StringVar(value="0.01")
         ttk.Entry(row2, textvariable=self.integrand_v_var, width=15).pack(side=tk.RIGHT)
 
         # Number of angle points
         row3 = ttk.Frame(settings_frame)
         row3.pack(fill=tk.X, pady=2)
-        ttk.Label(row3, text="각도 분할 수:", font=('Arial', 9)).pack(side=tk.LEFT)
+        ttk.Label(row3, text="각도 분할 수:", font=('Segoe UI', 10)).pack(side=tk.LEFT)
         self.integrand_nangle_var = tk.StringVar(value="72")
         ttk.Entry(row3, textvariable=self.integrand_nangle_var, width=8).pack(side=tk.RIGHT)
 
@@ -10510,7 +10666,7 @@ $\begin{array}{lcc}
         ttk.Label(instruction, text=
             "이 탭에서는 μ_visc 계산 과정의 모든 중간 변수 값을 확인할 수 있습니다.\n"
             "문제 진단 및 계산 검증에 사용하세요. '진단 실행' 버튼으로 상세 분석을 수행합니다.",
-            font=('Arial', 10)
+            font=('Segoe UI', 10)
         ).pack()
 
         # Control buttons
@@ -11762,6 +11918,14 @@ $\begin{array}{lcc}
 def main():
     """Run the enhanced application."""
     root = tk.Tk()
+
+    # ── High-DPI awareness (Windows 10+) ──
+    try:
+        from ctypes import windll
+        windll.shcore.SetProcessDpiAwareness(1)
+    except Exception:
+        pass
+
     app = PerssonModelGUI_V2(root)
     root.mainloop()
 
