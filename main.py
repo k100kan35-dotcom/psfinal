@@ -740,11 +740,11 @@ class PerssonModelGUI_V2:
         ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.preset_psd_var = tk.StringVar(value="(선택...)")
         self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
-                                              state='readonly', width=25, font=self.FONTS['body'])
-        self.preset_psd_combo.pack(side=tk.LEFT, padx=5)
-        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=5,
+                                              state='readonly', width=18, font=self.FONTS['body'])
+        self.preset_psd_combo.pack(side=tk.LEFT, padx=3)
+        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=4,
                    style='Outline.TButton').pack(side=tk.LEFT)
-        ttk.Button(preset_psd_frame, text="삭제", command=self._delete_preset_psd, width=5).pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_psd_frame, text="삭제", command=self._delete_preset_psd, width=4).pack(side=tk.LEFT, padx=2)
 
         # 프로그램 시작 시 내장 PSD 목록 로드
         self._refresh_preset_psd_list()
@@ -762,8 +762,8 @@ class PerssonModelGUI_V2:
                    command=self._load_psd_direct,
                    style='Accent.TButton').pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        ttk.Button(psd_direct_btn_frame, text="→ 리스트에 추가",
-                   command=self._add_preset_psd, width=14).pack(side=tk.LEFT, padx=(5, 0))
+        ttk.Button(psd_direct_btn_frame, text="→ 리스트 추가",
+                   command=self._add_preset_psd, width=10).pack(side=tk.LEFT, padx=(3, 0))
 
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
@@ -784,7 +784,7 @@ class PerssonModelGUI_V2:
         ttk.Radiobutton(apply_frame_top, text="직접로드", variable=self.apply_psd_type_var,
                         value="direct").pack(side=tk.LEFT)
         # PSD 확정 버튼
-        ttk.Button(load_frame, text="PSD 확정  \u2192  계산에 사용",
+        ttk.Button(load_frame, text="PSD 확정 \u2192 계산에 사용",
                    command=self._apply_profile_psd_to_tab3,
                    style='Success.TButton').pack(fill=tk.X, pady=2)
 
@@ -2041,11 +2041,11 @@ class PerssonModelGUI_V2:
         ttk.Label(preset_mc_frame, text="마스터커브:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.preset_mc_var = tk.StringVar(value="(선택...)")
         self.preset_mc_combo = ttk.Combobox(preset_mc_frame, textvariable=self.preset_mc_var,
-                                             state='readonly', width=20, font=self.FONTS['body'])
+                                             state='readonly', width=15, font=self.FONTS['body'])
         self.preset_mc_combo.pack(side=tk.LEFT, padx=2)
-        ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=5,
+        ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=4,
                    style='Outline.TButton').pack(side=tk.LEFT)
-        ttk.Button(preset_mc_frame, text="삭제", command=self._delete_preset_mastercurve, width=5).pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_mc_frame, text="삭제", command=self._delete_preset_mastercurve, width=4).pack(side=tk.LEFT, padx=2)
 
         # 내장 aT 선택
         preset_aT_frame = ttk.Frame(load_frame)
@@ -2053,11 +2053,11 @@ class PerssonModelGUI_V2:
         ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.preset_aT_var = tk.StringVar(value="(선택...)")
         self.preset_aT_combo = ttk.Combobox(preset_aT_frame, textvariable=self.preset_aT_var,
-                                             state='readonly', width=20, font=self.FONTS['body'])
+                                             state='readonly', width=15, font=self.FONTS['body'])
         self.preset_aT_combo.pack(side=tk.LEFT, padx=2)
-        ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=5,
+        ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=4,
                    style='Outline.TButton').pack(side=tk.LEFT)
-        ttk.Button(preset_aT_frame, text="삭제", command=self._delete_preset_aT, width=5).pack(side=tk.LEFT, padx=2)
+        ttk.Button(preset_aT_frame, text="삭제", command=self._delete_preset_aT, width=4).pack(side=tk.LEFT, padx=2)
 
         # 프로그램 시작 시 내장 데이터 목록 로드
         self._refresh_preset_mastercurve_list()
@@ -2079,8 +2079,8 @@ class PerssonModelGUI_V2:
             style='Accent.TButton'
         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        ttk.Button(mc_direct_btn_frame, text="→ 리스트에 추가",
-                   command=self._add_preset_mastercurve, width=14).pack(side=tk.LEFT, padx=(5, 0))
+        ttk.Button(mc_direct_btn_frame, text="→ 리스트 추가",
+                   command=self._add_preset_mastercurve, width=10).pack(side=tk.LEFT, padx=(3, 0))
 
         # aT 시프트 팩터 로드 버튼 + 리스트에 추가 버튼
         aT_direct_btn_frame = ttk.Frame(load_frame)
@@ -2093,8 +2093,8 @@ class PerssonModelGUI_V2:
             style='Accent.TButton'
         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
-        ttk.Button(aT_direct_btn_frame, text="→ 리스트에 추가",
-                   command=self._add_preset_aT, width=14).pack(side=tk.LEFT, padx=(5, 0))
+        ttk.Button(aT_direct_btn_frame, text="→ 리스트 추가",
+                   command=self._add_preset_aT, width=10).pack(side=tk.LEFT, padx=(3, 0))
 
         # Persson 정품 마스터 커브 확정 버튼
         ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=3)
