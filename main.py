@@ -626,6 +626,7 @@ class PerssonModelGUI_V2:
             ('tab_results',         'G(q,v) 결과',        self._create_results_tab),
             ('tab_rms_slope',       "h'rms / Strain",     self._create_rms_slope_tab),
             ('tab_mu_visc',         'μ_visc 계산',        self._create_mu_visc_tab),
+            ('tab_ve_advisor',      '점탄성 설계',        self._create_ve_advisor_tab),
             ('tab_strain_map',      'Strain Map',         self._create_strain_map_tab),
             ('tab_integrand',       '피적분함수',          self._create_integrand_tab),
             ('tab_equations',       '수식 정리',           self._create_equations_tab),
@@ -12084,6 +12085,595 @@ $\begin{array}{lcc}
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 f,g 곡선 추가 실패:\n{str(e)}")
+
+
+    # ================================================================
+    # ====  점탄성 설계 (Viscoelastic Design Advisor) Tab  ====
+    # ================================================================
+
+    def _create_ve_advisor_tab(self, parent):
+        """Create Viscoelastic Design Advisor tab.
+
+        Analyzes which frequency bands of E'(ω) and E''(ω) matter most
+        for friction, and suggests optimal viscoelastic modifications.
+        """
+        main_container = ttk.Frame(parent)
+        main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+
+        # ── Left panel (scrollable controls, 600px) ──
+        left_frame = ttk.Frame(main_container, width=600)
+        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        left_frame.pack_propagate(False)
+
+        left_canvas = tk.Canvas(left_frame, highlightthickness=0)
+        left_scroll = ttk.Scrollbar(left_frame, orient='vertical', command=left_canvas.yview)
+        left_panel = ttk.Frame(left_canvas)
+
+        left_panel.bind("<Configure>",
+                        lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all")))
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=580)
+        left_canvas.configure(yscrollcommand=left_scroll.set)
+
+        left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        left_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Mousewheel scroll
+        def _on_mw(event):
+            left_canvas.yview_scroll(int(-1 * (event.delta / 120)), "units")
+        def _on_mw_up(event):
+            left_canvas.yview_scroll(-1, "units")
+        def _on_mw_dn(event):
+            left_canvas.yview_scroll(1, "units")
+
+        def _bind_mw(widget):
+            widget.bind("<MouseWheel>", _on_mw)
+            widget.bind("<Button-4>", _on_mw_up)
+            widget.bind("<Button-5>", _on_mw_dn)
+            for child in widget.winfo_children():
+                _bind_mw(child)
+        left_panel.bind("<Map>", lambda e: _bind_mw(left_panel))
+
+        # ── 1) 분석 설정 ──
+        settings_frame = ttk.LabelFrame(left_panel, text="1) 분석 설정", padding=5)
+        settings_frame.pack(fill=tk.X, pady=3, padx=3)
+
+        # 속도 범위
+        row = ttk.Frame(settings_frame)
+        row.pack(fill=tk.X, pady=2)
+        ttk.Label(row, text="속도 범위:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        self.ve_v_min_var = tk.StringVar(value="0.01")
+        self.ve_v_max_var = tk.StringVar(value="10.0")
+        ttk.Entry(row, textvariable=self.ve_v_min_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row, text="~", font=self.FONTS['body']).pack(side=tk.LEFT)
+        ttk.Entry(row, textvariable=self.ve_v_max_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row, text="m/s", font=self.FONTS['body']).pack(side=tk.LEFT)
+
+        # 속도 포인트 수
+        row2 = ttk.Frame(settings_frame)
+        row2.pack(fill=tk.X, pady=2)
+        ttk.Label(row2, text="속도 포인트:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        self.ve_n_v_var = tk.StringVar(value="30")
+        ttk.Entry(row2, textvariable=self.ve_n_v_var, width=6).pack(side=tk.LEFT, padx=2)
+
+        # 온도
+        row3 = ttk.Frame(settings_frame)
+        row3.pack(fill=tk.X, pady=2)
+        ttk.Label(row3, text="온도:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        self.ve_temp_var = tk.StringVar(value="20.0")
+        ttk.Entry(row3, textvariable=self.ve_temp_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row3, text="\u00b0C", font=self.FONTS['body']).pack(side=tk.LEFT)
+
+        # 압력
+        row4 = ttk.Frame(settings_frame)
+        row4.pack(fill=tk.X, pady=2)
+        ttk.Label(row4, text="공칭 압력:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        self.ve_sigma_var = tk.StringVar(value="0.3")
+        ttk.Entry(row4, textvariable=self.ve_sigma_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row4, text="MPa", font=self.FONTS['body']).pack(side=tk.LEFT)
+
+        # ── 2) 최적화 목표 ──
+        opt_frame = ttk.LabelFrame(left_panel, text="2) 최적화 목표", padding=5)
+        opt_frame.pack(fill=tk.X, pady=3, padx=3)
+
+        self.ve_goal_var = tk.StringVar(value="maximize")
+        ttk.Radiobutton(opt_frame, text="마찰 극대화 (그립 향상)",
+                        variable=self.ve_goal_var, value="maximize").pack(anchor=tk.W)
+        ttk.Radiobutton(opt_frame, text="마찰 극소화 (저마찰)",
+                        variable=self.ve_goal_var, value="minimize").pack(anchor=tk.W)
+
+        # E'' 최대 증가율
+        row5 = ttk.Frame(opt_frame)
+        row5.pack(fill=tk.X, pady=2)
+        ttk.Label(row5, text="E'' 최대 변경 배율:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        self.ve_max_boost_var = tk.StringVar(value="3.0")
+        ttk.Entry(row5, textvariable=self.ve_max_boost_var, width=6).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row5, text="x (기존 대비)", font=self.FONTS['body']).pack(side=tk.LEFT)
+
+        # ── 3) 분석 실행 ──
+        btn_frame = ttk.Frame(left_panel)
+        btn_frame.pack(fill=tk.X, pady=5, padx=3)
+
+        self.ve_run_btn = ttk.Button(
+            btn_frame, text="주파수 감도 분석 실행",
+            command=self._run_ve_advisor_analysis,
+            style='Accent.TButton')
+        self.ve_run_btn.pack(fill=tk.X, pady=2)
+
+        self.ve_progress_var = tk.DoubleVar(value=0)
+        ttk.Progressbar(btn_frame, variable=self.ve_progress_var,
+                        maximum=100).pack(fill=tk.X, pady=2)
+
+        # ── 4) 결과 / 제안 ──
+        result_frame = ttk.LabelFrame(left_panel, text="3) 분석 결과 / 제안", padding=5)
+        result_frame.pack(fill=tk.X, pady=3, padx=3)
+
+        self.ve_result_text = tk.Text(result_frame, height=22, width=60,
+                                      font=('Consolas', 15), wrap=tk.WORD,
+                                      bg='#F8FAFC', relief='solid', bd=1)
+        ve_scroll = ttk.Scrollbar(result_frame, orient='vertical',
+                                  command=self.ve_result_text.yview)
+        self.ve_result_text.configure(yscrollcommand=ve_scroll.set)
+        self.ve_result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        ve_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # ── Right panel (plots) ──
+        plot_frame = ttk.Frame(main_container)
+        plot_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        self.fig_ve_advisor = Figure(figsize=(10, 8), dpi=100)
+        gs = self.fig_ve_advisor.add_gridspec(2, 2, hspace=0.35, wspace=0.3)
+
+        self.ax_ve_Ep = self.fig_ve_advisor.add_subplot(gs[0, 0])
+        self.ax_ve_Epp = self.fig_ve_advisor.add_subplot(gs[0, 1])
+        self.ax_ve_sensitivity = self.fig_ve_advisor.add_subplot(gs[1, 0])
+        self.ax_ve_mu_compare = self.fig_ve_advisor.add_subplot(gs[1, 1])
+
+        # Initial axis labels
+        for ax, title in [(self.ax_ve_Ep, "E' (저장 탄성률)"),
+                          (self.ax_ve_Epp, "E'' (손실 탄성률)"),
+                          (self.ax_ve_sensitivity, "주파수 감도 W(\u03c9)"),
+                          (self.ax_ve_mu_compare, "\u03bc_visc 비교")]:
+            ax.set_title(title, fontweight='bold', fontsize=10)
+            ax.grid(True, alpha=0.3)
+
+        self.ax_ve_Ep.set_xlabel('\u03c9 (rad/s)')
+        self.ax_ve_Ep.set_ylabel("E' (Pa)")
+        self.ax_ve_Epp.set_xlabel('\u03c9 (rad/s)')
+        self.ax_ve_Epp.set_ylabel("E'' (Pa)")
+        self.ax_ve_sensitivity.set_xlabel('\u03c9 (rad/s)')
+        self.ax_ve_sensitivity.set_ylabel('W(\u03c9) (감도)')
+        self.ax_ve_mu_compare.set_xlabel('v (m/s)')
+        self.ax_ve_mu_compare.set_ylabel('\u03bc_visc')
+
+        self.fig_ve_advisor.tight_layout()
+
+        self.canvas_ve_advisor = FigureCanvasTkAgg(self.fig_ve_advisor, plot_frame)
+        self.canvas_ve_advisor.draw()
+        self.canvas_ve_advisor.get_tk_widget().pack(fill=tk.BOTH, expand=True)
+
+        toolbar = NavigationToolbar2Tk(self.canvas_ve_advisor, plot_frame)
+        toolbar.update()
+
+    def _run_ve_advisor_analysis(self):
+        """Run frequency sensitivity analysis and suggest optimal E'(ω), E''(ω)."""
+        import numpy as np
+        from scipy.special import erf
+        from scipy.integrate import simpson
+
+        # ── Validate prerequisites ──
+        if self.psd_model is None:
+            messagebox.showwarning("경고", "PSD 데이터가 없습니다. Tab 0에서 PSD를 확정하세요.")
+            return
+        if self.material is None:
+            messagebox.showwarning("경고", "마스터 커브가 없습니다. Tab 1에서 확정하세요.")
+            return
+        if not self.results or '2d_results' not in self.results:
+            messagebox.showwarning("경고", "G(q,v) 결과가 없습니다. 탭 3에서 계산을 먼저 실행하세요.")
+            return
+
+        try:
+            self.ve_run_btn.config(state='disabled')
+            self.ve_progress_var.set(0)
+            self.status_var.set("점탄성 설계 분석 중...")
+            self.root.update()
+
+            # ── Read parameters ──
+            v_min = float(self.ve_v_min_var.get())
+            v_max = float(self.ve_v_max_var.get())
+            n_v = int(self.ve_n_v_var.get())
+            temperature = float(self.ve_temp_var.get())
+            sigma_0 = float(self.ve_sigma_var.get()) * 1e6  # MPa → Pa
+            max_boost = float(self.ve_max_boost_var.get())
+            goal = self.ve_goal_var.get()  # "maximize" or "minimize"
+            poisson = float(self.poisson_var.get())
+            gamma = float(self.gamma_var.get())
+
+            velocities = np.logspace(np.log10(v_min), np.log10(v_max), n_v)
+
+            # ── Get G(q,v) data ──
+            res2d = self.results['2d_results']
+            q_arr = res2d['q']
+            G_matrix = res2d['G_matrix']  # shape: (n_q, n_v_orig)
+            v_orig = res2d['v']
+
+            C_q = self.psd_model(q_arr)
+            prefactor = 1.0 / ((1 - poisson**2) * sigma_0)
+
+            # We'll interpolate G to our velocity grid
+            from scipy.interpolate import interp1d
+            n_q = len(q_arr)
+
+            # For each velocity, interpolate G from original grid
+            log_v_orig = np.log10(v_orig)
+            G_interp_list = []
+            for iq in range(n_q):
+                gi = interp1d(log_v_orig, G_matrix[iq, :], kind='linear',
+                              bounds_error=False, fill_value='extrapolate')
+                G_interp_list.append(gi)
+
+            # ── Frequency sensitivity analysis ──
+            # For each (q, v, φ) → ω = q·v·cos(φ)
+            # Weight = 0.5 · q³ · C(q) · P(q) · S(q) · cos(φ) · prefactor
+            # μ_visc = Σ W(ω) · E''(ω)
+            #
+            # Build a frequency-weight histogram W(ω)
+            n_phi = 14
+            phi_arr = np.linspace(0, np.pi / 2, n_phi)
+            cos_phi = np.cos(phi_arr)
+
+            # Frequency range for histogram
+            omega_min = q_arr[0] * v_min * 0.01
+            omega_max = q_arr[-1] * v_max * 1.1
+            n_omega_bins = 200
+            log_omega_edges = np.linspace(np.log10(max(omega_min, 1e-2)),
+                                          np.log10(min(omega_max, 1e15)), n_omega_bins + 1)
+            omega_centers = 10**((log_omega_edges[:-1] + log_omega_edges[1:]) / 2)
+            W_omega = np.zeros(n_omega_bins)  # frequency sensitivity
+
+            # Also compute current mu_visc for each velocity
+            mu_current = np.zeros(n_v)
+
+            total_steps = n_v * n_q
+            step = 0
+
+            for iv, v_val in enumerate(velocities):
+                mu_v = 0.0
+                for iq in range(n_q):
+                    q = q_arr[iq]
+                    Cq = C_q[iq]
+                    G_val = max(G_interp_list[iq](np.log10(v_val)), 1e-20)
+
+                    P_val = erf(1.0 / (2.0 * np.sqrt(G_val)))
+                    S_val = gamma + (1 - gamma) * P_val**2
+                    qCPS = q**3 * Cq * P_val * S_val
+
+                    # Angle integral
+                    for ip, phi_val in enumerate(phi_arr):
+                        c = cos_phi[ip]
+                        if c < 1e-10:
+                            continue
+                        omega = q * v_val * c
+                        if omega < 1e-3:
+                            continue
+
+                        E_loss = self.material.get_loss_modulus(omega, temperature=temperature)
+                        weight = 0.5 * qCPS * c * prefactor
+
+                        # Accumulate frequency sensitivity (normalized by n_v for averaging)
+                        log_om = np.log10(omega)
+                        bin_idx = int((log_om - log_omega_edges[0]) /
+                                      (log_omega_edges[-1] - log_omega_edges[0]) * n_omega_bins)
+                        if 0 <= bin_idx < n_omega_bins:
+                            W_omega[bin_idx] += weight / n_v
+
+                        # Accumulate mu
+                        dq = 1.0
+                        dphi = phi_arr[1] - phi_arr[0] if n_phi > 1 else 1.0
+                        mu_v += weight * E_loss * dq * dphi * 4.0
+
+                    step += 1
+                    if step % max(1, total_steps // 20) == 0:
+                        self.ve_progress_var.set(step / total_steps * 80)
+                        self.root.update()
+
+                # Approximate integral using trapz
+                # Re-compute more carefully using Simpson for this velocity
+                mu_current[iv] = self._compute_mu_for_velocity(
+                    v_val, q_arr, C_q, G_interp_list, temperature,
+                    sigma_0, poisson, gamma, n_phi)
+
+            self.ve_progress_var.set(85)
+            self.root.update()
+
+            # ── Get current E' and E'' over frequency range ──
+            omega_plot = omega_centers
+            E_prime_current = np.array([
+                self.material.get_storage_modulus(w, temperature=temperature)
+                for w in omega_plot])
+            E_loss_current = np.array([
+                self.material.get_loss_modulus(w, temperature=temperature)
+                for w in omega_plot])
+
+            # ── Suggest optimal E'' ──
+            # Normalize W(ω) to identify peak regions
+            W_max = np.max(W_omega) if np.max(W_omega) > 0 else 1.0
+            W_norm = W_omega / W_max  # 0~1
+
+            if goal == "maximize":
+                # Boost E'' where sensitivity is highest
+                boost_factor = 1.0 + (max_boost - 1.0) * W_norm
+                E_loss_suggested = E_loss_current * boost_factor
+                # E' should be reduced slightly where E'' increases (tan δ increases)
+                # Keep Kramers-Kronig-like constraint: if E'' goes up, E' doesn't need to change much
+                E_prime_suggested = E_prime_current.copy()
+            else:
+                # Reduce E'' where sensitivity is highest
+                reduce_factor = 1.0 / (1.0 + (max_boost - 1.0) * W_norm)
+                E_loss_suggested = E_loss_current * reduce_factor
+                E_prime_suggested = E_prime_current.copy()
+
+            # ── Compute μ with suggested E'' ──
+            # Create temporary loss modulus function
+            from scipy.interpolate import interp1d
+            log_omega_suggested = np.log10(omega_plot)
+            log_E_loss_suggested = np.log10(np.maximum(E_loss_suggested, 1e-3))
+            suggested_interp = interp1d(log_omega_suggested, log_E_loss_suggested,
+                                        kind='linear', bounds_error=False,
+                                        fill_value='extrapolate')
+
+            def suggested_loss_func(omega_val, T):
+                return 10**suggested_interp(np.log10(max(omega_val, 1e-3)))
+
+            mu_suggested = np.zeros(n_v)
+            for iv, v_val in enumerate(velocities):
+                mu_suggested[iv] = self._compute_mu_for_velocity(
+                    v_val, q_arr, C_q, G_interp_list, temperature,
+                    sigma_0, poisson, gamma, n_phi,
+                    loss_func_override=suggested_loss_func)
+
+            self.ve_progress_var.set(95)
+            self.root.update()
+
+            # ── Find peak sensitivity frequency band ──
+            peak_idx = np.argmax(W_omega)
+            peak_omega = omega_centers[peak_idx]
+            peak_freq_hz = peak_omega / (2 * np.pi)
+
+            # Find band where W > 50% of peak
+            threshold = 0.5 * W_max
+            band_mask = W_omega > threshold
+            if np.any(band_mask):
+                band_indices = np.where(band_mask)[0]
+                omega_band_low = omega_centers[band_indices[0]]
+                omega_band_high = omega_centers[band_indices[-1]]
+                freq_band_low = omega_band_low / (2 * np.pi)
+                freq_band_high = omega_band_high / (2 * np.pi)
+            else:
+                freq_band_low = peak_freq_hz * 0.1
+                freq_band_high = peak_freq_hz * 10
+
+            # ── Compute improvement ──
+            mu_curr_avg = np.mean(mu_current[mu_current > 0]) if np.any(mu_current > 0) else 0
+            mu_sugg_avg = np.mean(mu_suggested[mu_suggested > 0]) if np.any(mu_suggested > 0) else 0
+            improvement = ((mu_sugg_avg - mu_curr_avg) / mu_curr_avg * 100) if mu_curr_avg > 0 else 0
+
+            # ── Update plots ──
+            self._update_ve_advisor_plots(
+                omega_plot, E_prime_current, E_prime_suggested,
+                E_loss_current, E_loss_suggested,
+                omega_centers, W_omega,
+                velocities, mu_current, mu_suggested, goal)
+
+            # ── Generate result text ──
+            self.ve_result_text.delete(1.0, tk.END)
+            txt = self.ve_result_text
+            txt.insert(tk.END, "=" * 44 + "\n")
+            txt.insert(tk.END, "  점탄성 설계 제안 결과\n")
+            txt.insert(tk.END, "=" * 44 + "\n\n")
+
+            txt.insert(tk.END, f"분석 조건:\n")
+            txt.insert(tk.END, f"  속도 범위: {v_min} ~ {v_max} m/s\n")
+            txt.insert(tk.END, f"  온도: {temperature}\u00b0C\n")
+            txt.insert(tk.END, f"  압력: {sigma_0/1e6:.2f} MPa\n")
+            txt.insert(tk.END, f"  목표: {'마찰 극대화' if goal == 'maximize' else '마찰 극소화'}\n\n")
+
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            txt.insert(tk.END, "  핵심 주파수 영역 (E''가 가장 중요한 대역)\n")
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            txt.insert(tk.END, f"  피크 주파수: {peak_freq_hz:.1f} Hz "
+                       f"(\u03c9 = {peak_omega:.1f} rad/s)\n")
+            txt.insert(tk.END, f"  중요 대역: {freq_band_low:.1f} ~ "
+                       f"{freq_band_high:.1f} Hz\n")
+            txt.insert(tk.END, f"  (\u03c9: {omega_band_low:.1f} ~ "
+                       f"{omega_band_high:.1f} rad/s)\n\n")
+
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            txt.insert(tk.END, "  설계 제안\n")
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+
+            if goal == "maximize":
+                txt.insert(tk.END,
+                    f"  \u25b6 {freq_band_low:.0f}~{freq_band_high:.0f} Hz 대역에서\n"
+                    f"    E''(손실 탄성률)를 최대 {max_boost:.1f}x 증가시키세요.\n\n"
+                    f"  \u25b6 이 대역은 노면 거칠기와 속도 범위가\n"
+                    f"    만들어내는 핵심 여기(excitation) 주파수입니다.\n\n"
+                    f"  \u25b6 tan\u03b4 = E''/E' 를 이 대역에서 높이면\n"
+                    f"    에너지 손실(히스테리시스)이 증가하여\n"
+                    f"    마찰 그립이 향상됩니다.\n\n")
+            else:
+                txt.insert(tk.END,
+                    f"  \u25b6 {freq_band_low:.0f}~{freq_band_high:.0f} Hz 대역에서\n"
+                    f"    E''(손실 탄성률)를 줄이세요.\n\n"
+                    f"  \u25b6 이 대역의 히스테리시스 손실이\n"
+                    f"    마찰의 주 원인입니다.\n\n"
+                    f"  \u25b6 E'(저장 탄성률)를 유지하면서\n"
+                    f"    tan\u03b4를 낮추는 것이 핵심입니다.\n\n")
+
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            txt.insert(tk.END, "  예상 효과\n")
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            txt.insert(tk.END, f"  현재 평균 \u03bc: {mu_curr_avg:.4f}\n")
+            txt.insert(tk.END, f"  제안 평균 \u03bc: {mu_sugg_avg:.4f}\n")
+            txt.insert(tk.END, f"  변화율: {improvement:+.1f}%\n\n")
+
+            # Per-velocity breakdown
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            txt.insert(tk.END, "  속도별 \u03bc 비교\n")
+            txt.insert(tk.END, "\u2501" * 44 + "\n")
+            mu_sym = "\u03bc"
+            hdr = f"  {'v (m/s)':>10} {f'현재 {mu_sym}':>10} {f'제안 {mu_sym}':>10} {'변화%':>8}"
+            txt.insert(tk.END, hdr + "\n")
+            txt.insert(tk.END, "  " + "-" * 40 + "\n")
+            for iv in range(0, n_v, max(1, n_v // 10)):
+                v_val = velocities[iv]
+                mc = mu_current[iv]
+                ms = mu_suggested[iv]
+                ch = ((ms - mc) / mc * 100) if mc > 0 else 0
+                txt.insert(tk.END, f"  {v_val:10.4f} {mc:10.4f} {ms:10.4f} {ch:+7.1f}%\n")
+
+            self.ve_progress_var.set(100)
+            self.status_var.set("점탄성 설계 분석 완료")
+
+        except Exception as e:
+            import traceback
+            messagebox.showerror("오류", f"분석 중 오류:\n{str(e)}\n\n{traceback.format_exc()}")
+        finally:
+            self.ve_run_btn.config(state='normal')
+
+    def _compute_mu_for_velocity(self, v_val, q_arr, C_q, G_interp_list,
+                                  temperature, sigma_0, poisson, gamma, n_phi,
+                                  loss_func_override=None):
+        """Compute μ_visc for a single velocity using simplified Persson integral."""
+        import numpy as np
+        from scipy.special import erf
+        from scipy.integrate import simpson
+
+        prefactor = 1.0 / ((1 - poisson**2) * sigma_0)
+        phi_arr = np.linspace(0, np.pi / 2, n_phi)
+        cos_phi = np.cos(phi_arr)
+        n_q = len(q_arr)
+
+        integrand_q = np.zeros(n_q)
+
+        for iq in range(n_q):
+            q = q_arr[iq]
+            Cq = C_q[iq]
+            G_val = max(G_interp_list[iq](np.log10(v_val)), 1e-20)
+
+            P_val = erf(1.0 / (2.0 * np.sqrt(G_val)))
+            S_val = gamma + (1 - gamma) * P_val**2
+            qCPS = q**3 * Cq * P_val * S_val
+
+            # Angle integral
+            angle_integrand = np.zeros(n_phi)
+            for ip in range(n_phi):
+                c = cos_phi[ip]
+                if c < 1e-10:
+                    continue
+                omega = q * v_val * c
+                if omega < 1e-3:
+                    continue
+
+                if loss_func_override is not None:
+                    E_loss = loss_func_override(omega, temperature)
+                else:
+                    E_loss = self.material.get_loss_modulus(omega, temperature=temperature)
+
+                angle_integrand[ip] = c * E_loss * prefactor
+
+            angle_result = 4.0 * simpson(angle_integrand, x=phi_arr) if n_phi > 1 else 0
+            integrand_q[iq] = qCPS * angle_result
+
+        mu = 0.5 * simpson(integrand_q, x=q_arr) if n_q > 1 else 0
+        return max(mu, 0)
+
+    def _update_ve_advisor_plots(self, omega, Ep_curr, Ep_sugg,
+                                  Epp_curr, Epp_sugg,
+                                  omega_w, W_omega,
+                                  velocities, mu_curr, mu_sugg, goal):
+        """Update the 4 plots in the advisor tab."""
+
+        # ── Plot 1: E' comparison ──
+        ax = self.ax_ve_Ep
+        ax.clear()
+        ax.loglog(omega, Ep_curr, 'b-', linewidth=2, label="현재 E'", alpha=0.8)
+        ax.loglog(omega, Ep_sugg, 'r--', linewidth=2, label="제안 E'", alpha=0.8)
+        ax.set_xlabel('\u03c9 (rad/s)')
+        ax.set_ylabel("E' (Pa)")
+        ax.set_title("E' 저장 탄성률", fontweight='bold', fontsize=10)
+        ax.legend(fontsize=8, loc='best')
+        ax.grid(True, alpha=0.3)
+
+        # ── Plot 2: E'' comparison ──
+        ax = self.ax_ve_Epp
+        ax.clear()
+        ax.loglog(omega, Epp_curr, 'b-', linewidth=2, label="현재 E''", alpha=0.8)
+        ax.loglog(omega, Epp_sugg, 'r--', linewidth=2, label="제안 E''", alpha=0.8)
+
+        # Highlight peak sensitivity region
+        W_max = np.max(W_omega) if np.max(W_omega) > 0 else 1
+        band_mask = W_omega > 0.5 * W_max
+        if np.any(band_mask):
+            band_indices = np.where(band_mask)[0]
+            lo = omega_w[band_indices[0]]
+            hi = omega_w[band_indices[-1]]
+            ax.axvspan(lo, hi, alpha=0.15, color='orange', label='핵심 대역')
+
+        ax.set_xlabel('\u03c9 (rad/s)')
+        ax.set_ylabel("E'' (Pa)")
+        ax.set_title("E'' 손실 탄성률", fontweight='bold', fontsize=10)
+        ax.legend(fontsize=8, loc='best')
+        ax.grid(True, alpha=0.3)
+
+        # ── Plot 3: Frequency sensitivity W(ω) ──
+        ax = self.ax_ve_sensitivity
+        ax.clear()
+        ax.semilogx(omega_w, W_omega, 'g-', linewidth=2)
+        ax.fill_between(omega_w, 0, W_omega, alpha=0.2, color='green')
+
+        # Mark peak
+        peak_idx = np.argmax(W_omega)
+        if W_omega[peak_idx] > 0:
+            ax.axvline(omega_w[peak_idx], color='red', linestyle='--', alpha=0.7,
+                       label=f'피크: {omega_w[peak_idx]:.0f} rad/s')
+
+        ax.set_xlabel('\u03c9 (rad/s)')
+        ax.set_ylabel('W(\u03c9) 감도 가중치')
+        ax.set_title("주파수 감도 스펙트럼", fontweight='bold', fontsize=10)
+        ax.legend(fontsize=8, loc='best')
+        ax.grid(True, alpha=0.3)
+
+        # ── Plot 4: μ_visc comparison ──
+        ax = self.ax_ve_mu_compare
+        ax.clear()
+        valid_c = mu_curr > 0
+        valid_s = mu_sugg > 0
+
+        ax.semilogx(velocities[valid_c], mu_curr[valid_c], 'b-o',
+                     linewidth=2, markersize=4, label='현재 \u03bc')
+        ax.semilogx(velocities[valid_s], mu_sugg[valid_s], 'r--s',
+                     linewidth=2, markersize=4, label='제안 \u03bc')
+
+        # Fill improvement area
+        if np.any(valid_c & valid_s):
+            v_both = velocities[valid_c & valid_s]
+            mc = mu_curr[valid_c & valid_s]
+            ms = mu_sugg[valid_c & valid_s]
+            if goal == "maximize":
+                ax.fill_between(v_both, mc, ms, where=(ms > mc),
+                                alpha=0.15, color='green', label='향상 영역')
+            else:
+                ax.fill_between(v_both, mc, ms, where=(ms < mc),
+                                alpha=0.15, color='green', label='감소 영역')
+
+        ax.set_xlabel('v (m/s)')
+        ax.set_ylabel('\u03bc_visc')
+        ax.set_title("\u03bc_visc 현재 vs 제안", fontweight='bold', fontsize=10)
+        ax.legend(fontsize=8, loc='best')
+        ax.grid(True, alpha=0.3)
+
+        self.fig_ve_advisor.tight_layout()
+        self.canvas_ve_advisor.draw()
 
 
 def main():
