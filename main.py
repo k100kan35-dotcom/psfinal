@@ -359,6 +359,16 @@ class PerssonModelGUI_V2:
                               ('disabled', C['border'])],
                   foreground=[('disabled', C['text_secondary'])])
 
+        # ── Outline.TButton (Blue outline / border) ──
+        style.configure('Outline.TButton', font=F['body_bold'],
+                        background=C['surface'], foreground=C['primary'],
+                        padding=[14, 6], borderwidth=2, relief='solid',
+                        bordercolor=C['primary'])
+        style.map('Outline.TButton',
+                  background=[('active', '#EBF5FF'),
+                              ('pressed', '#DBEAFE')],
+                  foreground=[('disabled', C['text_secondary'])])
+
         # ── Success.TButton (Confirm - green) ──
         style.configure('Success.TButton', font=F['body_bold'],
                         background=C['success'], foreground=C['success_fg'],
@@ -394,14 +404,18 @@ class PerssonModelGUI_V2:
 
         # ── TCheckbutton / TRadiobutton ──
         style.configure('TCheckbutton', background=C['bg'],
-                        foreground=C['text'], font=F['body'])
+                        foreground=C['text'], font=F['body'],
+                        indicatorsize=20, padding=[4, 2])
         style.configure('TRadiobutton', background=C['bg'],
-                        foreground=C['text'], font=F['body'])
+                        foreground=C['text'], font=F['body'],
+                        indicatorsize=20, padding=[4, 2])
         # Inside LabelFrames (surface bg)
         style.configure('Surface.TCheckbutton', background=C['surface'],
-                        foreground=C['text'], font=F['body'])
+                        foreground=C['text'], font=F['body'],
+                        indicatorsize=20, padding=[4, 2])
         style.configure('Surface.TRadiobutton', background=C['surface'],
-                        foreground=C['text'], font=F['body'])
+                        foreground=C['text'], font=F['body'],
+                        indicatorsize=20, padding=[4, 2])
 
         # ── Horizontal.TProgressbar ──
         style.configure('Horizontal.TProgressbar',
@@ -655,7 +669,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=540)
+        left_frame = ttk.Frame(main_container, width=600)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -728,7 +742,8 @@ class PerssonModelGUI_V2:
         self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
                                               state='readonly', width=25, font=self.FONTS['body'])
         self.preset_psd_combo.pack(side=tk.LEFT, padx=5)
-        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=5).pack(side=tk.LEFT)
+        ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=5,
+                   style='Outline.TButton').pack(side=tk.LEFT)
         ttk.Button(preset_psd_frame, text="삭제", command=self._delete_preset_psd, width=5).pack(side=tk.LEFT, padx=2)
 
         # 프로그램 시작 시 내장 PSD 목록 로드
@@ -1938,7 +1953,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel container (fixed width) with scrollable canvas
-        left_container = ttk.Frame(main_container, width=540)
+        left_container = ttk.Frame(main_container, width=600)
         left_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_container.pack_propagate(False)
 
@@ -1958,7 +1973,7 @@ class PerssonModelGUI_V2:
         left_frame.bind("<Configure>", _configure_scroll)
 
         # Create window inside canvas
-        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=520)
+        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=580)
         mc_canvas.configure(yscrollcommand=mc_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -2028,7 +2043,8 @@ class PerssonModelGUI_V2:
         self.preset_mc_combo = ttk.Combobox(preset_mc_frame, textvariable=self.preset_mc_var,
                                              state='readonly', width=20, font=self.FONTS['body'])
         self.preset_mc_combo.pack(side=tk.LEFT, padx=2)
-        ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=5).pack(side=tk.LEFT)
+        ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=5,
+                   style='Outline.TButton').pack(side=tk.LEFT)
         ttk.Button(preset_mc_frame, text="삭제", command=self._delete_preset_mastercurve, width=5).pack(side=tk.LEFT, padx=2)
 
         # 내장 aT 선택
@@ -2039,7 +2055,8 @@ class PerssonModelGUI_V2:
         self.preset_aT_combo = ttk.Combobox(preset_aT_frame, textvariable=self.preset_aT_var,
                                              state='readonly', width=20, font=self.FONTS['body'])
         self.preset_aT_combo.pack(side=tk.LEFT, padx=2)
-        ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=5).pack(side=tk.LEFT)
+        ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=5,
+                   style='Outline.TButton').pack(side=tk.LEFT)
         ttk.Button(preset_aT_frame, text="삭제", command=self._delete_preset_aT, width=5).pack(side=tk.LEFT, padx=2)
 
         # 프로그램 시작 시 내장 데이터 목록 로드
@@ -2204,9 +2221,10 @@ class PerssonModelGUI_V2:
         persson_smooth_row.pack(fill=tk.X, pady=2)
         ttk.Button(
             persson_smooth_row,
-            text="Persson 스무딩",
+            text="스무딩 처리하기",
             command=self._apply_smoothing_to_persson,
-            width=14
+            width=14,
+            style='Outline.TButton'
         ).pack(side=tk.LEFT, padx=2)
         ttk.Button(
             persson_smooth_row,
@@ -6073,7 +6091,7 @@ $\begin{array}{lcc}
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=480)
+        left_frame = ttk.Frame(main_container, width=600)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -6556,7 +6574,7 @@ $\begin{array}{lcc}
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
         # Left panel for inputs (scrollable) - fixed width
-        left_frame = ttk.Frame(main_container, width=510)
+        left_frame = ttk.Frame(main_container, width=600)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)  # Keep fixed width
 
@@ -6573,7 +6591,7 @@ $\begin{array}{lcc}
             lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all"))
         )
 
-        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=490)
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=580)
         left_canvas.configure(yscrollcommand=left_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -6771,7 +6789,7 @@ $\begin{array}{lcc}
         mu_settings_frame.pack(fill=tk.X, pady=2, padx=3)
 
         # Nonlinear correction - single row (강조)
-        nonlinear_wrapper = tk.Frame(mu_settings_frame, bg=self.COLORS['warning'], padx=1, pady=1)
+        nonlinear_wrapper = tk.Frame(mu_settings_frame, bg=self.COLORS['primary'], padx=2, pady=2)
         nonlinear_wrapper.pack(fill=tk.X, pady=1)
         nonlinear_row = ttk.Frame(nonlinear_wrapper)
         nonlinear_row.pack(fill=tk.X)
@@ -10172,7 +10190,7 @@ $\begin{array}{lcc}
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls
-        left_frame = ttk.Frame(main_container, width=480)
+        left_frame = ttk.Frame(main_container, width=600)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
