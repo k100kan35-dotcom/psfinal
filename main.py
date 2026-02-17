@@ -58,7 +58,6 @@ from matplotlib.figure import Figure
 from matplotlib.colors import LogNorm
 from scipy.signal import savgol_filter
 from typing import Optional
-import base64
 import io
 
 # Add current directory to path
@@ -202,47 +201,8 @@ class PerssonModelGUI_V2:
         'mono_small':('Consolas', 13),
     }
 
-    # ── NEXEN TIRE Logo (base64 encoded GIF, header bg #1B2A4A) ──
-    _LOGO_B64 = (
-        "R0lGODdhyAAiAIcAAOHr+N/p9dvl8dbf7dXf7dXe7NTe7NTe69Td69Pe7NPd69Pd6tPc6tLc69Lc"
-        "6tLc6dHb6dDa6NDZ6M/Z58/Y587Y587Y5s3Y5s3W5czW5cvV5MrU48nT4sjS4cfR4cfR4MfR38bR"
-        "4MbQ4MbQ38XQ38XP38XP3sTP3sTO3cPN3MLM3MLM28HL27zG1rS/0LK8za24yaizxaWwwp+qvZik"
-        "t5CcsI6ar4mVqoiTqIeTqIaSqISQpX6KoHyInnuHnnmFnHaDmnaCmXWCmXWBmXWBmHSBmHSAl3OA"
-        "l298lGZzi2Buh1togVhogFdkfk5bdkVUb0BPazdFYiY1UyEwTx8uTh4tTR4tTB4sTB0sTB0sSx0r"
-        "SxwrTBwrSxwrSjEqRicqSCMqSSMqSCIqSSEqSSAqSR8qSh8qSR4qSh4qSR0qSh0qSRwqShsqShoq"
-        "ShkqSxkqShgqSxcqSxYqSxYqShUqSxQqSxMqSxIqTBEqTBAqTA8qTQ8qTA4qTQ4qTA0qTQwqTQsq"
-        "TQgqTgQqTvgmIfcmIfUmIfAmIu0mI+wmI+smI+omJOomI+kmJOkmI+gmJOgmI+cmJOYmJOUmJeUm"
-        "JOQmJeQmJOMmJeImJeEmJeAmJd8mJt8mJd4mJt4mJd0mJt0mJdwmJtwmJdsmJ9smJtomJ9omJtkm"
-        "J9kmJtgmJ9gmJtcmJ9YmKNYmJ9UmJ9QmJ9MmKNImKNImJ88mKcgmKsImK8EmK74nLLknLbYnLbEn"
-        "LqgnMKQnMaMnMaEnMZonMpYoM5MoNJEoNJInNI8oNYooNYcoNoYoNoUoNoQoNoMoN4IoN4EoN4Ao"
-        "N38oOH8oN30oOHooOHQoOnAoO20oO2ooO2YpPGYoPGMoPGApPWAoPV4oPVkpPlQpQFApQEcpQj0p"
-        "RDkpRDUpRTIpRigpSBopSRkoSRkoSBgnRxcmRxYmRhYlRhYlRRUlRRUkRRUjRBQjRBUiRBMjQxMi"
-        "QxIhQhEhQhEgQRAgQQ8fQA8ePw4ePw4dPw0dPg0cPgwcPQoaPAAAACwAAAAAyAAiAEAI/wDZCBxI"
-        "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"
-    )
+    # ── NEXEN TIRE Logo ──
+    # Logo loaded from assets/nexen_logo.png at runtime
 
     def __init__(self, root):
         """Initialize enhanced GUI."""
@@ -605,11 +565,23 @@ class PerssonModelGUI_V2:
 
         # ── Company logo (right side of header) ──
         try:
-            self._logo_image = tk.PhotoImage(data=self._LOGO_B64)
-            tk.Label(header, image=self._logo_image,
-                     bg=self.COLORS['sidebar']).pack(side=tk.RIGHT, padx=(0, 20))
+            # Resolve logo path (works for both script and PyInstaller exe)
+            if getattr(sys, 'frozen', False):
+                _base_dir = sys._MEIPASS
+            else:
+                _base_dir = os.path.dirname(os.path.abspath(__file__))
+            _logo_path = os.path.join(_base_dir, 'assets', 'nexen_logo.png')
+
+            if os.path.exists(_logo_path):
+                _logo_full = tk.PhotoImage(file=_logo_path)
+                # Scale down to fit header (~34px height)
+                _orig_h = _logo_full.height()
+                _scale = max(1, _orig_h // 34)
+                self._logo_image = _logo_full.subsample(_scale, _scale)
+                tk.Label(header, image=self._logo_image,
+                         bg=self.COLORS['sidebar']).pack(side=tk.RIGHT, padx=(0, 20))
         except Exception:
-            pass  # Graceful fallback: no logo if decode fails
+            pass  # Graceful fallback: no logo if file missing or decode fails
 
         # Create notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
