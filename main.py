@@ -12092,11 +12092,7 @@ $\begin{array}{lcc}
     # ================================================================
 
     def _create_ve_advisor_tab(self, parent):
-        """Create Viscoelastic Design Advisor tab.
-
-        Analyzes which frequency bands of E'(ω) and E''(ω) matter most
-        for friction, and suggests optimal viscoelastic modifications.
-        """
+        """Create Viscoelastic Design Advisor tab."""
         main_container = ttk.Frame(parent)
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
@@ -12203,47 +12199,62 @@ $\begin{array}{lcc}
         ttk.Progressbar(btn_frame, variable=self.ve_progress_var,
                         maximum=100).pack(fill=tk.X, pady=2)
 
-        # ── 4) 결과 / 제안 ──
+        # ── 4) 주파수 감도 스펙트럼 설명 ──
+        info_frame = ttk.LabelFrame(left_panel, text="주파수 감도 W(f) 란?", padding=5)
+        info_frame.pack(fill=tk.X, pady=3, padx=3)
+        info_text = (
+            "Persson 마찰 적분에서:\n"
+            "  \u03bc = \u222b W(f) \u00b7 E''(f) df\n\n"
+            "W(f)는 '주파수 f에서 E''가 1 Pa 변할 때\n"
+            "\u03bc가 얼마나 변하는가'를 나타냅니다.\n\n"
+            "W(f)가 큰 대역 = 마찰에 가장 영향력 있는\n"
+            "주파수 영역. 이 대역에서 E''를 조절하면\n"
+            "마찰 계수를 효과적으로 변경할 수 있습니다.\n\n"
+            "W(f)는 노면 PSD C(q), 접촉면적 P(q),\n"
+            "속도, 파수(q)에 의해 결정됩니다."
+        )
+        ttk.Label(info_frame, text=info_text, font=('Segoe UI', 14),
+                  foreground='#334155', wraplength=540,
+                  justify=tk.LEFT).pack(anchor=tk.W)
+
+        # ── 5) 결과 / 제안 ──
         result_frame = ttk.LabelFrame(left_panel, text="3) 분석 결과 / 제안", padding=5)
         result_frame.pack(fill=tk.X, pady=3, padx=3)
 
         self.ve_result_text = tk.Text(result_frame, height=22, width=60,
                                       font=('Consolas', 15), wrap=tk.WORD,
                                       bg='#F8FAFC', relief='solid', bd=1)
-        ve_scroll = ttk.Scrollbar(result_frame, orient='vertical',
-                                  command=self.ve_result_text.yview)
-        self.ve_result_text.configure(yscrollcommand=ve_scroll.set)
+        ve_scroll_r = ttk.Scrollbar(result_frame, orient='vertical',
+                                    command=self.ve_result_text.yview)
+        self.ve_result_text.configure(yscrollcommand=ve_scroll_r.set)
         self.ve_result_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        ve_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        ve_scroll_r.pack(side=tk.RIGHT, fill=tk.Y)
 
-        # ── Right panel (plots) ──
+        # ── Right panel (plots, 2 rows x 3 cols) ──
         plot_frame = ttk.Frame(main_container)
         plot_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        self.fig_ve_advisor = Figure(figsize=(10, 8), dpi=100)
-        gs = self.fig_ve_advisor.add_gridspec(2, 2, hspace=0.35, wspace=0.3)
+        self.fig_ve_advisor = Figure(figsize=(14, 8), dpi=100)
+        gs = self.fig_ve_advisor.add_gridspec(2, 3, hspace=0.38, wspace=0.35)
 
         self.ax_ve_Ep = self.fig_ve_advisor.add_subplot(gs[0, 0])
         self.ax_ve_Epp = self.fig_ve_advisor.add_subplot(gs[0, 1])
-        self.ax_ve_sensitivity = self.fig_ve_advisor.add_subplot(gs[1, 0])
-        self.ax_ve_mu_compare = self.fig_ve_advisor.add_subplot(gs[1, 1])
+        self.ax_ve_sensitivity = self.fig_ve_advisor.add_subplot(gs[0, 2])
+        self.ax_ve_mu_compare = self.fig_ve_advisor.add_subplot(gs[1, 0])
+        self.ax_ve_temp_Ep = self.fig_ve_advisor.add_subplot(gs[1, 1])
+        self.ax_ve_temp_Epp = self.fig_ve_advisor.add_subplot(gs[1, 2])
 
-        # Initial axis labels
-        for ax, title in [(self.ax_ve_Ep, "E' (저장 탄성률)"),
-                          (self.ax_ve_Epp, "E'' (손실 탄성률)"),
-                          (self.ax_ve_sensitivity, "주파수 감도 W(\u03c9)"),
-                          (self.ax_ve_mu_compare, "\u03bc_visc 비교")]:
-            ax.set_title(title, fontweight='bold', fontsize=10)
+        # Initial axis setup
+        for ax, title in [
+            (self.ax_ve_Ep, "E'(f) 저장 탄성률"),
+            (self.ax_ve_Epp, "E''(f) 손실 탄성률"),
+            (self.ax_ve_sensitivity, "주파수 감도 W(f)"),
+            (self.ax_ve_mu_compare, "\u03bc_visc 비교"),
+            (self.ax_ve_temp_Ep, "E'(T) @10Hz"),
+            (self.ax_ve_temp_Epp, "E''(T) @10Hz"),
+        ]:
+            ax.set_title(title, fontweight='bold', fontsize=9)
             ax.grid(True, alpha=0.3)
-
-        self.ax_ve_Ep.set_xlabel('\u03c9 (rad/s)')
-        self.ax_ve_Ep.set_ylabel("E' (Pa)")
-        self.ax_ve_Epp.set_xlabel('\u03c9 (rad/s)')
-        self.ax_ve_Epp.set_ylabel("E'' (Pa)")
-        self.ax_ve_sensitivity.set_xlabel('\u03c9 (rad/s)')
-        self.ax_ve_sensitivity.set_ylabel('W(\u03c9) (감도)')
-        self.ax_ve_mu_compare.set_xlabel('v (m/s)')
-        self.ax_ve_mu_compare.set_ylabel('\u03bc_visc')
 
         self.fig_ve_advisor.tight_layout()
 
@@ -12254,8 +12265,54 @@ $\begin{array}{lcc}
         toolbar = NavigationToolbar2Tk(self.canvas_ve_advisor, plot_frame)
         toolbar.update()
 
+    def _ve_get_loss_modulus_at_temp(self, omega, temperature):
+        """Get E''(omega) at a specific temperature using aT shift.
+
+        Uses persson_aT_interp if available, otherwise falls back to
+        the current material (no shift).
+        """
+        if (hasattr(self, 'persson_aT_interp') and self.persson_aT_interp is not None
+                and hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None):
+            mc = self.persson_master_curve
+            T_ref = self.persson_aT_data.get('T_ref', 20.0)
+            log_aT = float(self.persson_aT_interp(temperature))
+            aT = 10**log_aT
+
+            # Shifted frequency: omega_shifted = omega * aT
+            omega_shifted = omega * aT
+
+            # Interpolate from reference master curve
+            from scipy.interpolate import interp1d
+            log_om_ref = np.log10(mc['omega'])
+            log_Epp_ref = np.log10(np.maximum(mc['E_loss'], 1e-3))
+            interp_fn = interp1d(log_om_ref, log_Epp_ref, kind='linear',
+                                 bounds_error=False, fill_value='extrapolate')
+            return 10**interp_fn(np.log10(max(omega_shifted, 1e-6)))
+        else:
+            return self.material.get_loss_modulus(omega, temperature=temperature)
+
+    def _ve_get_storage_modulus_at_temp(self, omega, temperature):
+        """Get E'(omega) at a specific temperature using aT shift."""
+        if (hasattr(self, 'persson_aT_interp') and self.persson_aT_interp is not None
+                and hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None):
+            mc = self.persson_master_curve
+            T_ref = self.persson_aT_data.get('T_ref', 20.0)
+            log_aT = float(self.persson_aT_interp(temperature))
+            aT = 10**log_aT
+
+            omega_shifted = omega * aT
+
+            from scipy.interpolate import interp1d
+            log_om_ref = np.log10(mc['omega'])
+            log_Ep_ref = np.log10(np.maximum(mc['E_storage'], 1e-3))
+            interp_fn = interp1d(log_om_ref, log_Ep_ref, kind='linear',
+                                 bounds_error=False, fill_value='extrapolate')
+            return 10**interp_fn(np.log10(max(omega_shifted, 1e-6)))
+        else:
+            return self.material.get_storage_modulus(omega, temperature=temperature)
+
     def _run_ve_advisor_analysis(self):
-        """Run frequency sensitivity analysis and suggest optimal E'(ω), E''(ω)."""
+        """Run frequency sensitivity analysis and suggest optimal E'(f), E''(f)."""
         import numpy as np
         from scipy.special import erf
         from scipy.integrate import simpson
@@ -12282,9 +12339,9 @@ $\begin{array}{lcc}
             v_max = float(self.ve_v_max_var.get())
             n_v = int(self.ve_n_v_var.get())
             temperature = float(self.ve_temp_var.get())
-            sigma_0 = float(self.ve_sigma_var.get()) * 1e6  # MPa → Pa
+            sigma_0 = float(self.ve_sigma_var.get()) * 1e6  # MPa -> Pa
             max_boost = float(self.ve_max_boost_var.get())
-            goal = self.ve_goal_var.get()  # "maximize" or "minimize"
+            goal = self.ve_goal_var.get()
             poisson = float(self.poisson_var.get())
             gamma = float(self.gamma_var.get())
 
@@ -12293,17 +12350,15 @@ $\begin{array}{lcc}
             # ── Get G(q,v) data ──
             res2d = self.results['2d_results']
             q_arr = res2d['q']
-            G_matrix = res2d['G_matrix']  # shape: (n_q, n_v_orig)
+            G_matrix = res2d['G_matrix']
             v_orig = res2d['v']
 
             C_q = self.psd_model(q_arr)
             prefactor = 1.0 / ((1 - poisson**2) * sigma_0)
 
-            # We'll interpolate G to our velocity grid
             from scipy.interpolate import interp1d
             n_q = len(q_arr)
 
-            # For each velocity, interpolate G from original grid
             log_v_orig = np.log10(v_orig)
             G_interp_list = []
             for iq in range(n_q):
@@ -12312,32 +12367,24 @@ $\begin{array}{lcc}
                 G_interp_list.append(gi)
 
             # ── Frequency sensitivity analysis ──
-            # For each (q, v, φ) → ω = q·v·cos(φ)
-            # Weight = 0.5 · q³ · C(q) · P(q) · S(q) · cos(φ) · prefactor
-            # μ_visc = Σ W(ω) · E''(ω)
-            #
-            # Build a frequency-weight histogram W(ω)
             n_phi = 14
             phi_arr = np.linspace(0, np.pi / 2, n_phi)
             cos_phi = np.cos(phi_arr)
 
-            # Frequency range for histogram
-            omega_min = q_arr[0] * v_min * 0.01
-            omega_max = q_arr[-1] * v_max * 1.1
-            n_omega_bins = 200
-            log_omega_edges = np.linspace(np.log10(max(omega_min, 1e-2)),
-                                          np.log10(min(omega_max, 1e15)), n_omega_bins + 1)
-            omega_centers = 10**((log_omega_edges[:-1] + log_omega_edges[1:]) / 2)
-            W_omega = np.zeros(n_omega_bins)  # frequency sensitivity
+            # Frequency range for histogram (in Hz)
+            f_min_hz = q_arr[0] * v_min * 0.01 / (2 * np.pi)
+            f_max_hz = q_arr[-1] * v_max * 1.1 / (2 * np.pi)
+            n_freq_bins = 200
+            log_f_edges = np.linspace(np.log10(max(f_min_hz, 1e-3)),
+                                      np.log10(min(f_max_hz, 1e14)), n_freq_bins + 1)
+            f_centers = 10**((log_f_edges[:-1] + log_f_edges[1:]) / 2)
+            W_freq = np.zeros(n_freq_bins)
 
-            # Also compute current mu_visc for each velocity
             mu_current = np.zeros(n_v)
-
             total_steps = n_v * n_q
             step = 0
 
             for iv, v_val in enumerate(velocities):
-                mu_v = 0.0
                 for iq in range(n_q):
                     q = q_arr[iq]
                     Cq = C_q[iq]
@@ -12347,82 +12394,68 @@ $\begin{array}{lcc}
                     S_val = gamma + (1 - gamma) * P_val**2
                     qCPS = q**3 * Cq * P_val * S_val
 
-                    # Angle integral
-                    for ip, phi_val in enumerate(phi_arr):
+                    for ip in range(n_phi):
                         c = cos_phi[ip]
                         if c < 1e-10:
                             continue
                         omega = q * v_val * c
-                        if omega < 1e-3:
+                        freq_hz = omega / (2 * np.pi)
+                        if freq_hz < 1e-3:
                             continue
 
-                        E_loss = self.material.get_loss_modulus(omega, temperature=temperature)
                         weight = 0.5 * qCPS * c * prefactor
 
-                        # Accumulate frequency sensitivity (normalized by n_v for averaging)
-                        log_om = np.log10(omega)
-                        bin_idx = int((log_om - log_omega_edges[0]) /
-                                      (log_omega_edges[-1] - log_omega_edges[0]) * n_omega_bins)
-                        if 0 <= bin_idx < n_omega_bins:
-                            W_omega[bin_idx] += weight / n_v
-
-                        # Accumulate mu
-                        dq = 1.0
-                        dphi = phi_arr[1] - phi_arr[0] if n_phi > 1 else 1.0
-                        mu_v += weight * E_loss * dq * dphi * 4.0
+                        log_f = np.log10(freq_hz)
+                        bin_idx = int((log_f - log_f_edges[0]) /
+                                      (log_f_edges[-1] - log_f_edges[0]) * n_freq_bins)
+                        if 0 <= bin_idx < n_freq_bins:
+                            W_freq[bin_idx] += weight / n_v
 
                     step += 1
                     if step % max(1, total_steps // 20) == 0:
-                        self.ve_progress_var.set(step / total_steps * 80)
+                        self.ve_progress_var.set(step / total_steps * 70)
                         self.root.update()
 
-                # Approximate integral using trapz
-                # Re-compute more carefully using Simpson for this velocity
                 mu_current[iv] = self._compute_mu_for_velocity(
                     v_val, q_arr, C_q, G_interp_list, temperature,
                     sigma_0, poisson, gamma, n_phi)
 
-            self.ve_progress_var.set(85)
+            self.ve_progress_var.set(75)
             self.root.update()
 
-            # ── Get current E' and E'' over frequency range ──
-            omega_plot = omega_centers
+            # ── Get current E' and E'' over frequency range (Hz) ──
+            f_plot = f_centers
+            omega_plot = 2 * np.pi * f_plot
             E_prime_current = np.array([
-                self.material.get_storage_modulus(w, temperature=temperature)
+                self._ve_get_storage_modulus_at_temp(w, temperature)
                 for w in omega_plot])
             E_loss_current = np.array([
-                self.material.get_loss_modulus(w, temperature=temperature)
+                self._ve_get_loss_modulus_at_temp(w, temperature)
                 for w in omega_plot])
 
             # ── Suggest optimal E'' ──
-            # Normalize W(ω) to identify peak regions
-            W_max = np.max(W_omega) if np.max(W_omega) > 0 else 1.0
-            W_norm = W_omega / W_max  # 0~1
+            W_max = np.max(W_freq) if np.max(W_freq) > 0 else 1.0
+            W_norm = W_freq / W_max
 
             if goal == "maximize":
-                # Boost E'' where sensitivity is highest
                 boost_factor = 1.0 + (max_boost - 1.0) * W_norm
                 E_loss_suggested = E_loss_current * boost_factor
-                # E' should be reduced slightly where E'' increases (tan δ increases)
-                # Keep Kramers-Kronig-like constraint: if E'' goes up, E' doesn't need to change much
                 E_prime_suggested = E_prime_current.copy()
             else:
-                # Reduce E'' where sensitivity is highest
                 reduce_factor = 1.0 / (1.0 + (max_boost - 1.0) * W_norm)
                 E_loss_suggested = E_loss_current * reduce_factor
                 E_prime_suggested = E_prime_current.copy()
 
-            # ── Compute μ with suggested E'' ──
-            # Create temporary loss modulus function
-            from scipy.interpolate import interp1d
-            log_omega_suggested = np.log10(omega_plot)
-            log_E_loss_suggested = np.log10(np.maximum(E_loss_suggested, 1e-3))
-            suggested_interp = interp1d(log_omega_suggested, log_E_loss_suggested,
+            # ── Compute mu with suggested E'' ──
+            log_f_sugg = np.log10(f_plot)
+            log_Epp_sugg = np.log10(np.maximum(E_loss_suggested, 1e-3))
+            suggested_interp = interp1d(log_f_sugg, log_Epp_sugg,
                                         kind='linear', bounds_error=False,
                                         fill_value='extrapolate')
 
             def suggested_loss_func(omega_val, T):
-                return 10**suggested_interp(np.log10(max(omega_val, 1e-3)))
+                f_hz = omega_val / (2 * np.pi)
+                return 10**suggested_interp(np.log10(max(f_hz, 1e-3)))
 
             mu_suggested = np.zeros(n_v)
             for iv, v_val in enumerate(velocities):
@@ -12431,23 +12464,73 @@ $\begin{array}{lcc}
                     sigma_0, poisson, gamma, n_phi,
                     loss_func_override=suggested_loss_func)
 
+            self.ve_progress_var.set(90)
+            self.root.update()
+
+            # ── Temperature sweep at 10 Hz (using aT) ──
+            temp_sweep_available = (
+                hasattr(self, 'persson_aT_interp') and self.persson_aT_interp is not None
+                and hasattr(self, 'persson_aT_data') and self.persson_aT_data is not None)
+
+            T_sweep = None
+            Ep_vs_T = None
+            Epp_vs_T = None
+            Ep_sugg_vs_T = None
+            Epp_sugg_vs_T = None
+
+            if temp_sweep_available:
+                T_data = self.persson_aT_data['T']
+                T_min_d, T_max_d = float(np.min(T_data)), float(np.max(T_data))
+                T_sweep = np.linspace(T_min_d, T_max_d, 80)
+                omega_10hz = 2 * np.pi * 10.0  # 10 Hz
+
+                mc = self.persson_master_curve
+                log_om_ref = np.log10(mc['omega'])
+                log_Ep_ref = np.log10(np.maximum(mc['E_storage'], 1e-3))
+                log_Epp_ref = np.log10(np.maximum(mc['E_loss'], 1e-3))
+                Ep_interp_ref = interp1d(log_om_ref, log_Ep_ref, kind='linear',
+                                         bounds_error=False, fill_value='extrapolate')
+                Epp_interp_ref = interp1d(log_om_ref, log_Epp_ref, kind='linear',
+                                          bounds_error=False, fill_value='extrapolate')
+
+                Ep_vs_T = np.zeros(len(T_sweep))
+                Epp_vs_T = np.zeros(len(T_sweep))
+                Ep_sugg_vs_T = np.zeros(len(T_sweep))
+                Epp_sugg_vs_T = np.zeros(len(T_sweep))
+
+                # Suggested E'' interpolator (in omega space)
+                log_om_sugg = np.log10(omega_plot)
+                log_Epp_sugg_om = np.log10(np.maximum(E_loss_suggested, 1e-3))
+                Epp_sugg_interp_om = interp1d(log_om_sugg, log_Epp_sugg_om,
+                                              kind='linear', bounds_error=False,
+                                              fill_value='extrapolate')
+
+                for it, T_val in enumerate(T_sweep):
+                    log_aT = float(self.persson_aT_interp(T_val))
+                    aT = 10**log_aT
+                    omega_shifted = omega_10hz * aT
+
+                    Ep_vs_T[it] = 10**Ep_interp_ref(np.log10(max(omega_shifted, 1e-6)))
+                    Epp_vs_T[it] = 10**Epp_interp_ref(np.log10(max(omega_shifted, 1e-6)))
+
+                    # Suggested: use shifted omega to look up in suggested curve
+                    Ep_sugg_vs_T[it] = Ep_vs_T[it]  # E' unchanged
+                    Epp_sugg_vs_T[it] = 10**Epp_sugg_interp_om(
+                        np.log10(max(omega_shifted, 1e-6)))
+
             self.ve_progress_var.set(95)
             self.root.update()
 
             # ── Find peak sensitivity frequency band ──
-            peak_idx = np.argmax(W_omega)
-            peak_omega = omega_centers[peak_idx]
-            peak_freq_hz = peak_omega / (2 * np.pi)
+            peak_idx = np.argmax(W_freq)
+            peak_freq_hz = f_centers[peak_idx]
 
-            # Find band where W > 50% of peak
             threshold = 0.5 * W_max
-            band_mask = W_omega > threshold
+            band_mask = W_freq > threshold
             if np.any(band_mask):
                 band_indices = np.where(band_mask)[0]
-                omega_band_low = omega_centers[band_indices[0]]
-                omega_band_high = omega_centers[band_indices[-1]]
-                freq_band_low = omega_band_low / (2 * np.pi)
-                freq_band_high = omega_band_high / (2 * np.pi)
+                freq_band_low = f_centers[band_indices[0]]
+                freq_band_high = f_centers[band_indices[-1]]
             else:
                 freq_band_low = peak_freq_hz * 0.1
                 freq_band_high = peak_freq_hz * 10
@@ -12459,10 +12542,12 @@ $\begin{array}{lcc}
 
             # ── Update plots ──
             self._update_ve_advisor_plots(
-                omega_plot, E_prime_current, E_prime_suggested,
+                f_plot, E_prime_current, E_prime_suggested,
                 E_loss_current, E_loss_suggested,
-                omega_centers, W_omega,
-                velocities, mu_current, mu_suggested, goal)
+                f_centers, W_freq,
+                velocities, mu_current, mu_suggested, goal,
+                T_sweep, Ep_vs_T, Epp_vs_T, Ep_sugg_vs_T, Epp_sugg_vs_T,
+                temperature)
 
             # ── Generate result text ──
             self.ve_result_text.delete(1.0, tk.END)
@@ -12471,21 +12556,27 @@ $\begin{array}{lcc}
             txt.insert(tk.END, "  점탄성 설계 제안 결과\n")
             txt.insert(tk.END, "=" * 44 + "\n\n")
 
+            aT_info = ""
+            if temp_sweep_available:
+                log_aT_val = float(self.persson_aT_interp(temperature))
+                aT_val = 10**log_aT_val
+                T_ref = self.persson_aT_data.get('T_ref', '?')
+                aT_info = f"  aT({temperature}\u00b0C) = {aT_val:.3e}  (T_ref={T_ref}\u00b0C)\n"
+
             txt.insert(tk.END, f"분석 조건:\n")
             txt.insert(tk.END, f"  속도 범위: {v_min} ~ {v_max} m/s\n")
             txt.insert(tk.END, f"  온도: {temperature}\u00b0C\n")
+            if aT_info:
+                txt.insert(tk.END, aT_info)
             txt.insert(tk.END, f"  압력: {sigma_0/1e6:.2f} MPa\n")
             txt.insert(tk.END, f"  목표: {'마찰 극대화' if goal == 'maximize' else '마찰 극소화'}\n\n")
 
             txt.insert(tk.END, "\u2501" * 44 + "\n")
             txt.insert(tk.END, "  핵심 주파수 영역 (E''가 가장 중요한 대역)\n")
             txt.insert(tk.END, "\u2501" * 44 + "\n")
-            txt.insert(tk.END, f"  피크 주파수: {peak_freq_hz:.1f} Hz "
-                       f"(\u03c9 = {peak_omega:.1f} rad/s)\n")
+            txt.insert(tk.END, f"  피크 주파수: {peak_freq_hz:.1f} Hz\n")
             txt.insert(tk.END, f"  중요 대역: {freq_band_low:.1f} ~ "
-                       f"{freq_band_high:.1f} Hz\n")
-            txt.insert(tk.END, f"  (\u03c9: {omega_band_low:.1f} ~ "
-                       f"{omega_band_high:.1f} rad/s)\n\n")
+                       f"{freq_band_high:.1f} Hz\n\n")
 
             txt.insert(tk.END, "\u2501" * 44 + "\n")
             txt.insert(tk.END, "  설계 제안\n")
@@ -12508,6 +12599,21 @@ $\begin{array}{lcc}
                     f"    마찰의 주 원인입니다.\n\n"
                     f"  \u25b6 E'(저장 탄성률)를 유지하면서\n"
                     f"    tan\u03b4를 낮추는 것이 핵심입니다.\n\n")
+
+            # Temperature advice
+            if temp_sweep_available and Epp_vs_T is not None:
+                txt.insert(tk.END, "\u2501" * 44 + "\n")
+                txt.insert(tk.END, "  온도 영역 분석 (@10 Hz)\n")
+                txt.insert(tk.END, "\u2501" * 44 + "\n")
+                peak_T_idx = np.argmax(Epp_vs_T)
+                peak_T = T_sweep[peak_T_idx]
+                txt.insert(tk.END,
+                    f"  E'' 피크 온도: {peak_T:.1f}\u00b0C (@10 Hz)\n"
+                    f"  현재 온도({temperature}\u00b0C)에서 E''(10Hz):\n"
+                    f"    {self._ve_get_loss_modulus_at_temp(2*np.pi*10, temperature):.2e} Pa\n\n"
+                    f"  \u25b6 E'' 피크를 현재 사용 온도({temperature}\u00b0C)\n"
+                    f"    부근으로 이동시키면 마찰 향상에 유리합니다.\n"
+                    f"    (Tg 조절, 배합 변경 등)\n\n")
 
             txt.insert(tk.END, "\u2501" * 44 + "\n")
             txt.insert(tk.END, "  예상 효과\n")
@@ -12543,7 +12649,7 @@ $\begin{array}{lcc}
     def _compute_mu_for_velocity(self, v_val, q_arr, C_q, G_interp_list,
                                   temperature, sigma_0, poisson, gamma, n_phi,
                                   loss_func_override=None):
-        """Compute μ_visc for a single velocity using simplified Persson integral."""
+        """Compute mu_visc for a single velocity using simplified Persson integral."""
         import numpy as np
         from scipy.special import erf
         from scipy.integrate import simpson
@@ -12564,7 +12670,6 @@ $\begin{array}{lcc}
             S_val = gamma + (1 - gamma) * P_val**2
             qCPS = q**3 * Cq * P_val * S_val
 
-            # Angle integral
             angle_integrand = np.zeros(n_phi)
             for ip in range(n_phi):
                 c = cos_phi[ip]
@@ -12577,7 +12682,7 @@ $\begin{array}{lcc}
                 if loss_func_override is not None:
                     E_loss = loss_func_override(omega, temperature)
                 else:
-                    E_loss = self.material.get_loss_modulus(omega, temperature=temperature)
+                    E_loss = self._ve_get_loss_modulus_at_temp(omega, temperature)
 
                 angle_integrand[ip] = c * E_loss * prefactor
 
@@ -12587,89 +12692,137 @@ $\begin{array}{lcc}
         mu = 0.5 * simpson(integrand_q, x=q_arr) if n_q > 1 else 0
         return max(mu, 0)
 
-    def _update_ve_advisor_plots(self, omega, Ep_curr, Ep_sugg,
+    def _update_ve_advisor_plots(self, f_hz, Ep_curr, Ep_sugg,
                                   Epp_curr, Epp_sugg,
-                                  omega_w, W_omega,
-                                  velocities, mu_curr, mu_sugg, goal):
-        """Update the 4 plots in the advisor tab."""
+                                  f_w, W_freq,
+                                  velocities, mu_curr, mu_sugg, goal,
+                                  T_sweep, Ep_vs_T, Epp_vs_T,
+                                  Ep_sugg_vs_T, Epp_sugg_vs_T,
+                                  temperature):
+        """Update the 6 plots (2x3) in the advisor tab."""
 
-        # ── Plot 1: E' comparison ──
+        # ── Plot 1: E'(f) comparison ──
         ax = self.ax_ve_Ep
         ax.clear()
-        ax.loglog(omega, Ep_curr, 'b-', linewidth=2, label="현재 E'", alpha=0.8)
-        ax.loglog(omega, Ep_sugg, 'r--', linewidth=2, label="제안 E'", alpha=0.8)
-        ax.set_xlabel('\u03c9 (rad/s)')
+        ax.loglog(f_hz, Ep_curr, 'b-', linewidth=2, label="현재 E'", alpha=0.8)
+        ax.loglog(f_hz, Ep_sugg, 'r--', linewidth=2, label="제안 E'", alpha=0.8)
+        ax.set_xlabel('f (Hz)')
         ax.set_ylabel("E' (Pa)")
-        ax.set_title("E' 저장 탄성률", fontweight='bold', fontsize=10)
-        ax.legend(fontsize=8, loc='best')
+        ax.set_title("E'(f) 저장 탄성률", fontweight='bold', fontsize=9)
+        ax.legend(fontsize=7, loc='best')
         ax.grid(True, alpha=0.3)
 
-        # ── Plot 2: E'' comparison ──
+        # ── Plot 2: E''(f) comparison ──
         ax = self.ax_ve_Epp
         ax.clear()
-        ax.loglog(omega, Epp_curr, 'b-', linewidth=2, label="현재 E''", alpha=0.8)
-        ax.loglog(omega, Epp_sugg, 'r--', linewidth=2, label="제안 E''", alpha=0.8)
+        ax.loglog(f_hz, Epp_curr, 'b-', linewidth=2, label="현재 E''", alpha=0.8)
+        ax.loglog(f_hz, Epp_sugg, 'r--', linewidth=2, label="제안 E''", alpha=0.8)
 
-        # Highlight peak sensitivity region
-        W_max = np.max(W_omega) if np.max(W_omega) > 0 else 1
-        band_mask = W_omega > 0.5 * W_max
+        W_max = np.max(W_freq) if np.max(W_freq) > 0 else 1
+        band_mask = W_freq > 0.5 * W_max
         if np.any(band_mask):
             band_indices = np.where(band_mask)[0]
-            lo = omega_w[band_indices[0]]
-            hi = omega_w[band_indices[-1]]
+            lo = f_w[band_indices[0]]
+            hi = f_w[band_indices[-1]]
             ax.axvspan(lo, hi, alpha=0.15, color='orange', label='핵심 대역')
 
-        ax.set_xlabel('\u03c9 (rad/s)')
+        ax.set_xlabel('f (Hz)')
         ax.set_ylabel("E'' (Pa)")
-        ax.set_title("E'' 손실 탄성률", fontweight='bold', fontsize=10)
-        ax.legend(fontsize=8, loc='best')
+        ax.set_title("E''(f) 손실 탄성률", fontweight='bold', fontsize=9)
+        ax.legend(fontsize=7, loc='best')
         ax.grid(True, alpha=0.3)
 
-        # ── Plot 3: Frequency sensitivity W(ω) ──
+        # ── Plot 3: Frequency sensitivity W(f) ──
         ax = self.ax_ve_sensitivity
         ax.clear()
-        ax.semilogx(omega_w, W_omega, 'g-', linewidth=2)
-        ax.fill_between(omega_w, 0, W_omega, alpha=0.2, color='green')
+        ax.semilogx(f_w, W_freq, 'g-', linewidth=2)
+        ax.fill_between(f_w, 0, W_freq, alpha=0.2, color='green')
 
-        # Mark peak
-        peak_idx = np.argmax(W_omega)
-        if W_omega[peak_idx] > 0:
-            ax.axvline(omega_w[peak_idx], color='red', linestyle='--', alpha=0.7,
-                       label=f'피크: {omega_w[peak_idx]:.0f} rad/s')
+        peak_idx = np.argmax(W_freq)
+        if W_freq[peak_idx] > 0:
+            peak_f = f_w[peak_idx]
+            ax.axvline(peak_f, color='red', linestyle='--', alpha=0.7,
+                       label=f'피크: {peak_f:.0f} Hz')
 
-        ax.set_xlabel('\u03c9 (rad/s)')
-        ax.set_ylabel('W(\u03c9) 감도 가중치')
-        ax.set_title("주파수 감도 스펙트럼", fontweight='bold', fontsize=10)
-        ax.legend(fontsize=8, loc='best')
+        ax.set_xlabel('f (Hz)')
+        ax.set_ylabel('W(f) 감도 가중치')
+        ax.set_title("주파수 감도 스펙트럼 W(f)", fontweight='bold', fontsize=9)
+        ax.legend(fontsize=7, loc='best')
         ax.grid(True, alpha=0.3)
 
-        # ── Plot 4: μ_visc comparison ──
+        # ── Plot 4: mu_visc comparison ──
         ax = self.ax_ve_mu_compare
         ax.clear()
         valid_c = mu_curr > 0
         valid_s = mu_sugg > 0
 
         ax.semilogx(velocities[valid_c], mu_curr[valid_c], 'b-o',
-                     linewidth=2, markersize=4, label='현재 \u03bc')
+                     linewidth=2, markersize=3, label='현재 \u03bc')
         ax.semilogx(velocities[valid_s], mu_sugg[valid_s], 'r--s',
-                     linewidth=2, markersize=4, label='제안 \u03bc')
+                     linewidth=2, markersize=3, label='제안 \u03bc')
 
-        # Fill improvement area
         if np.any(valid_c & valid_s):
             v_both = velocities[valid_c & valid_s]
-            mc = mu_curr[valid_c & valid_s]
-            ms = mu_sugg[valid_c & valid_s]
+            mc_v = mu_curr[valid_c & valid_s]
+            ms_v = mu_sugg[valid_c & valid_s]
             if goal == "maximize":
-                ax.fill_between(v_both, mc, ms, where=(ms > mc),
+                ax.fill_between(v_both, mc_v, ms_v, where=(ms_v > mc_v),
                                 alpha=0.15, color='green', label='향상 영역')
             else:
-                ax.fill_between(v_both, mc, ms, where=(ms < mc),
+                ax.fill_between(v_both, mc_v, ms_v, where=(ms_v < mc_v),
                                 alpha=0.15, color='green', label='감소 영역')
 
         ax.set_xlabel('v (m/s)')
         ax.set_ylabel('\u03bc_visc')
-        ax.set_title("\u03bc_visc 현재 vs 제안", fontweight='bold', fontsize=10)
-        ax.legend(fontsize=8, loc='best')
+        ax.set_title("\u03bc_visc 현재 vs 제안", fontweight='bold', fontsize=9)
+        ax.legend(fontsize=7, loc='best')
+        ax.grid(True, alpha=0.3)
+
+        # ── Plot 5: E'(T) @10Hz ──
+        ax = self.ax_ve_temp_Ep
+        ax.clear()
+        if T_sweep is not None and Ep_vs_T is not None:
+            ax.semilogy(T_sweep, Ep_vs_T, 'b-', linewidth=2, label="현재 E'")
+            if Ep_sugg_vs_T is not None:
+                ax.semilogy(T_sweep, Ep_sugg_vs_T, 'r--', linewidth=2, label="제안 E'")
+            ax.axvline(temperature, color='gray', linestyle=':', alpha=0.8,
+                       label=f'현재 T={temperature}\u00b0C')
+            ax.set_xlabel('Temperature (\u00b0C)')
+            ax.set_ylabel("E' (Pa)")
+            ax.set_title("E'(T) @10 Hz", fontweight='bold', fontsize=9)
+            ax.legend(fontsize=7, loc='best')
+        else:
+            ax.text(0.5, 0.5, 'aT 데이터 필요\n(마스터커브 탭에서 로드)',
+                    transform=ax.transAxes, ha='center', va='center',
+                    fontsize=10, color='gray')
+            ax.set_title("E'(T) @10 Hz", fontweight='bold', fontsize=9)
+        ax.grid(True, alpha=0.3)
+
+        # ── Plot 6: E''(T) @10Hz ──
+        ax = self.ax_ve_temp_Epp
+        ax.clear()
+        if T_sweep is not None and Epp_vs_T is not None:
+            ax.semilogy(T_sweep, Epp_vs_T, 'b-', linewidth=2, label="현재 E''")
+            if Epp_sugg_vs_T is not None:
+                ax.semilogy(T_sweep, Epp_sugg_vs_T, 'r--', linewidth=2, label="제안 E''")
+            ax.axvline(temperature, color='gray', linestyle=':', alpha=0.8,
+                       label=f'현재 T={temperature}\u00b0C')
+
+            # Mark E'' peak temperature
+            peak_T_idx = np.argmax(Epp_vs_T)
+            peak_T = T_sweep[peak_T_idx]
+            ax.axvline(peak_T, color='orange', linestyle='--', alpha=0.7,
+                       label=f"E'' 피크: {peak_T:.0f}\u00b0C")
+
+            ax.set_xlabel('Temperature (\u00b0C)')
+            ax.set_ylabel("E'' (Pa)")
+            ax.set_title("E''(T) @10 Hz", fontweight='bold', fontsize=9)
+            ax.legend(fontsize=7, loc='best')
+        else:
+            ax.text(0.5, 0.5, 'aT 데이터 필요\n(마스터커브 탭에서 로드)',
+                    transform=ax.transAxes, ha='center', va='center',
+                    fontsize=10, color='gray')
+            ax.set_title("E''(T) @10 Hz", fontweight='bold', fontsize=9)
         ax.grid(True, alpha=0.3)
 
         self.fig_ve_advisor.tight_layout()
