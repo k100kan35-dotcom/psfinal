@@ -563,9 +563,9 @@ class PerssonModelGUI_V2:
                  bg='#FFFFFF', fg=self.COLORS['text_secondary'],
                  font=('Segoe UI', 16)).pack(side=tk.LEFT, padx=(0, 8))
 
-        # ── Company logo (right side of header) ──
+        # ── Load company logo (for left panel footers) ──
+        self._logo_image = None
         try:
-            # Resolve logo path (works for both script and PyInstaller exe)
             if getattr(sys, 'frozen', False):
                 _base_dir = sys._MEIPASS
             else:
@@ -574,14 +574,12 @@ class PerssonModelGUI_V2:
 
             if os.path.exists(_logo_path):
                 _logo_full = tk.PhotoImage(file=_logo_path)
-                # Scale down to fit header (~36px height)
+                # Scale to ~70px height for panel footer
                 _orig_h = _logo_full.height()
-                _scale = max(1, _orig_h // 36)
+                _scale = max(1, _orig_h // 70)
                 self._logo_image = _logo_full.subsample(_scale, _scale)
-                tk.Label(header, image=self._logo_image,
-                         bg='#FFFFFF').pack(side=tk.RIGHT, padx=(0, 20))
         except Exception:
-            pass  # Graceful fallback: no logo if file missing or decode fails
+            pass
 
         # Header bottom border
         tk.Frame(self.root, bg=self.COLORS['border'], height=1).pack(fill=tk.X, side=tk.TOP)
@@ -622,6 +620,18 @@ class PerssonModelGUI_V2:
         # Initialize debug log storage
         self.debug_log_messages = []
 
+    def _add_logo_to_panel(self, parent_frame):
+        """Add company logo fixed at the bottom of a left panel frame.
+        Must be called BEFORE packing scrollable content so it stays at bottom."""
+        if self._logo_image is None:
+            return
+        logo_container = tk.Frame(parent_frame, bg='#F0F2F5', height=80)
+        logo_container.pack(side=tk.BOTTOM, fill=tk.X)
+        logo_container.pack_propagate(False)
+        tk.Frame(logo_container, bg=self.COLORS['border'], height=1).pack(fill=tk.X, side=tk.TOP)
+        tk.Label(logo_container, image=self._logo_image,
+                 bg='#F0F2F5').pack(expand=True)
+
     def _create_psd_profile_tab(self, parent):
         """Create PSD from Profile tab for calculating PSD from surface height data."""
         # Main container
@@ -632,6 +642,9 @@ class PerssonModelGUI_V2:
         left_frame = ttk.Frame(main_container, width=540)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
+
+        # Logo at bottom (pack before canvas so it stays at bottom)
+        self._add_logo_to_panel(left_frame)
 
         # Add scrollbar to left panel
         left_canvas = tk.Canvas(left_frame, highlightthickness=0)
@@ -1912,6 +1925,9 @@ class PerssonModelGUI_V2:
         left_container = ttk.Frame(main_container, width=540)
         left_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_container.pack_propagate(False)
+
+        # Logo at bottom (pack before canvas so it stays at bottom)
+        self._add_logo_to_panel(left_container)
 
         # Create canvas and scrollbar for scrolling
         mc_canvas = tk.Canvas(left_container, highlightthickness=0, bg='#F0F2F5')
@@ -3727,6 +3743,9 @@ class PerssonModelGUI_V2:
         # Left panel for inputs
         left_panel = ttk.Frame(main_container)
         left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5))
+
+        # Logo at bottom
+        self._add_logo_to_panel(left_panel)
 
         # Right panel for visualization
         right_panel = ttk.Frame(main_container)
@@ -6040,6 +6059,9 @@ $\begin{array}{lcc}
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
+        # Logo at bottom
+        self._add_logo_to_panel(left_frame)
+
         # ============== Left Panel: Controls ==============
 
         # 1. Description
@@ -6519,6 +6541,9 @@ $\begin{array}{lcc}
         left_frame = ttk.Frame(main_container, width=510)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)  # Keep fixed width
+
+        # Logo at bottom (pack before canvas so it stays at bottom)
+        self._add_logo_to_panel(left_frame)
 
         # Create canvas and scrollbar for left panel
         left_canvas = tk.Canvas(left_frame, highlightthickness=0)
@@ -10132,6 +10157,9 @@ $\begin{array}{lcc}
         left_frame = ttk.Frame(main_container, width=480)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
+
+        # Logo at bottom
+        self._add_logo_to_panel(left_frame)
 
         # ============== Left Panel: Controls ==============
 
