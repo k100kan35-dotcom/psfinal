@@ -313,13 +313,13 @@ class PerssonModelGUI_V2:
         style.configure('TLabelframe', background=C['surface'],
                         relief='flat', borderwidth=1, bordercolor=C['border'])
         style.configure('TLabelframe.Label', background=C['surface'],
-                        foreground=C['primary'], font=F['small_bold'])
+                        foreground=C['primary'], font=F['body_bold'])
 
         # ── TNotebook (Tabs) ──
         style.configure('TNotebook', background=C['bg'], borderwidth=0,
                         tabmargins=[4, 4, 4, 0])
         style.configure('TNotebook.Tab', background=C['tab_inactive'],
-                        foreground=C['text_secondary'], font=F['small_bold'],
+                        foreground=C['text_secondary'], font=F['body_bold'],
                         padding=[14, 6], borderwidth=0)
         style.map('TNotebook.Tab',
                   background=[('selected', C['tab_active']),
@@ -367,15 +367,15 @@ class PerssonModelGUI_V2:
 
         # ── TEntry ──
         style.configure('TEntry', fieldbackground=C['input_bg'],
-                        foreground=C['text'], borderwidth=1,
-                        relief='solid', padding=[6, 4])
+                        foreground=C['text'], font=F['body'],
+                        borderwidth=1, relief='solid', padding=[6, 4])
         style.map('TEntry',
                   fieldbackground=[('focus', '#F0F7FF'), ('readonly', C['bg'])],
                   bordercolor=[('focus', C['primary'])])
 
         # ── TCombobox ──
         style.configure('TCombobox', fieldbackground=C['input_bg'],
-                        foreground=C['text'], padding=[6, 4])
+                        foreground=C['text'], font=F['body'], padding=[6, 4])
         style.map('TCombobox',
                   fieldbackground=[('readonly', C['input_bg']),
                                    ('focus', '#F0F7FF')])
@@ -405,6 +405,10 @@ class PerssonModelGUI_V2:
         style.map('Vertical.TScrollbar',
                   background=[('active', C['border']),
                               ('pressed', C['input_border'])])
+
+        # ── Combobox dropdown list font ──
+        self.root.option_add('*TCombobox*Listbox.font', F['body'])
+        self.root.option_add('*TCombobox*Listbox.foreground', C['text'])
 
     def _load_default_data(self):
         """Load default measured data on startup."""
@@ -2221,7 +2225,7 @@ class PerssonModelGUI_V2:
         results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.mc_result_text = tk.Text(results_frame, height=10, font=("Courier", 12), wrap=tk.WORD)
+        self.mc_result_text = tk.Text(results_frame, height=10, font=("Courier", 13), wrap=tk.WORD)
         self.mc_result_text.pack(fill=tk.X)
 
         # 6. Shift Factor Table
@@ -5709,7 +5713,8 @@ class PerssonModelGUI_V2:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.graph_data_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE,
-                                              yscrollcommand=scrollbar.set, height=15)
+                                              yscrollcommand=scrollbar.set, height=15,
+                                              font=('Segoe UI', 15))
         self.graph_data_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.graph_data_listbox.yview)
 
@@ -6155,7 +6160,7 @@ $\begin{array}{lcc}
         results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.rms_result_text = tk.Text(results_frame, height=12, font=("Courier", 12), wrap=tk.WORD)
+        self.rms_result_text = tk.Text(results_frame, height=12, font=("Courier", 13), wrap=tk.WORD)
         self.rms_result_text.pack(fill=tk.X)
 
         # 4. Export / Apply buttons
@@ -6857,7 +6862,7 @@ $\begin{array}{lcc}
         results_frame = ttk.LabelFrame(left_panel, text="5) 결과", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.mu_result_text = tk.Text(results_frame, height=8, font=("Courier", 12), wrap=tk.WORD)
+        self.mu_result_text = tk.Text(results_frame, height=8, font=("Courier", 13), wrap=tk.WORD)
         self.mu_result_text.pack(fill=tk.X)
 
         # Export buttons
@@ -8484,7 +8489,7 @@ $\begin{array}{lcc}
         text_frame = ttk.Frame(dialog, padding=10)
         text_frame.pack(fill=tk.BOTH, expand=True)
 
-        text = tk.Text(text_frame, wrap=tk.WORD, font=('Courier', 12))
+        text = tk.Text(text_frame, wrap=tk.WORD, font=('Courier', 13))
         scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text.yview)
         text.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -9233,7 +9238,7 @@ $\begin{array}{lcc}
 
         ttk.Label(mu_frame, text="μ_visc 참조 데이터 (log10(v) \\t mu_visc):",
                   font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        mu_text = tk.Text(mu_frame, height=20, font=("Courier", 12), wrap=tk.NONE)
+        mu_text = tk.Text(mu_frame, height=20, font=("Courier", 13), wrap=tk.NONE)
         mu_scroll = ttk.Scrollbar(mu_frame, orient=tk.VERTICAL, command=mu_text.yview)
         mu_text.configure(yscrollcommand=mu_scroll.set)
         mu_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -9253,7 +9258,7 @@ $\begin{array}{lcc}
 
         ttk.Label(area_frame, text="A/A0 참조 데이터 (log10(v) \\t A/A0):",
                   font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        area_text = tk.Text(area_frame, height=20, font=("Courier", 12), wrap=tk.NONE)
+        area_text = tk.Text(area_frame, height=20, font=("Courier", 13), wrap=tk.NONE)
         area_scroll = ttk.Scrollbar(area_frame, orient=tk.VERTICAL, command=area_text.yview)
         area_text.configure(yscrollcommand=area_scroll.set)
         area_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -10236,14 +10241,14 @@ $\begin{array}{lcc}
         results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.integrand_result_text = tk.Text(results_frame, height=16, font=("Courier", 12), wrap=tk.WORD)
+        self.integrand_result_text = tk.Text(results_frame, height=16, font=("Courier", 13), wrap=tk.WORD)
         self.integrand_result_text.pack(fill=tk.X)
 
         # 4. Frequency range info
         freq_frame = ttk.LabelFrame(left_frame, text="주파수 범위 (ω = qv cosφ)", padding=5)
         freq_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.freq_range_text = tk.Text(freq_frame, height=6, font=("Courier", 12), wrap=tk.WORD)
+        self.freq_range_text = tk.Text(freq_frame, height=6, font=("Courier", 13), wrap=tk.WORD)
         self.freq_range_text.pack(fill=tk.X)
 
         # ============== Right Panel: Plots ==============
@@ -10787,7 +10792,7 @@ $\begin{array}{lcc}
 ════════════════════════════════════════════════════════════════════════════════
 """
 
-        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=('Courier New', 12), height=50, width=90)
+        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=('Courier New', 13), height=50, width=90)
         text_widget.insert(tk.END, content)
         text_widget.config(state='disabled')  # Read-only
         text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -10840,7 +10845,7 @@ $\begin{array}{lcc}
         self.debug_log_text = tk.Text(
             log_frame,
             wrap=tk.WORD,
-            font=('Courier New', 12),
+            font=('Courier New', 13),
             yscrollcommand=log_scroll.set
         )
         self.debug_log_text.pack(fill=tk.BOTH, expand=True)
@@ -11456,7 +11461,7 @@ $\begin{array}{lcc}
 ════════════════════════════════════════════════════════════════════════════════
 """
 
-        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=('Courier New', 12), height=50, width=90)
+        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=('Courier New', 13), height=50, width=90)
         text_widget.insert(tk.END, content)
         text_widget.config(state='disabled')  # Read-only
         text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
