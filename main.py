@@ -290,6 +290,18 @@ class PerssonModelGUI_V2:
         except tk.TclError:
             pass
 
+        # ── Override Tk default fonts (affects all Entry/Combobox field text) ──
+        import tkinter.font as tkfont
+        for fname in ('TkDefaultFont', 'TkTextFont', 'TkFixedFont'):
+            try:
+                f = tkfont.nametofont(fname)
+                if fname == 'TkFixedFont':
+                    f.configure(family='Consolas', size=17)
+                else:
+                    f.configure(family='Segoe UI', size=17)
+            except Exception:
+                pass
+
         # ── Global defaults ──
         style.configure('.', background=C['bg'], foreground=C['text'],
                         font=F['body'], borderwidth=0)
@@ -714,7 +726,7 @@ class PerssonModelGUI_V2:
         ttk.Label(preset_psd_frame, text="내장 PSD:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.preset_psd_var = tk.StringVar(value="(선택...)")
         self.preset_psd_combo = ttk.Combobox(preset_psd_frame, textvariable=self.preset_psd_var,
-                                              state='readonly', width=25)
+                                              state='readonly', width=25, font=self.FONTS['body'])
         self.preset_psd_combo.pack(side=tk.LEFT, padx=5)
         ttk.Button(preset_psd_frame, text="로드", command=self._load_preset_psd, width=5).pack(side=tk.LEFT)
         ttk.Button(preset_psd_frame, text="삭제", command=self._delete_preset_psd, width=5).pack(side=tk.LEFT, padx=2)
@@ -786,13 +798,13 @@ class PerssonModelGUI_V2:
         ttk.Label(unit_row1, text="X 단위:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.profile_x_unit_var = tk.StringVar(value="um")
         unit_combo_x = ttk.Combobox(unit_row1, textvariable=self.profile_x_unit_var,
-                                     values=['m', 'mm', 'um', 'nm'], width=6, state='readonly')
+                                     values=['m', 'mm', 'um', 'nm'], width=6, state='readonly', font=self.FONTS['body'])
         unit_combo_x.pack(side=tk.LEFT, padx=2)
 
         ttk.Label(unit_row1, text="H 단위:", font=('Segoe UI', 17)).pack(side=tk.LEFT, padx=(10, 0))
         self.profile_h_unit_var = tk.StringVar(value="um")
         unit_combo_h = ttk.Combobox(unit_row1, textvariable=self.profile_h_unit_var,
-                                     values=['m', 'mm', 'um', 'nm'], width=6, state='readonly')
+                                     values=['m', 'mm', 'um', 'nm'], width=6, state='readonly', font=self.FONTS['body'])
         unit_combo_h.pack(side=tk.LEFT, padx=2)
 
         # Data info
@@ -810,7 +822,7 @@ class PerssonModelGUI_V2:
         ttk.Label(detrend_row, text="Detrend:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.profile_detrend_var = tk.StringVar(value="mean")
         ttk.Combobox(detrend_row, textvariable=self.profile_detrend_var,
-                     values=['mean', 'linear', 'quadratic'], width=10, state='readonly').pack(side=tk.LEFT, padx=5)
+                     values=['mean', 'linear', 'quadratic'], width=10, state='readonly', font=self.FONTS['body']).pack(side=tk.LEFT, padx=5)
 
         # Window function
         window_row = ttk.Frame(calc_frame)
@@ -818,7 +830,7 @@ class PerssonModelGUI_V2:
         ttk.Label(window_row, text="Window:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.profile_window_var = tk.StringVar(value="hann")
         ttk.Combobox(window_row, textvariable=self.profile_window_var,
-                     values=['hann', 'hamming', 'blackman', 'none'], width=10, state='readonly').pack(side=tk.LEFT, padx=5)
+                     values=['hann', 'hamming', 'blackman', 'none'], width=10, state='readonly', font=self.FONTS['body']).pack(side=tk.LEFT, padx=5)
 
         # PSD type selection
         psd_type_frame = ttk.Frame(calc_frame)
@@ -2014,7 +2026,7 @@ class PerssonModelGUI_V2:
         ttk.Label(preset_mc_frame, text="마스터커브:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.preset_mc_var = tk.StringVar(value="(선택...)")
         self.preset_mc_combo = ttk.Combobox(preset_mc_frame, textvariable=self.preset_mc_var,
-                                             state='readonly', width=20)
+                                             state='readonly', width=20, font=self.FONTS['body'])
         self.preset_mc_combo.pack(side=tk.LEFT, padx=2)
         ttk.Button(preset_mc_frame, text="로드", command=self._load_preset_mastercurve, width=5).pack(side=tk.LEFT)
         ttk.Button(preset_mc_frame, text="삭제", command=self._delete_preset_mastercurve, width=5).pack(side=tk.LEFT, padx=2)
@@ -2025,7 +2037,7 @@ class PerssonModelGUI_V2:
         ttk.Label(preset_aT_frame, text="aT 팩터:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.preset_aT_var = tk.StringVar(value="(선택...)")
         self.preset_aT_combo = ttk.Combobox(preset_aT_frame, textvariable=self.preset_aT_var,
-                                             state='readonly', width=20)
+                                             state='readonly', width=20, font=self.FONTS['body'])
         self.preset_aT_combo.pack(side=tk.LEFT, padx=2)
         ttk.Button(preset_aT_frame, text="로드", command=self._load_preset_aT, width=5).pack(side=tk.LEFT)
         ttk.Button(preset_aT_frame, text="삭제", command=self._delete_preset_aT, width=5).pack(side=tk.LEFT, padx=2)
@@ -2119,7 +2131,7 @@ class PerssonModelGUI_V2:
         bt_combo = ttk.Combobox(
             row2, textvariable=self.mc_bt_mode_var,
             values=["optimize", "theoretical"],
-            width=12, state="readonly"
+            width=12, state="readonly", font=self.FONTS['body']
         )
         bt_combo.pack(side=tk.RIGHT)
 
@@ -2143,7 +2155,7 @@ class PerssonModelGUI_V2:
         target_combo = ttk.Combobox(
             row3, textvariable=self.mc_target_var,
             values=["E_storage", "E_loss", "tan_delta"],
-            width=12, state="readonly"
+            width=12, state="readonly", font=self.FONTS['body']
         )
         target_combo.pack(side=tk.RIGHT)
         ttk.Label(settings_frame,
@@ -3963,7 +3975,8 @@ class PerssonModelGUI_V2:
             textvariable=self.psd_type_var,
             values=["measured", "fractal"],
             state="readonly",
-            width=12
+            width=12,
+            font=self.FONTS['body']
         ).grid(row=row, column=1, pady=5)
 
         # Calculation visualization area in right panel
@@ -6606,7 +6619,7 @@ $\begin{array}{lcc}
         preset_ss_frame.pack(fill=tk.X, pady=1)
         self.preset_ss_var = tk.StringVar(value="(선택...)")
         self.preset_ss_combo = ttk.Combobox(preset_ss_frame, textvariable=self.preset_ss_var,
-                                             state='readonly', width=20)
+                                             state='readonly', width=20, font=self.FONTS['body'])
         self.preset_ss_combo.pack(side=tk.LEFT, padx=2)
         ttk.Button(preset_ss_frame, text="로드", command=self._load_preset_strain_sweep, width=4).pack(side=tk.LEFT)
         ttk.Button(preset_ss_frame, text="삭제", command=self._delete_preset_strain_sweep, width=4).pack(side=tk.LEFT, padx=1)
@@ -6639,7 +6652,7 @@ $\begin{array}{lcc}
         preset_fg_frame.pack(fill=tk.X, pady=1)
         self.preset_fg_var = tk.StringVar(value="(선택...)")
         self.preset_fg_combo = ttk.Combobox(preset_fg_frame, textvariable=self.preset_fg_var,
-                                             state='readonly', width=20)
+                                             state='readonly', width=20, font=self.FONTS['body'])
         self.preset_fg_combo.pack(side=tk.LEFT, padx=2)
         ttk.Button(preset_fg_frame, text="로드", command=self._load_preset_fg, width=4).pack(side=tk.LEFT)
         ttk.Button(preset_fg_frame, text="삭제", command=self._delete_preset_fg, width=4).pack(side=tk.LEFT, padx=1)
@@ -6771,7 +6784,7 @@ $\begin{array}{lcc}
         ttk.Label(strain_row, text="Strain:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.strain_est_method_var = tk.StringVar(value="rms_slope")
         strain_combo = ttk.Combobox(strain_row, textvariable=self.strain_est_method_var,
-                     values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly")
+                     values=["rms_slope", "fixed", "persson", "simple"], width=10, state="readonly", font=self.FONTS['body'])
         strain_combo.pack(side=tk.LEFT, padx=2)
 
         self.fixed_strain_var = tk.StringVar(value="1.0")
@@ -6810,7 +6823,7 @@ $\begin{array}{lcc}
         ttk.Checkbutton(smooth_row, text="스무딩", variable=self.smooth_mu_var).pack(side=tk.LEFT)
         self.smooth_window_var = tk.StringVar(value="5")
         ttk.Combobox(smooth_row, textvariable=self.smooth_window_var,
-                     values=["3", "5", "7", "9", "11"], width=4, state="readonly").pack(side=tk.LEFT, padx=2)
+                     values=["3", "5", "7", "9", "11"], width=4, state="readonly", font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
 
         # ===== Temperature Shift Section =====
         ttk.Separator(mu_settings_frame, orient='horizontal').pack(fill=tk.X, pady=3)
@@ -9389,7 +9402,7 @@ $\begin{array}{lcc}
         method_combo = ttk.Combobox(
             ctrl_row, textvariable=self.strain_map_method_var,
             values=["rms_slope", "persson", "simple", "fixed"],
-            width=10, state="readonly"
+            width=10, state="readonly", font=self.FONTS['body']
         )
         method_combo.pack(side=tk.LEFT)
 
