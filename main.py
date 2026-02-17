@@ -58,6 +58,8 @@ from matplotlib.figure import Figure
 from matplotlib.colors import LogNorm
 from scipy.signal import savgol_filter
 from typing import Optional
+import base64
+import io
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -199,6 +201,54 @@ class PerssonModelGUI_V2:
         'mono':      ('Consolas', 14),
         'mono_small':('Consolas', 13),
     }
+
+    # ── NEXEN TIRE Logo (base64 encoded PNG) ──
+    _LOGO_B64 = (
+        "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"
+    )
 
     def __init__(self, root):
         """Initialize enhanced GUI."""
@@ -559,6 +609,15 @@ class PerssonModelGUI_V2:
                  bg=self.COLORS['sidebar'], fg=self.COLORS['text_secondary'],
                  font=('Segoe UI', 15)).pack(side=tk.LEFT, padx=(0, 8))
 
+        # ── Company logo (right side of header) ──
+        try:
+            logo_data = base64.b64decode(self._LOGO_B64)
+            self._logo_image = tk.PhotoImage(data=base64.b64encode(logo_data))
+            tk.Label(header, image=self._logo_image,
+                     bg=self.COLORS['sidebar']).pack(side=tk.RIGHT, padx=(0, 20))
+        except Exception:
+            pass  # Graceful fallback: no logo if decode fails
+
         # Create notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 0))
@@ -602,7 +661,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=460)
+        left_frame = ttk.Frame(main_container, width=500)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -1882,7 +1941,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel container (fixed width) with scrollable canvas
-        left_container = ttk.Frame(main_container, width=460)
+        left_container = ttk.Frame(main_container, width=500)
         left_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_container.pack_propagate(False)
 
@@ -1899,7 +1958,7 @@ class PerssonModelGUI_V2:
         left_frame.bind("<Configure>", _configure_scroll)
 
         # Create window inside canvas
-        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=440)
+        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=480)
         mc_canvas.configure(yscrollcommand=mc_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -6009,7 +6068,7 @@ $\begin{array}{lcc}
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=400)
+        left_frame = ttk.Frame(main_container, width=440)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -6489,7 +6548,7 @@ $\begin{array}{lcc}
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
         # Left panel for inputs (scrollable) - fixed width
-        left_frame = ttk.Frame(main_container, width=430)
+        left_frame = ttk.Frame(main_container, width=470)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)  # Keep fixed width
 
@@ -6503,7 +6562,7 @@ $\begin{array}{lcc}
             lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all"))
         )
 
-        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=410)
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=450)
         left_canvas.configure(yscrollcommand=left_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -10102,7 +10161,7 @@ $\begin{array}{lcc}
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls
-        left_frame = ttk.Frame(main_container, width=400)
+        left_frame = ttk.Frame(main_container, width=440)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
