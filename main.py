@@ -251,6 +251,8 @@ class PerssonModelGUI_V2:
 
         # Reference μ_visc data for comparison (Persson program output)
         self._init_reference_mu_data()
+        # Multiple reference datasets for overlay plotting
+        self.plotted_ref_datasets = []  # list of {'name':str, 'mu_log_v':[], 'mu_vals':[], 'area_log_v':[], 'area_vals':[]}
 
         # Initialize tkinter variables that were previously in verification tab
         # These are needed by other functions that reference them
@@ -499,57 +501,13 @@ class PerssonModelGUI_V2:
             self.status_var.set("예제 재료 (SBR) 로드됨")
 
     def _init_reference_mu_data(self):
-        """Initialize reference μ_visc and A/A0 data from Persson reference files."""
-        import os
+        """Initialize reference μ_visc and A/A0 data as empty (no default data loaded).
 
-        ref_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reference_data')
-        print(f"[참조 데이터] 디렉토리: {ref_dir}")
-
-        # Load reference μ_visc
-        mu_file = os.path.join(ref_dir, 'persson_ref_mu_visc_linear.txt')
-        if os.path.exists(mu_file):
-            try:
-                data = np.loadtxt(mu_file, comments='#', encoding='utf-8')
-                log_v = data[:, 0]
-                mu = data[:, 1]
-                self.reference_mu_data = {
-                    'v': 10**log_v,
-                    'mu': mu,
-                    'log_v': log_v,
-                    'show': True
-                }
-                print(f"[참조 데이터] μ_visc 로드 성공: {len(mu)} points, μ=[{mu.min():.4f}~{mu.max():.4f}]")
-            except Exception as e:
-                print(f"[참조 데이터] μ_visc 로드 실패: {e}")
-                import traceback
-                traceback.print_exc()
-                self.reference_mu_data = None
-        else:
-            print(f"[참조 데이터] μ_visc 파일 없음: {mu_file}")
-            self.reference_mu_data = None
-
-        # Load reference A/A0
-        area_file = os.path.join(ref_dir, 'persson_ref_contact_area_linear.txt')
-        if os.path.exists(area_file):
-            try:
-                data = np.loadtxt(area_file, comments='#', encoding='utf-8')
-                log_v = data[:, 0]
-                area = data[:, 1]
-                self.reference_area_data = {
-                    'v': 10**log_v,
-                    'area': area,
-                    'log_v': log_v,
-                    'show': True
-                }
-                print(f"[참조 데이터] A/A0 로드 성공: {len(area)} points, A/A0=[{area.min():.4f}~{area.max():.4f}]")
-            except Exception as e:
-                print(f"[참조 데이터] A/A0 로드 실패: {e}")
-                import traceback
-                traceback.print_exc()
-                self.reference_area_data = None
-        else:
-            print(f"[참조 데이터] A/A0 파일 없음: {area_file}")
-            self.reference_area_data = None
+        Users can load reference data via the '참조 편집' dialog and saved datasets.
+        """
+        self.reference_mu_data = None
+        self.reference_area_data = None
+        print("[참조 데이터] 초기 참조 데이터 없음 (저장된 데이터셋에서 불러오기 가능)")
 
     def _create_menu(self):
         """Create menu bar."""
@@ -6961,21 +6919,6 @@ $\begin{array}{lcc}
         self.ax_mu_cumulative.set_xscale('log')
         self.ax_mu_cumulative.grid(True, alpha=0.3)
 
-        # 초기 참조 데이터 표시
-        if hasattr(self, 'reference_mu_data') and self.reference_mu_data is not None:
-            ref_v = self.reference_mu_data['v']
-            ref_mu = self.reference_mu_data['mu']
-            self.ax_mu_v.semilogx(ref_v, ref_mu, 'r-', linewidth=1.5, alpha=0.5,
-                                 label='참조 (Persson)')
-            self.ax_mu_v.legend(loc='upper left', fontsize=10)
-
-        if hasattr(self, 'reference_area_data') and self.reference_area_data is not None:
-            ref_v = self.reference_area_data['v']
-            ref_area = self.reference_area_data['area']
-            self.ax_mu_cumulative.semilogx(ref_v, ref_area, 'r-', linewidth=1.5, alpha=0.5,
-                                            label='참조 A/A0 (Persson)')
-            self.ax_mu_cumulative.legend(loc='best', fontsize=10)
-
         # Bottom-right: P(q) and S(q)
         self.ax_ps = self.fig_mu_visc.add_subplot(224)
         self.ax_ps.set_title('P(q), S(q) 분포', fontweight='bold', fontsize=11)
@@ -8302,16 +8245,25 @@ $\begin{array}{lcc}
                     # Add vertical line at v=1 m/s
                     self.ax_mu_v.axvline(x=1.0, color='green', linestyle='--', alpha=0.5, linewidth=1)
 
-            # Plot reference μ_visc data (항상 시도)
+            # Plot reference μ_visc data: single active + multiple overlay datasets
+            ref_colors = ['#E53E3E', '#DD6B20', '#38A169', '#3182CE', '#805AD5',
+                          '#D53F8C', '#718096', '#D69E2E', '#00B5D8', '#9F7AEA']
             try:
                 if self.reference_mu_data is not None:
                     ref_v = self.reference_mu_data['v']
                     ref_mu = self.reference_mu_data['mu']
                     self.ax_mu_v.semilogx(ref_v, ref_mu, 'r-', linewidth=2, alpha=0.8,
                                          label='참조 (Persson)', zorder=5)
-                    print(f"[DEBUG] 참조 μ_visc 플롯 완료: {len(ref_v)} points, v=[{ref_v.min():.2e}~{ref_v.max():.2e}], μ=[{ref_mu.min():.4f}~{ref_mu.max():.4f}]")
-                else:
-                    print("[DEBUG] reference_mu_data is None - 참조 파일 로드 실패했을 수 있음")
+                # Plot multiple overlay reference datasets
+                if hasattr(self, 'plotted_ref_datasets'):
+                    for i, ds in enumerate(self.plotted_ref_datasets):
+                        color = ref_colors[i % len(ref_colors)]
+                        if ds['mu_log_v'] and ds['mu_vals']:
+                            log_v_ref = np.array(ds['mu_log_v'])
+                            mu_ref = np.array(ds['mu_vals'])
+                            self.ax_mu_v.semilogx(10**log_v_ref, mu_ref, '-', color=color,
+                                                  linewidth=1.8, alpha=0.8,
+                                                  label=f'참조: {ds["name"]}', zorder=4)
             except Exception as e:
                 print(f"[DEBUG] 참조 μ_visc 플롯 오류: {e}")
 
@@ -8348,16 +8300,23 @@ $\begin{array}{lcc}
             self.ax_mu_cumulative.semilogx(v, P_qmax_array, f'{color}-', linewidth=2,
                                             marker='s', markersize=4, label=label_str)
 
-            # Overlay reference A/A0 data (항상 시도)
+            # Overlay reference A/A0 data: single active + multiple overlay datasets
             try:
                 if self.reference_area_data is not None:
                     ref_v = self.reference_area_data['v']
                     ref_area = self.reference_area_data['area']
                     self.ax_mu_cumulative.semilogx(ref_v, ref_area, 'r-', linewidth=2,
                                                     alpha=0.8, label='참조 A/A0 (Persson)', zorder=5)
-                    print(f"[DEBUG] 참조 A/A0 플롯 완료: {len(ref_v)} points")
-                else:
-                    print("[DEBUG] reference_area_data is None")
+                # Plot multiple overlay reference datasets
+                if hasattr(self, 'plotted_ref_datasets'):
+                    for i, ds in enumerate(self.plotted_ref_datasets):
+                        clr = ref_colors[i % len(ref_colors)]
+                        if ds['area_log_v'] and ds['area_vals']:
+                            log_v_ref = np.array(ds['area_log_v'])
+                            area_ref = np.array(ds['area_vals'])
+                            self.ax_mu_cumulative.semilogx(10**log_v_ref, area_ref, '-', color=clr,
+                                                            linewidth=1.8, alpha=0.8,
+                                                            label=f'참조: {ds["name"]}', zorder=4)
             except Exception as e:
                 print(f"[DEBUG] 참조 A/A0 플롯 오류: {e}")
 
@@ -8372,6 +8331,11 @@ $\begin{array}{lcc}
             # Include reference data in y-axis range
             if self.reference_area_data is not None:
                 y_max_calc = max(y_max_calc, np.max(self.reference_area_data['area']) * 1.2)
+            # Include plotted overlay datasets in y-axis range
+            if hasattr(self, 'plotted_ref_datasets'):
+                for ds in self.plotted_ref_datasets:
+                    if ds['area_vals']:
+                        y_max_calc = max(y_max_calc, np.max(ds['area_vals']) * 1.2)
             y_max = y_max_calc if y_max_calc > 0 else 0.05
             if not np.isfinite(y_max):
                 y_max = 1.0
@@ -8442,6 +8406,48 @@ $\begin{array}{lcc}
             mu = self.mu_visc_results['mu']
             details = self.mu_visc_results['details']
             self._update_mu_visc_plots(v, mu, details)
+
+    def _plot_ref_datasets_on_initial_axes(self):
+        """Plot multiple reference datasets on initial (empty) axes without calculation results."""
+        if not hasattr(self, 'plotted_ref_datasets') or not self.plotted_ref_datasets:
+            return
+        try:
+            ref_colors = ['#E53E3E', '#DD6B20', '#38A169', '#3182CE', '#805AD5',
+                          '#D53F8C', '#718096', '#D69E2E', '#00B5D8', '#9F7AEA']
+            # Clear and re-plot on mu_v and mu_cumulative axes
+            self.ax_mu_v.clear()
+            self.ax_mu_v.set_title('μ_visc(v) 곡선', fontweight='bold', fontsize=11)
+            self.ax_mu_v.set_xlabel('속도 v (m/s)', fontsize=10)
+            self.ax_mu_v.set_ylabel('마찰 계수 μ_visc', fontsize=10)
+            self.ax_mu_v.set_xscale('log')
+            self.ax_mu_v.grid(True, alpha=0.3)
+
+            self.ax_mu_cumulative.clear()
+            self.ax_mu_cumulative.set_title('실접촉 면적비율 P(v)', fontweight='bold', fontsize=11)
+            self.ax_mu_cumulative.set_xlabel('속도 v (m/s)', fontsize=10)
+            self.ax_mu_cumulative.set_ylabel('평균 P(q)', fontsize=10)
+            self.ax_mu_cumulative.set_xscale('log')
+            self.ax_mu_cumulative.grid(True, alpha=0.3)
+
+            for i, ds in enumerate(self.plotted_ref_datasets):
+                color = ref_colors[i % len(ref_colors)]
+                name = ds['name']
+                if ds['mu_log_v'] and ds['mu_vals']:
+                    log_v = np.array(ds['mu_log_v'])
+                    mu_vals = np.array(ds['mu_vals'])
+                    self.ax_mu_v.semilogx(10**log_v, mu_vals, '-', color=color,
+                                          linewidth=1.8, alpha=0.8, label=f'참조: {name}')
+                if ds['area_log_v'] and ds['area_vals']:
+                    log_v = np.array(ds['area_log_v'])
+                    area_vals = np.array(ds['area_vals'])
+                    self.ax_mu_cumulative.semilogx(10**log_v, area_vals, '-', color=color,
+                                                    linewidth=1.8, alpha=0.8, label=f'참조: {name}')
+
+            self.ax_mu_v.legend(loc='upper left', fontsize=9)
+            self.ax_mu_cumulative.legend(loc='best', fontsize=9)
+            self.canvas_mu_visc.draw()
+        except Exception as e:
+            print(f"[DEBUG] _plot_ref_datasets_on_initial_axes error: {e}")
 
     def _analyze_mu_comparison(self):
         """Analyze difference between calculated and reference μ_visc and provide recommendations."""
@@ -9269,16 +9275,19 @@ $\begin{array}{lcc}
         """Open dialog for editing reference mu_visc and A/A0 data."""
         dialog = tk.Toplevel(self.root)
         dialog.title("참조 데이터 편집")
-        dialog.geometry("950x650")
         dialog.resizable(True, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
-        # Center the dialog
-        dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - 950) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 650) // 2
-        dialog.geometry(f"+{x}+{y}")
+        # Size dialog to 90% of root window, minimum 1100x800
+        root_w = self.root.winfo_width()
+        root_h = self.root.winfo_height()
+        dlg_w = max(1100, int(root_w * 0.9))
+        dlg_h = max(800, int(root_h * 0.9))
+        x = self.root.winfo_x() + (root_w - dlg_w) // 2
+        y = self.root.winfo_y() + (root_h - dlg_h) // 2
+        dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
+        dialog.minsize(1000, 700)
 
         # Instructions
         inst_frame = ttk.Frame(dialog, padding=10)
@@ -9356,7 +9365,7 @@ $\begin{array}{lcc}
         list_frame = ttk.Frame(right_frame)
         list_frame.pack(fill=tk.BOTH, expand=True)
 
-        dataset_listbox = tk.Listbox(list_frame, font=('Segoe UI', 14), selectmode=tk.SINGLE)
+        dataset_listbox = tk.Listbox(list_frame, font=('Segoe UI', 14), selectmode=tk.EXTENDED)
         ds_scroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=dataset_listbox.yview)
         dataset_listbox.configure(yscrollcommand=ds_scroll.set)
         ds_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -9512,8 +9521,52 @@ $\begin{array}{lcc}
 
         ttk.Button(save_frame, text="저장", command=save_dataset, width=6).pack(side=tk.LEFT)
 
+        def plot_selected_datasets():
+            """Plot selected datasets on the graph (multiple overlay)."""
+            sel = dataset_listbox.curselection()
+            if not sel:
+                messagebox.showwarning("선택 필요", "플롯할 데이터셋을 선택하세요.\n(Ctrl+클릭으로 여러 개 선택 가능)", parent=dialog)
+                return
+
+            sorted_names = sorted(saved_datasets.keys())
+            self.plotted_ref_datasets = []
+            for idx in sel:
+                ds_name = sorted_names[idx]
+                ds = saved_datasets[ds_name]
+                self.plotted_ref_datasets.append({
+                    'name': ds_name,
+                    'mu_log_v': ds.get('mu_log_v', []),
+                    'mu_vals': ds.get('mu_vals', []),
+                    'area_log_v': ds.get('area_log_v', []),
+                    'area_vals': ds.get('area_vals', []),
+                })
+
+            # Refresh plots if mu_visc results exist
+            if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
+                v = self.mu_visc_results.get('v')
+                mu = self.mu_visc_results.get('mu')
+                details = self.mu_visc_results.get('details')
+                if v is not None and mu is not None and details is not None:
+                    use_nonlinear = self.mu_use_fg_var.get() if hasattr(self, 'mu_use_fg_var') else False
+                    self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
+            else:
+                # Even without calculation results, plot reference data on initial axes
+                self._plot_ref_datasets_on_initial_axes()
+
+            names = [sorted_names[i] for i in sel]
+            messagebox.showinfo("플롯 완료",
+                                f"선택한 {len(sel)}개 데이터셋을 그래프에 표시했습니다.\n"
+                                f"데이터셋: {', '.join(names)}",
+                                parent=dialog)
+
         ttk.Button(ds_btn_frame, text="불러오기", command=load_dataset, width=10).pack(side=tk.LEFT, padx=3)
         ttk.Button(ds_btn_frame, text="삭제", command=delete_dataset, width=8).pack(side=tk.LEFT, padx=3)
+
+        # Plot button (separate row for visibility)
+        plot_btn_frame = ttk.Frame(right_frame)
+        plot_btn_frame.pack(fill=tk.X, pady=3)
+        plot_btn = ttk.Button(plot_btn_frame, text="선택 데이터 플롯", command=plot_selected_datasets)
+        plot_btn.pack(fill=tk.X, padx=3, ipady=4)
 
         # Button frame
         btn_frame = ttk.Frame(dialog, padding=10)
