@@ -1134,7 +1134,7 @@ class PerssonModelGUI_V2:
     def _calculate_profile_psd(self):
         """Calculate PSD from profile data."""
         if self.profile_psd_analyzer is None:
-            messagebox.showwarning("경고", "먼저 프로파일 데이터를 로드하세요.")
+            self._show_status("먼저 프로파일 데이터를 로드하세요.", 'warning')
             return
 
         try:
@@ -1300,7 +1300,7 @@ class PerssonModelGUI_V2:
     def _fit_profile_psd(self):
         """Fit PSD to self-affine fractal model."""
         if self.profile_psd_analyzer is None or self.profile_psd_analyzer.q is None:
-            messagebox.showwarning("경고", "먼저 PSD를 계산하세요.")
+            self._show_status("먼저 PSD를 계산하세요.", 'warning')
             return
 
         try:
@@ -1344,7 +1344,7 @@ class PerssonModelGUI_V2:
     def _apply_q1_extrapolation(self):
         """Apply q1 extrapolation to extend PSD data using self-affine model."""
         if self.profile_psd_analyzer is None or self.profile_psd_analyzer.q is None:
-            messagebox.showwarning("경고", "먼저 PSD를 계산하세요.")
+            self._show_status("먼저 PSD를 계산하세요.", 'warning')
             return
 
         # Check if fitting has been done
@@ -1353,7 +1353,7 @@ class PerssonModelGUI_V2:
             fit_result = self.profile_psd_analyzer.fit_result_top
 
         if fit_result is None:
-            messagebox.showwarning("경고", "먼저 Self-Affine 피팅을 실행하세요.")
+            self._show_status("먼저 Self-Affine 피팅을 실행하세요.", 'warning')
             return
 
         try:
@@ -1366,9 +1366,8 @@ class PerssonModelGUI_V2:
             q_max_data = q_current[-1]
 
             if target_q1 <= q_max_data:
-                messagebox.showinfo("정보",
-                    f"Target q1 ({target_q1:.2e}) <= 현재 q_max ({q_max_data:.2e})\n"
-                    f"외삽이 필요하지 않습니다.")
+                self._show_status(f"Target q1 ({target_q1:.2e}) <= 현재 q_max ({q_max_data:.2e})\n"
+                    f"외삽이 필요하지 않습니다.", 'success')
                 return
 
             # Get fitting parameters
@@ -1439,14 +1438,13 @@ class PerssonModelGUI_V2:
             self._plot_profile_psd()
             self._update_psd_profile_results()
 
-            messagebox.showinfo("완료",
-                f"q1 외삽 완료\n\n"
+            self._show_status(f"q1 외삽 완료\n\n"
                 f"데이터 q_max: {q_max_data:.2e} 1/m\n"
                 f"외삽 q1: {target_q1:.2e} 1/m\n"
                 f"외삽 점 수: {n_extrap_points}\n"
                 f"사용된 H: {H:.4f}\n\n"
                 f"외삽 포함 h_rms: {h_rms_extrap*1e6:.4f} um\n"
-                f"외삽 포함 h'_rms (xi): {h_rms_slope_extrap:.6f}")
+                f"외삽 포함 h'_rms (xi): {h_rms_slope_extrap:.6f}", 'success')
 
             self.status_var.set(f"외삽 완료: q1={target_q1:.2e}, h'_rms={h_rms_slope_extrap:.4f}")
 
@@ -1471,13 +1469,13 @@ class PerssonModelGUI_V2:
 
             # Validate
             if H <= 0 or H >= 1:
-                messagebox.showwarning("경고", "H는 0 < H < 1 범위여야 합니다.")
+                self._show_status("H는 0 < H < 1 범위여야 합니다.", 'warning')
                 return
             if q0 >= q1:
-                messagebox.showwarning("경고", "q0 < q1 이어야 합니다.")
+                self._show_status("q0 < q1 이어야 합니다.", 'warning')
                 return
             if h0 <= 0:
-                messagebox.showwarning("경고", "h0 > 0 이어야 합니다.")
+                self._show_status("h0 > 0 이어야 합니다.", 'warning')
                 return
 
             # Calculate C(q0) from h0
@@ -1486,7 +1484,7 @@ class PerssonModelGUI_V2:
             q_ratio = q0 / q1
             denom = np.pi * q0**2 * (1 - q_ratio**(2*H))
             if denom <= 0:
-                messagebox.showwarning("경고", "파라미터 조합이 잘못되었습니다.")
+                self._show_status("파라미터 조합이 잘못되었습니다.", 'warning')
                 return
             C_q0 = h0**2 * H / denom
 
@@ -1528,14 +1526,13 @@ class PerssonModelGUI_V2:
             self._plot_profile_psd()
             self._update_psd_profile_results()
 
-            messagebox.showinfo("완료",
-                f"파라미터 PSD 생성 완료\n\n"
+            self._show_status(f"파라미터 PSD 생성 완료\n\n"
                 f"H = {H:.4f}\n"
                 f"q0 = {q0:.2e} 1/m\n"
                 f"q1 = {q1:.2e} 1/m\n"
                 f"h0 (입력) = {h0*1e6:.4f} um\n\n"
                 f"계산된 C(q0) = {C_q0:.2e} m^4\n"
-                f"h'_rms (xi) = {h_rms_slope:.6f}")
+                f"h'_rms (xi) = {h_rms_slope:.6f}", 'success')
 
             self.status_var.set(f"파라미터 PSD 생성: H={H:.3f}, h'_rms={h_rms_slope:.4f}")
 
@@ -1549,7 +1546,7 @@ class PerssonModelGUI_V2:
     def _copy_fit_to_param(self):
         """Copy fitting results to parameter PSD inputs."""
         if self.profile_psd_analyzer is None:
-            messagebox.showwarning("경고", "먼저 PSD를 계산하고 피팅을 실행하세요.")
+            self._show_status("먼저 PSD를 계산하고 피팅을 실행하세요.", 'warning')
             return
 
         # Get fit result
@@ -1558,7 +1555,7 @@ class PerssonModelGUI_V2:
             fit_result = self.profile_psd_analyzer.fit_result_top
 
         if fit_result is None:
-            messagebox.showwarning("경고", "피팅 결과가 없습니다. 먼저 피팅을 실행하세요.")
+            self._show_status("피팅 결과가 없습니다. 먼저 피팅을 실행하세요.", 'warning')
             return
 
         try:
@@ -1697,7 +1694,7 @@ class PerssonModelGUI_V2:
     def _export_profile_psd_csv(self):
         """Export PSD data to CSV."""
         if self.profile_psd_analyzer is None or self.profile_psd_analyzer.q is None:
-            messagebox.showwarning("경고", "먼저 PSD를 계산하세요.")
+            self._show_status("먼저 PSD를 계산하세요.", 'warning')
             return
 
         filepath = filedialog.asksaveasfilename(
@@ -1728,7 +1725,7 @@ class PerssonModelGUI_V2:
                         row.append(f"{C_top_2d[i]:.6e}")
                     f.write(",".join(row) + "\n")
 
-            messagebox.showinfo("완료", f"PSD 데이터가 저장되었습니다:\n{filepath}")
+            self._show_status(f"PSD 데이터가 저장되었습니다:\n{filepath}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"저장 실패: {e}")
@@ -1746,7 +1743,7 @@ class PerssonModelGUI_V2:
             if psd_type == "direct":
                 # Use directly loaded PSD
                 if not hasattr(self, 'psd_direct_data') or self.psd_direct_data is None:
-                    messagebox.showwarning("경고", "먼저 PSD 파일을 직접 로드하세요.")
+                    self._show_status("먼저 PSD 파일을 직접 로드하세요.", 'warning')
                     return
                 q = self.psd_direct_data['q'].copy()
                 C = self.psd_direct_data['C_q'].copy()
@@ -1768,7 +1765,7 @@ class PerssonModelGUI_V2:
             elif psd_type == "param":
                 # Use parameter-generated PSD
                 if not hasattr(self, 'param_psd_data') or self.param_psd_data is None:
-                    messagebox.showwarning("경고", "먼저 파라미터 PSD를 생성하세요.")
+                    self._show_status("먼저 파라미터 PSD를 생성하세요.", 'warning')
                     return
                 q = self.param_psd_data['q'].copy()
                 C = self.param_psd_data['C'].copy()
@@ -1779,7 +1776,7 @@ class PerssonModelGUI_V2:
             else:
                 # Use profile-based PSD (Full or Top)
                 if self.profile_psd_analyzer is None or self.profile_psd_analyzer.q is None:
-                    messagebox.showwarning("경고", "먼저 PSD를 계산하세요.")
+                    self._show_status("먼저 PSD를 계산하세요.", 'warning')
                     return
 
                 use_top = (psd_type == "top")
@@ -1881,14 +1878,12 @@ class PerssonModelGUI_V2:
                 verification_msg += "⚠ 경고: PSD 적분값과 h_rms 불일치! 정규화 확인 필요\n"
             verification_msg += scan_length_str
 
-            messagebox.showinfo("PSD 확정 완료",
-                f"{psd_type_str} → 계산 설정 전송 완료\n\n"
+            self._show_status(f"{psd_type_str} → 계산 설정 전송 완료\n\n"
                 f"q range: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
                 f"H = {H:.4f}\n"
                 f"h_rms = {h_rms*1e6:.4f} um\n"
                 f"h'_rms (xi) = {xi:.6f}\n\n"
-                f"{verification_msg}"
-            )
+                f"{verification_msg}", 'success')
 
             self.status_var.set(f"PSD 확정: {psd_type_str}, ξ = {xi:.6f}")
 
@@ -2366,13 +2361,10 @@ class PerssonModelGUI_V2:
                 # Missing E'': f, T, f_reduced, Amplitude, E'
                 self.mc_raw_df.columns = ['f', 'T', 'f_reduced', 'Amplitude', "E'"]
                 # E'' is missing - show warning
-                messagebox.showwarning(
-                    "주의",
-                    "E'' (손실 탄성률) 컬럼이 없습니다.\n"
+                self._show_status("E'' (손실 탄성률) 컬럼이 없습니다.\n"
                     "마스터 커브 생성은 E'만 사용합니다.\n\n"
                     "완전한 분석을 위해 6개 컬럼 데이터를 권장합니다:\n"
-                    "f(Hz), T(°C), f_reduced, Amplitude, E'(MPa), E''(MPa)"
-                )
+                    "f(Hz), T(°C), f_reduced, Amplitude, E'(MPa), E''(MPa)", 'warning')
                 # Estimate E'' as 10% of E' (rough estimate for demonstration)
                 self.mc_raw_df["E''"] = self.mc_raw_df["E'"] * 0.1
             elif n_cols == 4:
@@ -2400,13 +2392,10 @@ class PerssonModelGUI_V2:
             # Plot raw data
             self._plot_mc_raw_data()
 
-            messagebox.showinfo(
-                "성공",
-                f"데이터 로드 완료:\n"
+            self._show_status(f"데이터 로드 완료:\n"
                 f"  - 총 {n_points}개 데이터 포인트\n"
                 f"  - {n_temps}개 온도: {temps.min():.1f}°C ~ {temps.max():.1f}°C\n"
-                f"  - 주파수 범위: {self.mc_raw_df['f'].min():.2f} ~ {self.mc_raw_df['f'].max():.2f} Hz"
-            )
+                f"  - 주파수 범위: {self.mc_raw_df['f'].min():.2f} ~ {self.mc_raw_df['f'].max():.2f} Hz", 'success')
 
         except Exception as e:
             import traceback
@@ -2527,17 +2516,14 @@ class PerssonModelGUI_V2:
             # Plot the loaded data
             self._plot_persson_master_curve()
 
-            messagebox.showinfo(
-                "성공",
-                f"Persson 정품 마스터 커브 로드 완료\n\n"
+            self._show_status(f"Persson 정품 마스터 커브 로드 완료\n\n"
                 f"파일: {os.path.basename(filename)}\n"
                 f"데이터 포인트: {len(f)}\n"
                 f"주파수 범위: {f.min():.2e} ~ {f.max():.2e} Hz\n"
                 f"E' 범위: {E_storage.min()/1e6:.2f} ~ {E_storage.max()/1e6:.2f} MPa\n"
                 f"E'' 범위: {E_loss.min()/1e6:.2f} ~ {E_loss.max()/1e6:.2f} MPa\n"
                 f"tan δ 평균: {tan_delta_avg:.3f}\n\n"
-                f"단위: {unit_str}"
-            )
+                f"단위: {unit_str}", 'success')
 
             self.status_var.set("Persson 정품 마스터 커브 로드 완료")
 
@@ -2648,9 +2634,7 @@ class PerssonModelGUI_V2:
             # Plot aT (and bT) on the bottom-right plot
             self._plot_persson_aT()
 
-            messagebox.showinfo(
-                "성공",
-                f"시프트 팩터 로드 완료\n\n"
+            self._show_status(f"시프트 팩터 로드 완료\n\n"
                 f"파일: {os.path.basename(filename)}\n"
                 f"데이터 포인트: {len(T)}\n"
                 f"온도 범위: {T.min():.1f} ~ {T.max():.1f} °C\n"
@@ -2659,8 +2643,7 @@ class PerssonModelGUI_V2:
                 f"bT 포함: {'예' if has_bT else '아니오'}\n"
                 f"형식: {format_str}\n\n"
                 f"이제 Tab 5에서 온도를 변경하여\n"
-                f"다른 온도에서의 μ_visc를 계산할 수 있습니다."
-            )
+                f"다른 온도에서의 μ_visc를 계산할 수 있습니다.", 'success')
 
             self.status_var.set("시프트 팩터 (aT, bT) 로드 완료")
 
@@ -2813,16 +2796,13 @@ class PerssonModelGUI_V2:
             # Plot PSD on Tab 0's 2D PSD plot (bottom-right)
             self._plot_psd_direct_on_tab0()
 
-            messagebox.showinfo(
-                "성공",
-                f"PSD 직접 로드 완료\n\n"
+            self._show_status(f"PSD 직접 로드 완료\n\n"
                 f"파일: {os.path.basename(filename)}\n"
                 f"데이터 포인트: {len(q)}\n"
                 f"q 범위: {q.min():.2e} ~ {q.max():.2e} 1/m\n"
                 f"C(q) 범위: {C_q.min():.2e} ~ {C_q.max():.2e} m⁴\n"
                 f"형식: {format_str}\n\n"
-                f"'▶ PSD 확정 → 계산에 사용' 버튼을 클릭하여 확정하세요."
-            )
+                f"'▶ PSD 확정 → 계산에 사용' 버튼을 클릭하여 확정하세요.", 'success')
 
             self.status_var.set("PSD 직접 로드 완료")
 
@@ -2892,7 +2872,7 @@ class PerssonModelGUI_V2:
     def _apply_smoothing_to_persson(self):
         """Apply smoothing to loaded Persson master curve."""
         if not hasattr(self, 'persson_master_curve') or self.persson_master_curve is None:
-            messagebox.showwarning("경고", "먼저 Persson 정품 마스터 커브를 로드하세요.")
+            self._show_status("먼저 Persson 정품 마스터 커브를 로드하세요.", 'warning')
             return
 
         try:
@@ -2949,12 +2929,9 @@ class PerssonModelGUI_V2:
             # Replot
             self._plot_persson_master_curve_with_original()
 
-            messagebox.showinfo(
-                "스무딩 완료",
-                f"Persson 마스터 커브 스무딩 적용 완료\n\n"
+            self._show_status(f"Persson 마스터 커브 스무딩 적용 완료\n\n"
                 f"윈도우 크기: {window}\n"
-                f"tan δ 평균: {tan_delta_avg:.3f}"
-            )
+                f"tan δ 평균: {tan_delta_avg:.3f}", 'success')
 
             self.status_var.set(f"Persson 마스터 커브 스무딩 적용 (w={window})")
 
@@ -2965,13 +2942,13 @@ class PerssonModelGUI_V2:
     def _reset_persson_to_original(self):
         """Reset Persson master curve to original (before smoothing)."""
         if not hasattr(self, 'persson_master_curve') or self.persson_master_curve is None:
-            messagebox.showwarning("경고", "Persson 마스터 커브가 로드되지 않았습니다.")
+            self._show_status("Persson 마스터 커브가 로드되지 않았습니다.", 'warning')
             return
 
         data = self.persson_master_curve
 
         if 'E_storage_orig' not in data:
-            messagebox.showinfo("정보", "이미 원본 상태입니다.")
+            self._show_status("이미 원본 상태입니다.", 'success')
             return
 
         # Restore original data
@@ -3062,9 +3039,9 @@ class PerssonModelGUI_V2:
                         self.master_curve_gen.master_f is not None
 
         if not has_persson and not has_generated:
-            messagebox.showwarning("경고", "비교할 마스터 커브가 없습니다.\n\n"
+            self._show_status("비교할 마스터 커브가 없습니다.\n\n"
                                    "1. Persson 정품 마스터 커브를 로드하거나\n"
-                                   "2. 마스터 커브를 생성하세요.")
+                                   "2. 마스터 커브를 생성하세요.", 'warning')
             return
 
         # Clear all plots for comparison
@@ -3168,7 +3145,7 @@ class PerssonModelGUI_V2:
     def _use_persson_master_curve_for_calc(self):
         """Use loaded Persson master curve for friction calculation."""
         if not hasattr(self, 'material_persson') or self.material_persson is None:
-            messagebox.showwarning("경고", "먼저 Persson 정품 마스터 커브를 로드하세요.")
+            self._show_status("먼저 Persson 정품 마스터 커브를 로드하세요.", 'warning')
             return
 
         # Replace current material with Persson material
@@ -3180,20 +3157,17 @@ class PerssonModelGUI_V2:
         data = self.persson_master_curve
         tan_delta_avg = np.mean(data['E_loss'] / data['E_storage'])
 
-        messagebox.showinfo(
-            "확정 완료",
-            f"Persson 정품 마스터 커브가 계산에 사용됩니다.\n\n"
+        self._show_status(f"Persson 정품 마스터 커브가 계산에 사용됩니다.\n\n"
             f"파일: {data['filename']}\n"
             f"tan δ 평균: {tan_delta_avg:.3f}\n\n"
-            f"Tab 3, Tab 5에서 이 데이터로 μ_visc 계산이 가능합니다."
-        )
+            f"Tab 3, Tab 5에서 이 데이터로 μ_visc 계산이 가능합니다.", 'success')
 
         self.status_var.set("Persson 정품 마스터 커브 → 계산용 확정")
 
     def _generate_master_curve(self):
         """Generate master curve using TTS."""
         if self.mc_raw_df is None:
-            messagebox.showwarning("경고", "먼저 다중 온도 DMA 데이터를 로드하세요.")
+            self._show_status("먼저 다중 온도 DMA 데이터를 로드하세요.", 'warning')
             return
 
         try:
@@ -3512,7 +3486,7 @@ class PerssonModelGUI_V2:
     def _export_master_curve(self):
         """Export master curve data to CSV."""
         if self.master_curve_gen is None or self.master_curve_gen.master_f is None:
-            messagebox.showwarning("경고", "먼저 마스터 커브를 생성하세요.")
+            self._show_status("먼저 마스터 커브를 생성하세요.", 'warning')
             return
 
         filename = filedialog.asksaveasfilename(
@@ -3546,7 +3520,7 @@ class PerssonModelGUI_V2:
                 f.write("\n# Shift Factors\n")
                 shift_data.to_csv(f, index=False)
 
-            messagebox.showinfo("성공", f"마스터 커브 저장 완료:\n{filename}")
+            self._show_status(f"마스터 커브 저장 완료:\n{filename}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"저장 실패:\n{str(e)}")
@@ -3554,7 +3528,7 @@ class PerssonModelGUI_V2:
     def _apply_master_curve_to_verification(self):
         """Apply generated master curve to Tab 1 for friction calculation."""
         if self.master_curve_gen is None or self.master_curve_gen.master_f is None:
-            messagebox.showwarning("경고", "먼저 마스터 커브를 생성하세요.")
+            self._show_status("먼저 마스터 커브를 생성하세요.", 'warning')
             return
 
         try:
@@ -3615,7 +3589,7 @@ class PerssonModelGUI_V2:
                 info_msg += f"  C1 = {self.master_curve_gen.C1:.2f}\n"
                 info_msg += f"  C2 = {self.master_curve_gen.C2:.2f}°C\n"
 
-            messagebox.showinfo("성공", info_msg)
+            self._show_status(info_msg, 'success')
 
         except Exception as e:
             import traceback
@@ -3624,7 +3598,7 @@ class PerssonModelGUI_V2:
     def _finalize_master_curve_to_tab3(self):
         """Finalize master curve and send to Tab 3 (Calculation Settings)."""
         if self.master_curve_gen is None or self.master_curve_gen.master_f is None:
-            messagebox.showwarning("경고", "먼저 마스터 커브를 생성하세요.")
+            self._show_status("먼저 마스터 커브를 생성하세요.", 'warning')
             return
 
         try:
@@ -3707,7 +3681,7 @@ class PerssonModelGUI_V2:
 
             info_msg += "Tab 3 (계산 설정)에서 계속하세요."
 
-            messagebox.showinfo("마스터 커브 확정 완료", info_msg)
+            self._show_status(info_msg, 'success')
 
             # Switch to Tab 3
             self.notebook.select(3)
@@ -4097,7 +4071,7 @@ class PerssonModelGUI_V2:
         """Load a preset surface q1 file and apply q_max, q1 values."""
         selected = self.surface_q1_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "로드할 프리셋을 선택하세요.")
+            self._show_status("로드할 프리셋을 선택하세요.", 'warning')
             return
 
         try:
@@ -4141,7 +4115,7 @@ class PerssonModelGUI_V2:
         """Delete selected preset surface q1 file."""
         selected = self.surface_q1_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "삭제할 프리셋을 선택하세요.")
+            self._show_status("삭제할 프리셋을 선택하세요.", 'warning')
             return
 
         if not messagebox.askyesno("확인", f"'{selected}' 프리셋을 삭제하시겠습니까?"):
@@ -4153,7 +4127,7 @@ class PerssonModelGUI_V2:
             os.remove(filepath)
             self._refresh_preset_surface_q1_list()
             self.surface_q1_var.set("(선택...)")
-            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+            self._show_status(f"삭제 완료: {selected}", 'success')
         except Exception as e:
             messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
@@ -4163,7 +4137,7 @@ class PerssonModelGUI_V2:
         q1_val = self.input_q1_var.get().strip()
 
         if not q_max_val or not q1_val:
-            messagebox.showwarning("경고", "q_max와 목표 q1 값을 먼저 입력하세요.")
+            self._show_status("q_max와 목표 q1 값을 먼저 입력하세요.", 'warning')
             return
 
         # Validate that they are valid numbers
@@ -4171,7 +4145,7 @@ class PerssonModelGUI_V2:
             float(q_max_val)
             float(q1_val)
         except ValueError:
-            messagebox.showwarning("경고", "q_max와 q1에 유효한 숫자를 입력하세요.")
+            self._show_status("q_max와 q1에 유효한 숫자를 입력하세요.", 'warning')
             return
 
         from tkinter import simpledialog
@@ -4190,7 +4164,7 @@ class PerssonModelGUI_V2:
 
             self._refresh_preset_surface_q1_list()
             self.surface_q1_var.set(name)
-            messagebox.showinfo("성공", f"프리셋 저장 완료: {name}\nq_max={q_max_val}, q1={q1_val}")
+            self._show_status(f"프리셋 저장 완료: {name}\nq_max={q_max_val}, q1={q1_val}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"프리셋 저장 실패:\n{str(e)}")
@@ -4216,7 +4190,7 @@ class PerssonModelGUI_V2:
         ξ²(q) = 2π ∫[q0→q] k³ C(k) dk
         """
         if self.psd_model is None:
-            messagebox.showwarning("경고", "PSD 데이터를 먼저 로드해주세요!")
+            self._show_status("PSD 데이터를 먼저 로드해주세요!", 'warning')
             return
 
         try:
@@ -4262,15 +4236,13 @@ class PerssonModelGUI_V2:
 
                 # ξ 값이 도달 가능한지 확인
                 if target_xi > max_xi:
-                    messagebox.showwarning("경고",
-                        f"목표 ξ ({target_xi:.4f})가 최대 도달 가능한 값 ({max_xi:.4f})보다 큽니다.\n"
+                    self._show_status(f"목표 ξ ({target_xi:.4f})가 최대 도달 가능한 값 ({max_xi:.4f})보다 큽니다.\n"
                         f"PSD q 범위: {min_q:.2e} ~ {max_q:.2e} (1/m)\n\n"
-                        f"q 범위를 늘리거나 목표 ξ를 줄이세요.")
+                        f"q 범위를 늘리거나 목표 ξ를 줄이세요.", 'warning')
                     return
 
                 if target_xi < xi_cumulative[0]:
-                    messagebox.showwarning("경고",
-                        f"목표 ξ ({target_xi:.4f})가 최소값 ({xi_cumulative[0]:.4f})보다 작습니다.")
+                    self._show_status(f"목표 ξ ({target_xi:.4f})가 최소값 ({xi_cumulative[0]:.4f})보다 작습니다.", 'warning')
                     return
 
                 # 목표 ξ에 해당하는 q1 찾기 (보간 사용)
@@ -4289,8 +4261,7 @@ class PerssonModelGUI_V2:
                 self.target_xi = target_xi
 
                 self.status_var.set(f"계산 완료: ξ={target_xi:.4f} → q1={q1_calculated:.3e} (1/m)")
-                messagebox.showinfo("계산 완료",
-                    f"모드 1: h'rms (ξ) → q1 계산\n\n"
+                self._show_status(f"모드 1: h'rms (ξ) → q1 계산\n\n"
                     f"[입력]\n"
                     f"  목표 ξ (h'rms): {target_xi:.4f}\n\n"
                     f"[출력]\n"
@@ -4300,7 +4271,7 @@ class PerssonModelGUI_V2:
                     f"  {q_source}\n"
                     f"  q 범위: {min_q:.2e} ~ {max_q:.2e}\n"
                     f"  최대 가능 ξ: {max_xi:.4f}\n\n"
-                    f"※ ξ² = 2π∫k³C(k)dk")
+                    f"※ ξ² = 2π∫k³C(k)dk", 'success')
 
             else:
                 # 모드 2: 주어진 q1로 h'rms(ξ) 계산
@@ -4308,9 +4279,8 @@ class PerssonModelGUI_V2:
 
                 # q1이 범위 내에 있는지 확인
                 if target_q1 < min_q or target_q1 > max_q:
-                    messagebox.showwarning("경고",
-                        f"입력 q1 ({target_q1:.3e})이 PSD 데이터 범위 밖입니다.\n"
-                        f"범위: {min_q:.3e} ~ {max_q:.3e} (1/m)")
+                    self._show_status(f"입력 q1 ({target_q1:.3e})이 PSD 데이터 범위 밖입니다.\n"
+                        f"범위: {min_q:.3e} ~ {max_q:.3e} (1/m)", 'warning')
                     return
 
                 # q1에 해당하는 ξ 찾기 (보간 사용)
@@ -4328,8 +4298,7 @@ class PerssonModelGUI_V2:
                 self.target_hrms_slope_var.set(f"{xi_calculated:.4f}")
 
                 self.status_var.set(f"계산 완료: q1={target_q1:.3e} → ξ={xi_calculated:.4f}")
-                messagebox.showinfo("계산 완료",
-                    f"모드 2: q1 → h'rms (ξ) 계산\n\n"
+                self._show_status(f"모드 2: q1 → h'rms (ξ) 계산\n\n"
                     f"[입력]\n"
                     f"  목표 q1: {target_q1:.3e} (1/m)\n\n"
                     f"[출력]\n"
@@ -4338,7 +4307,7 @@ class PerssonModelGUI_V2:
                     f"  {q_source}\n"
                     f"  q 범위: {min_q:.2e} ~ {max_q:.2e}\n"
                     f"  최대 가능 ξ: {max_xi:.4f}\n\n"
-                    f"※ ξ² = 2π∫k³C(k)dk")
+                    f"※ ξ² = 2π∫k³C(k)dk", 'success')
 
         except ValueError as e:
             messagebox.showerror("오류", f"입력값이 유효하지 않습니다: {e}")
@@ -4365,11 +4334,10 @@ class PerssonModelGUI_V2:
             self.notebook.select(4)
 
             self.status_var.set(f"Tab 4로 전달 완료: ξ={self.target_xi:.4f}, q1={self.calculated_q1:.3e}")
-            messagebox.showinfo("전달 완료",
-                f"Tab 4로 전달되었습니다.\n\n"
+            self._show_status(f"Tab 4로 전달되었습니다.\n\n"
                 f"ξ (h'rms): {self.target_xi:.4f}\n"
                 f"q1: {self.calculated_q1:.3e} (1/m)\n\n"
-                f"Tab 4에서 'h'rms slope 계산' 버튼을 클릭하세요.")
+                f"Tab 4에서 'h'rms slope 계산' 버튼을 클릭하세요.", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"Tab 4로 전달 중 오류: {e}")
@@ -4409,27 +4377,76 @@ class PerssonModelGUI_V2:
         ).pack(side=tk.LEFT, padx=5)
 
     def _create_status_bar(self):
-        """Create modern status bar."""
+        """Create modern status bar with colored level indicators."""
         C = self.COLORS
         self.status_var = tk.StringVar(value="Ready")
+        self._status_clear_id = None  # For auto-clear timer
 
         status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=36)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
         status_frame.pack_propagate(False)
 
-        # Status indicator dot
-        tk.Label(status_frame, text="\u25CF", bg=C['statusbar_bg'],
-                 fg=C['success'], font=('Segoe UI', 16)).pack(side=tk.LEFT, padx=(12, 4))
+        # Status indicator dot (color changes by level)
+        self._status_dot = tk.Label(status_frame, text="\u25CF", bg=C['statusbar_bg'],
+                 fg=C['success'], font=('Segoe UI', 16))
+        self._status_dot.pack(side=tk.LEFT, padx=(12, 4))
 
-        # Status text
-        tk.Label(status_frame, textvariable=self.status_var,
+        # Status text (color changes by level)
+        self._status_label = tk.Label(status_frame, textvariable=self.status_var,
                  bg=C['statusbar_bg'], fg=C['statusbar_fg'],
-                 font=self.FONTS['small'], anchor=tk.W).pack(side=tk.LEFT, fill=tk.X, expand=True)
+                 font=self.FONTS['small'], anchor=tk.W)
+        self._status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Version badge
         tk.Label(status_frame, text="Persson Model v3.0",
                  bg=C['statusbar_bg'], fg='#475569',
                  font=self.FONTS['tiny']).pack(side=tk.RIGHT, padx=12)
+
+    def _show_status(self, message, level='info', duration=8000):
+        """Show a status message in the status bar with appropriate color.
+
+        Args:
+            message: Status message text (newlines replaced with ' | ')
+            level: 'info', 'success', 'warning', or 'error'
+            duration: Auto-clear duration in ms (0 = no auto-clear)
+        """
+        # Color mapping for status levels
+        level_colors = {
+            'info':    ('#3B82F6', '#93C5FD'),   # blue dot, light blue text
+            'success': ('#059669', '#6EE7B7'),   # green dot, light green text
+            'warning': ('#D97706', '#FCD34D'),   # orange dot, yellow text
+            'error':   ('#DC2626', '#FCA5A5'),   # red dot, light red text
+        }
+
+        dot_color, text_color = level_colors.get(level, level_colors['info'])
+
+        # Clean up message (replace newlines with separator)
+        clean_msg = message.replace('\n', ' | ').strip()
+
+        # Update status bar
+        self.status_var.set(clean_msg)
+        if hasattr(self, '_status_dot'):
+            self._status_dot.config(fg=dot_color)
+        if hasattr(self, '_status_label'):
+            self._status_label.config(fg=text_color)
+
+        # Cancel previous auto-clear timer
+        if self._status_clear_id is not None:
+            try:
+                self.root.after_cancel(self._status_clear_id)
+            except Exception:
+                pass
+
+        # Auto-clear after duration
+        if duration > 0:
+            def _clear():
+                self.status_var.set("Ready")
+                if hasattr(self, '_status_dot'):
+                    self._status_dot.config(fg=self.COLORS['success'])
+                if hasattr(self, '_status_label'):
+                    self._status_label.config(fg=self.COLORS['statusbar_fg'])
+                self._status_clear_id = None
+            self._status_clear_id = self.root.after(duration, _clear)
 
     def _update_material_display(self):
         """Update material information (if needed)."""
@@ -4467,7 +4484,7 @@ class PerssonModelGUI_V2:
                     reference_temp=float(self.temperature_var.get())
                 )
 
-                messagebox.showinfo("Success", f"DMA data loaded and smoothed: {len(omega_raw)} points")
+                self._show_status(f"DMA data loaded and smoothed: {len(omega_raw)} points", 'success')
 
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load DMA data:\n{str(e)}")
@@ -4504,12 +4521,9 @@ class PerssonModelGUI_V2:
                 self.psd_type_var.set("measured")
 
                 # Show info about loaded data
-                messagebox.showinfo(
-                    "Success",
-                    f"PSD data loaded: {len(q)} points\n"
+                self._show_status(f"PSD data loaded: {len(q)} points\n"
                     f"q 범위: {q[0]:.2e} ~ {q[-1]:.2e} 1/m\n"
-                    f"C(q) 범위: {C_q.min():.2e} ~ {C_q.max():.2e} m⁴"
-                )
+                    f"C(q) 범위: {C_q.min():.2e} ~ {C_q.max():.2e} m⁴", 'success')
 
             except Exception as e:
                 import traceback
@@ -4518,7 +4532,7 @@ class PerssonModelGUI_V2:
     def _import_from_master_curve(self):
         """Import DMA data from master curve tab (Tab 0)."""
         if self.master_curve_gen is None or self.master_curve_gen.master_f is None:
-            messagebox.showwarning("경고", "먼저 Tab 0에서 마스터 커브를 생성하세요.")
+            self._show_status("먼저 Tab 0에서 마스터 커브를 생성하세요.", 'warning')
             return
 
         try:
@@ -4575,7 +4589,7 @@ class PerssonModelGUI_V2:
     def _apply_dma_smoothing_extrapolation(self):
         """Apply smoothing and/or extrapolation to DMA data in verification tab."""
         if self.raw_dma_data is None:
-            messagebox.showwarning("경고", "먼저 DMA 데이터를 불러오세요.")
+            self._show_status("먼저 DMA 데이터를 불러오세요.", 'warning')
             return
 
         try:
@@ -4699,7 +4713,7 @@ class PerssonModelGUI_V2:
             # Update status
             self.status_var.set("DMA 스무딩/외삽 적용 완료")
 
-            messagebox.showinfo("완료", f"DMA 데이터 처리 완료\n- 스무딩: {'적용' if self.verify_smooth_var.get() else '미적용'}\n- 외삽: {'적용' if self.verify_extrap_var.get() else '미적용'}\n- 주파수 범위: {f_min:.1e} ~ {f_max:.1e} Hz")
+            self._show_status(f"DMA 데이터 처리 완료\n- 스무딩: {'적용' if self.verify_smooth_var.get() else '미적용'}\n- 외삽: {'적용' if self.verify_extrap_var.get() else '미적용'}\n- 주파수 범위: {f_min:.1e} ~ {f_max:.1e} Hz", 'success')
 
         except Exception as e:
             messagebox.showerror("Error", f"스무딩/외삽 적용 실패:\n{str(e)}")
@@ -4764,7 +4778,7 @@ class PerssonModelGUI_V2:
                 return
 
             if H < 0 or H > 1:
-                messagebox.showwarning("Warning", "Hurst exponent H should be between 0 and 1")
+                self._show_status("Hurst exponent H should be between 0 and 1", 'warning')
 
             # Create power-law PSD: C(q) = C(q0) * (q/q0)^(-2(H+1))
             # Power law exponent: -2(H+1)
@@ -4865,12 +4879,12 @@ class PerssonModelGUI_V2:
             if xi_diff_pct > 1:
                 xi_info += f"\n  (차이: {xi_diff_pct:.1f}% - 수치 적분 오차)"
 
-            messagebox.showinfo("Complete", f"PSD model applied:\n"
+            self._show_status(f"PSD model applied:\n"
                               f"- q range: {q0:.1e} ~ {q1:.1e} 1/m\n"
                               f"- Hurst exponent H: {H:.3f}\n"
                               f"- C(q0): {C_q0:.1e} m^4\n"
                               f"- Power law: C(q) = C(q0)*(q/q0)^{exponent:.2f}\n"
-                              f"{xi_info}")
+                              f"{xi_info}", 'success')
 
         except Exception as e:
             messagebox.showerror("Error", f"PSD settings failed:\n{str(e)}")
@@ -4924,7 +4938,7 @@ class PerssonModelGUI_V2:
         if filename:
             try:
                 fig.savefig(filename, dpi=300, bbox_inches='tight')
-                messagebox.showinfo("Success", f"그래프가 저장되었습니다:\n{filename}")
+                self._show_status(f"그래프가 저장되었습니다:\n{filename}", 'success')
                 self.status_var.set(f"그래프 저장 완료: {filename}")
             except Exception as e:
                 messagebox.showerror("Error", f"그래프 저장 실패:\n{str(e)}")
@@ -4934,19 +4948,17 @@ class PerssonModelGUI_V2:
         # Check if PSD has been set from Tab 0
         tab0_ready = getattr(self, 'tab0_finalized', False)
         if not tab0_ready or self.psd_model is None:
-            messagebox.showwarning("경고",
-                "PSD 데이터가 설정되지 않았습니다!\n\n"
+            self._show_status("PSD 데이터가 설정되지 않았습니다!\n\n"
                 "Tab 0 (PSD 생성)에서 PSD를 확정한 후\n"
-                "'PSD 확정 → Tab 3' 버튼을 클릭하세요.")
+                "'PSD 확정 → Tab 3' 버튼을 클릭하세요.", 'warning')
             return
 
         # Check if Master Curve has been set from Tab 1
         tab1_ready = getattr(self, 'tab1_finalized', False)
         if not tab1_ready or self.material is None:
-            messagebox.showwarning("경고",
-                "마스터 커브 데이터가 설정되지 않았습니다!\n\n"
+            self._show_status("마스터 커브 데이터가 설정되지 않았습니다!\n\n"
                 "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정한 후\n"
-                "'마스터 커브 확정 → Tab 3' 버튼을 클릭하세요.")
+                "'마스터 커브 확정 → Tab 3' 버튼을 클릭하세요.", 'warning')
             return
 
         try:
@@ -5286,7 +5298,7 @@ class PerssonModelGUI_V2:
 
             self.status_var.set("Calculation complete!")
             self.calc_button.config(state='normal')
-            messagebox.showinfo("Success", f"G(q,v) calculated for {n_v} velocities and {n_q} wavenumbers")
+            self._show_status(f"G(q,v) calculated for {n_v} velocities and {n_q} wavenumbers", 'success')
 
             # G(q,v) 계산 완료 후 Tab 4의 h'rms slope 자동 계산
             try:
@@ -5613,7 +5625,7 @@ class PerssonModelGUI_V2:
                 # Find q1 by solving integral equation
                 # This is approximate; could use root finding for precision
                 q1_determined = q_parse[-1] * 1.5  # Placeholder
-                messagebox.showinfo("Info", f"Target slope {target_slope_rms} not reached. Extrapolating with H={H:.3f}")
+                self._show_status(f"Target slope {target_slope_rms} not reached. Extrapolating with H={H:.3f}", 'success')
 
             # Plot cumulative h'rms (RMS slope)
             ax6.semilogx(q_parse, slope_rms_cumulative, 'b-', linewidth=2.5, label="누적 h'rms")
@@ -5678,7 +5690,7 @@ class PerssonModelGUI_V2:
     def _save_detailed_csv(self):
         """Save detailed CSV results."""
         if not self.results:
-            messagebox.showwarning("Warning", "No results to save. Run calculation first!")
+            self._show_status("No results to save. Run calculation first!", 'warning')
             return
 
         filename = filedialog.asksaveasfilename(
@@ -5688,17 +5700,17 @@ class PerssonModelGUI_V2:
 
         if filename:
             # Implementation here
-            messagebox.showinfo("Info", "CSV save functionality to be implemented")
+            self._show_status("CSV save functionality to be implemented", 'success')
 
     def _export_all_results(self):
         """Export all results."""
         if not self.results:
-            messagebox.showwarning("Warning", "No results to export. Run calculation first!")
+            self._show_status("No results to export. Run calculation first!", 'warning')
             return
 
         output_dir = filedialog.askdirectory(title="Select output directory")
         if output_dir:
-            messagebox.showinfo("Info", "Export functionality to be implemented")
+            self._show_status("Export functionality to be implemented", 'success')
 
     def _register_graph_data(self, name: str, x_data, y_data, header: str, description: str):
         """
@@ -5916,7 +5928,7 @@ class PerssonModelGUI_V2:
         """Export selected graph data to txt files."""
         selected_indices = self.graph_data_listbox.curselection()
         if not selected_indices:
-            messagebox.showwarning("경고", "저장할 데이터를 선택하세요.")
+            self._show_status("저장할 데이터를 선택하세요.", 'warning')
             return
 
         # Ask for output directory
@@ -5964,11 +5976,10 @@ class PerssonModelGUI_V2:
 
         if saved_files:
             self.export_status_var.set(f"Saved {len(saved_files)} files")
-            messagebox.showinfo("완료",
-                f"총 {len(saved_files)}개 파일 저장 완료\n\n"
+            self._show_status(f"총 {len(saved_files)}개 파일 저장 완료\n\n"
                 f"저장 위치: {output_dir}\n\n"
                 f"파일 목록:\n" + "\n".join(saved_files[:10]) +
-                ("\n..." if len(saved_files) > 10 else ""))
+                ("\n..." if len(saved_files) > 10 else ""), 'success')
 
     def _show_help(self):
         """Show help dialog."""
@@ -5993,7 +6004,7 @@ Persson Friction Calculator v2.1 - User Guide
    - Velocity-dependent friction coefficient
    - Contact area ratio analysis
         """
-        messagebox.showinfo("User Guide", help_text)
+        self._show_status(help_text, 'success')
 
     def _show_about(self):
         """Show about dialog."""
@@ -6010,7 +6021,7 @@ Based on:
 Persson, B.N.J. (2001, 2006)
 Rubber friction theory
         """
-        messagebox.showinfo("About", about_text)
+        self._show_status(about_text, 'success')
 
     def _create_equations_tab(self, parent):
         """Create equations reference tab with all formulas used in calculations."""
@@ -6414,10 +6425,9 @@ $\begin{array}{lcc}
         # Check if PSD data is available from Tab 0
         tab0_ready = getattr(self, 'tab0_finalized', False)
         if not tab0_ready or self.psd_model is None:
-            messagebox.showwarning("경고",
-                "PSD 데이터가 설정되지 않았습니다!\n\n"
+            self._show_status("PSD 데이터가 설정되지 않았습니다!\n\n"
                 "Tab 0 (PSD 생성)에서 PSD를 확정한 후\n"
-                "'PSD 확정 → Tab 3' 버튼을 클릭하세요.")
+                "'PSD 확정 → Tab 3' 버튼을 클릭하세요.", 'warning')
             return
 
         try:
@@ -6486,12 +6496,10 @@ $\begin{array}{lcc}
 
             # Use target_xi from Tab 2 if available for consistency
             xi_max_display = self.target_xi if self.target_xi is not None else self.rms_slope_profiles['xi'][-1]
-            messagebox.showinfo("완료",
-                f"h'rms slope / Local Strain 계산 완료!\n\n"
+            self._show_status(f"h'rms slope / Local Strain 계산 완료!\n\n"
                 f"ξ_max (h'rms) = {xi_max_display:.4f}\n"
                 f"ε_max = {self.rms_slope_profiles['strain'][-1]*100:.2f}%\n"
-                f"h_rms = {self.rms_slope_profiles['hrms'][-1]*1e6:.2f} μm"
-            )
+                f"h_rms = {self.rms_slope_profiles['hrms'][-1]*1e6:.2f} μm", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"계산 실패:\n{str(e)}")
@@ -6631,24 +6639,22 @@ $\begin{array}{lcc}
     def _apply_local_strain_to_mu_visc(self):
         """Apply calculated local strain to mu_visc calculation."""
         if self.local_strain_array is None or self.rms_slope_profiles is None:
-            messagebox.showwarning("경고", "먼저 h'rms를 계산하세요.")
+            self._show_status("먼저 h'rms를 계산하세요.", 'warning')
             return
 
         # Store for use in mu_visc tab
         self.status_var.set("Local Strain이 μ_visc 탭에 적용 준비됨")
 
-        messagebox.showinfo("완료",
-            f"Local Strain 데이터가 μ_visc 계산에 사용될 준비가 되었습니다.\n\n"
+        self._show_status(f"Local Strain 데이터가 μ_visc 계산에 사용될 준비가 되었습니다.\n\n"
             f"데이터 점: {len(self.local_strain_array)}\n"
             f"ε 범위: {self.local_strain_array[0]*100:.4f}% ~ {self.local_strain_array[-1]*100:.2f}%\n\n"
             f"μ_visc 탭에서 '비선형 f,g 보정'을 활성화하고\n"
-            f"Strain 추정 방법을 'rms_slope'로 설정하세요."
-        )
+            f"Strain 추정 방법을 'rms_slope'로 설정하세요.", 'success')
 
     def _export_rms_slope_data(self):
         """Export h'rms data to CSV file."""
         if self.rms_slope_profiles is None:
-            messagebox.showwarning("경고", "먼저 h'rms를 계산하세요.")
+            self._show_status("먼저 h'rms를 계산하세요.", 'warning')
             return
 
         filename = filedialog.asksaveasfilename(
@@ -6682,7 +6688,7 @@ $\begin{array}{lcc}
                         f"{profiles['hrms'][i]:.6e}"
                     ])
 
-            messagebox.showinfo("성공", f"데이터 저장 완료:\n{filename}")
+            self._show_status(f"데이터 저장 완료:\n{filename}", 'success')
             self.status_var.set(f"h'rms 데이터 저장: {filename}")
 
         except Exception as e:
@@ -7117,9 +7123,8 @@ $\begin{array}{lcc}
         # Step 1: fg_by_T가 없으면 자동으로 계산
         if self.fg_by_T is None:
             if self.strain_data is None:
-                messagebox.showwarning("경고",
-                    "Strain Sweep 데이터가 없습니다.\n"
-                    "먼저 '1) Strain Sweep 로드'로 데이터를 로드하세요.")
+                self._show_status("Strain Sweep 데이터가 없습니다.\n"
+                    "먼저 '1) Strain Sweep 로드'로 데이터를 로드하세요.", 'warning')
                 return
             # 자동으로 f,g 곡선 계산
             self._compute_fg_curves()
@@ -7271,7 +7276,7 @@ $\begin{array}{lcc}
     def _export_fg_curves(self):
         """Export f,g curves to CSV file with proper column separation."""
         if self.fg_averaged is None and self.piecewise_result is None:
-            messagebox.showwarning("경고", "먼저 f,g 곡선을 계산하세요.")
+            self._show_status("먼저 f,g 곡선을 계산하세요.", 'warning')
             return
 
         result = self.piecewise_result if self.piecewise_result is not None else self.fg_averaged
@@ -7324,7 +7329,7 @@ $\begin{array}{lcc}
                         f'{result["n_eff"][i]:.0f}'
                     ])
 
-            messagebox.showinfo("성공", f"f,g 곡선 저장 완료:\n{filename}")
+            self._show_status(f"f,g 곡선 저장 완료:\n{filename}", 'success')
             self.status_var.set(f"f,g 곡선 저장: {filename}")
 
         except Exception as e:
@@ -7380,7 +7385,7 @@ $\begin{array}{lcc}
                 self.temp_listbox.selection_set(tk.END)
 
             self.status_var.set(f"Strain 데이터 로드 완료: {len(self.strain_data)}개 온도")
-            messagebox.showinfo("성공", f"Strain 데이터 로드 완료\n온도 블록: {len(self.strain_data)}개")
+            self._show_status(f"Strain 데이터 로드 완료\n온도 블록: {len(self.strain_data)}개", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"Strain 데이터 로드 실패:\n{str(e)}")
@@ -7431,7 +7436,7 @@ $\begin{array}{lcc}
             self._update_fg_plot()
 
             self.status_var.set(f"f,g 곡선 로드 완료: {len(fg_data['strain'])}개 점")
-            messagebox.showinfo("성공", f"f,g 곡선 로드 완료\n데이터 포인트: {len(fg_data['strain'])}개")
+            self._show_status(f"f,g 곡선 로드 완료\n데이터 포인트: {len(fg_data['strain'])}개", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"f,g 곡선 로드 실패:\n{str(e)}")
@@ -7441,7 +7446,7 @@ $\begin{array}{lcc}
     def _compute_fg_curves(self):
         """Compute f,g curves from strain sweep data."""
         if self.strain_data is None:
-            messagebox.showwarning("경고", "먼저 Strain 데이터를 로드하세요.")
+            self._show_status("먼저 Strain 데이터를 로드하세요.", 'warning')
             return
 
         try:
@@ -7497,14 +7502,14 @@ $\begin{array}{lcc}
     def _average_fg_curves(self):
         """Average f,g curves from selected temperatures."""
         if self.fg_by_T is None:
-            messagebox.showwarning("경고", "먼저 f,g 곡선을 계산하세요.")
+            self._show_status("먼저 f,g 곡선을 계산하세요.", 'warning')
             return
 
         try:
             # Get selected temperatures
             selections = self.temp_listbox.curselection()
             if not selections:
-                messagebox.showwarning("경고", "최소 1개의 온도를 선택하세요.")
+                self._show_status("최소 1개의 온도를 선택하세요.", 'warning')
                 return
 
             temps = sorted(self.fg_by_T.keys())
@@ -7597,17 +7602,15 @@ $\begin{array}{lcc}
 
             # Check if aT data is loaded
             if not hasattr(self, 'persson_aT_interp') or self.persson_aT_interp is None:
-                messagebox.showwarning("경고",
-                    "aT 시프트 팩터 데이터가 로드되지 않았습니다.\n\n"
+                self._show_status("aT 시프트 팩터 데이터가 로드되지 않았습니다.\n\n"
                     "Tab 1에서 'aT 시프트 팩터 로드' 버튼을 사용하여\n"
-                    "aT 데이터를 로드하세요.")
+                    "aT 데이터를 로드하세요.", 'warning')
                 return
 
             # Check if Persson master curve is loaded
             if not hasattr(self, 'persson_master_curve') or self.persson_master_curve is None:
-                messagebox.showwarning("경고",
-                    "Persson 정품 마스터 커브가 로드되지 않았습니다.\n\n"
-                    "Tab 1에서 먼저 마스터 커브를 로드하세요.")
+                self._show_status("Persson 정품 마스터 커브가 로드되지 않았습니다.\n\n"
+                    "Tab 1에서 먼저 마스터 커브를 로드하세요.", 'warning')
                 return
 
             # Get aT at target temperature
@@ -7831,17 +7834,15 @@ $\begin{array}{lcc}
         tab1_ready = getattr(self, 'tab1_finalized', False)
 
         if not tab0_ready or self.psd_model is None:
-            messagebox.showwarning("경고",
-                "PSD 데이터가 설정되지 않았습니다!\n\n"
-                "Tab 0 (PSD 생성)에서 PSD를 확정하세요.")
+            self._show_status("PSD 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 0 (PSD 생성)에서 PSD를 확정하세요.", 'warning')
             return
 
         # 마스터 커브: Tab 1 확정 또는 기본/예제 재료 허용
         if self.material is None:
-            messagebox.showwarning("경고",
-                "마스터 커브 데이터가 없습니다!\n\n"
+            self._show_status("마스터 커브 데이터가 없습니다!\n\n"
                 "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하거나\n"
-                "프로그램을 재시작하여 기본 재료를 로드하세요.")
+                "프로그램을 재시작하여 기본 재료를 로드하세요.", 'warning')
             return
 
         # 데이터 출처 정보 저장 (결과 표시에 사용)
@@ -7854,7 +7855,7 @@ $\begin{array}{lcc}
         }
 
         if not self.results or '2d_results' not in self.results:
-            messagebox.showwarning("경고", "먼저 G(q,v) 계산을 실행하세요 (탭 3).")
+            self._show_status("먼저 G(q,v) 계산을 실행하세요 (탭 3).", 'warning')
             return
 
         # 자동 온도 시프트 & G 재계산 (aT 데이터가 있을 때)
@@ -7884,10 +7885,9 @@ $\begin{array}{lcc}
             # Check h'rms data if using rms_slope method
             if strain_est_method == 'rms_slope':
                 if self.rms_slope_calculator is None or self.rms_slope_profiles is None:
-                    messagebox.showwarning("경고",
-                        "h'rms 데이터가 없습니다.\n\n"
+                    self._show_status("h'rms 데이터가 없습니다.\n\n"
                         "Tab 4 (h'rms/Local Strain)에서\n"
-                        "'h'rms slope / Local Strain 계산' 버튼을 먼저 실행하세요.")
+                        "'h'rms slope / Local Strain 계산' 버튼을 먼저 실행하세요.", 'warning')
                     self.mu_calc_button.config(state='normal')
                     return
                 else:
@@ -8339,9 +8339,9 @@ $\begin{array}{lcc}
             self.status_var.set("μ_visc 계산 완료")
             self.mu_calc_button.config(state='normal')
 
-            messagebox.showinfo("성공", f"μ_visc 계산 완료\n"
+            self._show_status(f"μ_visc 계산 완료\n"
                                f"범위: {smart_fmt(mu_min)} ~ {smart_fmt(mu_max)}\n"
-                               f"최대: μ={smart_fmt(peak_mu)} @ v={v[peak_idx]:.4f} m/s")
+                               f"최대: μ={smart_fmt(peak_mu)} @ v={v[peak_idx]:.4f} m/s", 'success')
 
         except Exception as e:
             self.mu_calc_button.config(state='normal')
@@ -8613,11 +8613,11 @@ $\begin{array}{lcc}
     def _analyze_mu_comparison(self):
         """Analyze difference between calculated and reference μ_visc and provide recommendations."""
         if self.mu_visc_results is None:
-            messagebox.showwarning("경고", "먼저 μ_visc를 계산하세요.")
+            self._show_status("먼저 μ_visc를 계산하세요.", 'warning')
             return
 
         if not hasattr(self, 'reference_mu_data') or self.reference_mu_data is None:
-            messagebox.showwarning("경고", "참조 데이터가 없습니다.")
+            self._show_status("참조 데이터가 없습니다.", 'warning')
             return
 
         # Get calculated and reference data
@@ -8634,7 +8634,7 @@ $\begin{array}{lcc}
         v_max = min(calc_v.max(), ref_v.max())
 
         if v_min >= v_max:
-            messagebox.showwarning("경고", "계산된 속도 범위와 참조 데이터 범위가 겹치지 않습니다.")
+            self._show_status("계산된 속도 범위와 참조 데이터 범위가 겹치지 않습니다.", 'warning')
             return
 
         # Create common velocity points in log space
@@ -9068,7 +9068,7 @@ $\begin{array}{lcc}
     def _export_mu_visc_results(self):
         """Export mu_visc results to CSV files with selection dialog."""
         if self.mu_visc_results is None:
-            messagebox.showwarning("경고", "먼저 μ_visc를 계산하세요.")
+            self._show_status("먼저 μ_visc를 계산하세요.", 'warning')
             return
 
         # Create dialog for selecting data to export
@@ -9183,7 +9183,7 @@ $\begin{array}{lcc}
             # Check if any data is selected
             selected = [key for key, var in check_vars.items() if var.get()]
             if not selected:
-                messagebox.showwarning("경고", "내보낼 데이터를 선택하세요.", parent=dialog)
+                self._show_status("내보낼 데이터를 선택하세요.", 'warning')
                 return
 
             # Ask for save directory
@@ -9286,7 +9286,7 @@ $\begin{array}{lcc}
                                 exported_files.append(filename)
 
                 dialog.destroy()
-                messagebox.showinfo("완료", f"CSV 파일 내보내기 완료:\n\n" + "\n".join(exported_files) + f"\n\n저장 위치: {save_dir}")
+                self._show_status(f"CSV 파일 내보내기 완료:\n\n" + "\n".join(exported_files) + f"\n\n저장 위치: {save_dir}", 'success')
                 self.status_var.set(f"CSV 내보내기 완료: {len(exported_files)}개 파일")
 
             except Exception as e:
@@ -9352,7 +9352,7 @@ $\begin{array}{lcc}
     def _export_mu_and_area_csv(self):
         """Export mu_visc and A/A0 data to a single CSV file with log10(v)."""
         if self.mu_visc_results is None:
-            messagebox.showwarning("경고", "먼저 μ_visc를 계산하세요.")
+            self._show_status("먼저 μ_visc를 계산하세요.", 'warning')
             return
 
         v = self.mu_visc_results.get('v')
@@ -9360,11 +9360,11 @@ $\begin{array}{lcc}
         P_qmax = self.mu_visc_results.get('P_qmax')
 
         if v is None or mu is None:
-            messagebox.showwarning("경고", "계산 결과가 없습니다.")
+            self._show_status("계산 결과가 없습니다.", 'warning')
             return
 
         if P_qmax is None:
-            messagebox.showwarning("경고", "A/A0 데이터가 없습니다. 먼저 μ_visc를 계산하세요.")
+            self._show_status("A/A0 데이터가 없습니다. 먼저 μ_visc를 계산하세요.", 'warning')
             return
 
         # File dialog
@@ -9413,7 +9413,7 @@ $\begin{array}{lcc}
                     log_v = np.log10(v[i])
                     f.write(f"{log_v:.6e},{mu[i]:.6e},{P_qmax[i]:.6e}\n")
 
-            messagebox.showinfo("완료", f"파일 저장 완료:\n{file_path}")
+            self._show_status(f"파일 저장 완료:\n{file_path}", 'success')
             self.status_var.set(f"CSV 내보내기 완료: {file_path}")
 
         except Exception as e:
@@ -9439,6 +9439,96 @@ $\begin{array}{lcc}
         path = self._get_ref_datasets_path()
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(datasets, f, ensure_ascii=False, indent=2)
+
+    def _generate_dataset_name(self):
+        """Auto-generate dataset name from current calculation conditions.
+        Format: CompoundName_Tref_Tfriction_NonLinear/Linear_SurfaceType
+        Example: S100_40_20_NonLinear_IDIADA
+        """
+        parts = []
+
+        # 1. Compound/Material name (short)
+        compound = ""
+        if hasattr(self, 'material') and self.material is not None and hasattr(self.material, 'name'):
+            name = self.material.name
+            # Extract short name from various formats
+            if 'Persson' in name and '(' in name:
+                # "Persson (filename)" -> extract filename without extension
+                inner = name.split('(', 1)[1].rstrip(')')
+                # Remove common suffixes
+                for suffix in ['.txt', '.csv', '.dat', '_smoothed', ' (smoothed)']:
+                    inner = inner.replace(suffix, '')
+                # Try to extract compound code (e.g., S100, S120)
+                import re
+                match = re.search(r'[A-Z]\d{2,4}', inner)
+                if match:
+                    compound = match.group()
+                else:
+                    compound = inner.strip()[:20]
+            elif 'Master Curve' in name:
+                compound = "MC"
+            elif 'SBR' in name:
+                compound = "SBR"
+            elif 'Measured' in name:
+                compound = "Measured"
+            else:
+                compound = name[:15].replace(' ', '')
+        elif hasattr(self, 'material_source') and self.material_source:
+            src = str(self.material_source)
+            import re
+            match = re.search(r'[A-Z]\d{2,4}', src)
+            if match:
+                compound = match.group()
+            elif 'SBR' in src:
+                compound = "SBR"
+            else:
+                compound = src[:15].replace(' ', '')
+        if compound:
+            parts.append(compound)
+
+        # 2. Rubber reference temperature (Tref)
+        try:
+            tref = self.mc_tref_var.get()
+            tref_val = float(tref)
+            parts.append(f"{tref_val:.0f}")
+        except (AttributeError, ValueError):
+            pass
+
+        # 3. Friction/calculation temperature
+        try:
+            t_calc = self.mu_calc_temp_var.get()
+            t_val = float(t_calc)
+            parts.append(f"{t_val:.0f}")
+        except (AttributeError, ValueError):
+            try:
+                t_calc = self.temperature_var.get()
+                t_val = float(t_calc)
+                parts.append(f"{t_val:.0f}")
+            except (AttributeError, ValueError):
+                pass
+
+        # 4. NonLinear / Linear
+        try:
+            if self.use_fg_correction_var.get():
+                parts.append("Non")
+            else:
+                parts.append("Lin")
+        except (AttributeError):
+            pass
+
+        # 5. Surface type (from q1 preset name)
+        try:
+            surface = self.surface_q1_var.get()
+            if surface and not surface.startswith('('):
+                parts.append(surface)
+        except (AttributeError):
+            pass
+
+        if parts:
+            return "_".join(parts)
+        else:
+            from datetime import datetime
+            return datetime.now().strftime("Data_%Y%m%d_%H%M")
 
     def _edit_reference_data(self):
         """Open dialog for editing reference mu_visc and A/A0 data."""
@@ -9524,15 +9614,13 @@ $\begin{array}{lcc}
         def load_calc_results():
             """Load current mu_visc calculation results into text areas."""
             if not hasattr(self, 'mu_visc_results') or self.mu_visc_results is None:
-                messagebox.showwarning("계산 결과 없음",
-                                       "먼저 μ_visc 계산을 실행하세요.", parent=dialog)
+                self._show_status("먼저 μ_visc 계산을 실행하세요.", 'warning')
                 return
             v = self.mu_visc_results.get('v')
             mu = self.mu_visc_results.get('mu')
             P_qmax = self.mu_visc_results.get('P_qmax')
             if v is None or mu is None:
-                messagebox.showwarning("데이터 부족",
-                                       "계산 결과에 속도/mu 데이터가 없습니다.", parent=dialog)
+                self._show_status("계산 결과에 속도/mu 데이터가 없습니다.", 'warning')
                 return
             # Fill mu_visc text
             mu_text.delete("1.0", tk.END)
@@ -9547,11 +9635,9 @@ $\begin{array}{lcc}
                     area_text.insert(tk.END, f"{log_v:.6e}\t{ai:.6e}\n")
             n_mu = len(mu)
             n_area = len(P_qmax) if P_qmax is not None else 0
-            messagebox.showinfo("불러오기 완료",
-                                f"계산 결과를 불러왔습니다.\n"
+            self._show_status(f"계산 결과를 불러왔습니다.\n"
                                 f"mu_visc: {n_mu}pts"
-                                + (f", A/A0: {n_area}pts" if n_area > 0 else ""),
-                                parent=dialog)
+                                + (f", A/A0: {n_area}pts" if n_area > 0 else ""), 'success')
 
         calc_result_btn = ttk.Button(calc_load_frame, text="계산 결과 불러오기",
                                       command=load_calc_results)
@@ -9574,6 +9660,15 @@ $\begin{array}{lcc}
         dataset_name_var = tk.StringVar()
         name_entry = ttk.Entry(save_frame, textvariable=dataset_name_var, width=20)
         name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+
+        # Auto-name generation button
+        def _auto_generate_name():
+            auto_name = self._generate_dataset_name()
+            dataset_name_var.set(auto_name)
+        ttk.Button(save_frame, text="자동", command=_auto_generate_name, width=4).pack(side=tk.LEFT, padx=(0, 3))
+
+        # Pre-fill with auto-generated name
+        dataset_name_var.set(self._generate_dataset_name())
 
         # Dataset checkbox list (scrollable)
         list_frame = ttk.Frame(right_frame)
@@ -9663,7 +9758,7 @@ $\begin{array}{lcc}
             """Save current text area data as a named dataset."""
             name = dataset_name_var.get().strip()
             if not name:
-                messagebox.showwarning("이름 필요", "데이터셋 이름을 입력하세요.", parent=dialog)
+                self._show_status("데이터셋 이름을 입력하세요.", 'warning')
                 return
 
             # Parse current text area data
@@ -9699,7 +9794,7 @@ $\begin{array}{lcc}
                             continue
 
             if not mu_log_v and not area_log_v:
-                messagebox.showwarning("데이터 없음", "저장할 데이터가 없습니다.\n텍스트 영역에 데이터를 붙여넣기 하세요.", parent=dialog)
+                self._show_status("저장할 데이터가 없습니다.\n텍스트 영역에 데이터를 붙여넣기 하세요.", 'warning')
                 return
 
             from datetime import datetime
@@ -9721,16 +9816,14 @@ $\begin{array}{lcc}
             # Refresh checkbox list
             refresh_checkbox_list()
 
-            messagebox.showinfo("저장 완료",
-                                f"'{name}' 데이터셋 저장 완료\n"
-                                f"mu_visc: {len(mu_log_v)}pts, A/A0: {len(area_log_v)}pts",
-                                parent=dialog)
+            self._show_status(f"'{name}' 데이터셋 저장 완료\n"
+                                f"mu_visc: {len(mu_log_v)}pts, A/A0: {len(area_log_v)}pts", 'success')
 
         def load_dataset():
             """Load checked dataset into text areas."""
             checked = get_checked_names()
             if not checked:
-                messagebox.showwarning("선택 필요", "불러올 데이터셋을 체크하세요.", parent=dialog)
+                self._show_status("불러올 데이터셋을 체크하세요.", 'warning')
                 return
             ds_name = checked[0]
             ds = saved_datasets[ds_name]
@@ -9751,7 +9844,7 @@ $\begin{array}{lcc}
             """Delete checked datasets."""
             checked = get_checked_names()
             if not checked:
-                messagebox.showwarning("선택 필요", "삭제할 데이터셋을 체크하세요.", parent=dialog)
+                self._show_status("삭제할 데이터셋을 체크하세요.", 'warning')
                 return
             names_str = ', '.join(checked)
             if not messagebox.askyesno("삭제 확인",
@@ -9770,7 +9863,7 @@ $\begin{array}{lcc}
             """Plot checked datasets on the graph (multiple overlay)."""
             checked = get_checked_names()
             if not checked:
-                messagebox.showwarning("선택 필요", "플롯할 데이터셋을 체크하세요.", parent=dialog)
+                self._show_status("플롯할 데이터셋을 체크하세요.", 'warning')
                 return
 
             self.plotted_ref_datasets = []
@@ -9796,10 +9889,8 @@ $\begin{array}{lcc}
                 # Even without calculation results, plot reference data on initial axes
                 self._plot_ref_datasets_on_initial_axes()
 
-            messagebox.showinfo("플롯 완료",
-                                f"선택한 {len(checked)}개 데이터셋을 그래프에 표시했습니다.\n"
-                                f"데이터셋: {', '.join(checked)}",
-                                parent=dialog)
+            self._show_status(f"선택한 {len(checked)}개 데이터셋을 그래프에 표시했습니다.\n"
+                                f"데이터셋: {', '.join(checked)}", 'success')
 
         ttk.Button(ds_btn_frame, text="불러오기", command=load_dataset, width=10).pack(side=tk.LEFT, padx=3)
         ttk.Button(ds_btn_frame, text="삭제", command=delete_dataset, width=8).pack(side=tk.LEFT, padx=3)
@@ -9881,7 +9972,7 @@ $\begin{array}{lcc}
                         self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
 
                 dialog.destroy()
-                messagebox.showinfo("완료", "참조 데이터가 업데이트되었습니다.")
+                self._show_status("참조 데이터가 업데이트되었습니다.", 'success')
 
             except Exception as e:
                 import traceback
@@ -10022,19 +10113,17 @@ $\begin{array}{lcc}
         tab1_ready = getattr(self, 'tab1_finalized', False)
 
         if not tab0_ready or self.psd_model is None:
-            messagebox.showwarning("경고",
-                "PSD 데이터가 설정되지 않았습니다!\n\n"
-                "Tab 0 (PSD 생성)에서 PSD를 확정하세요.")
+            self._show_status("PSD 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 0 (PSD 생성)에서 PSD를 확정하세요.", 'warning')
             return
 
         if not tab1_ready or self.material is None:
-            messagebox.showwarning("경고",
-                "마스터 커브 데이터가 설정되지 않았습니다!\n\n"
-                "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하세요.")
+            self._show_status("마스터 커브 데이터가 설정되지 않았습니다!\n\n"
+                "Tab 1 (마스터 커브 생성)에서 마스터 커브를 확정하세요.", 'warning')
             return
 
         if not self.results or '2d_results' not in self.results:
-            messagebox.showwarning("경고", "먼저 G(q,v) 계산을 실행하세요 (탭 2).")
+            self._show_status("먼저 G(q,v) 계산을 실행하세요 (탭 2).", 'warning')
             return
 
         try:
@@ -10564,7 +10653,7 @@ $\begin{array}{lcc}
     def _export_strain_map_csv(self):
         """Export Local Strain Map data to CSV files with selection dialog."""
         if not hasattr(self, 'strain_map_results') or self.strain_map_results is None:
-            messagebox.showwarning("경고", "먼저 계산을 실행하세요.")
+            self._show_status("먼저 계산을 실행하세요.", 'warning')
             return
 
         # Create dialog for selecting data to export
@@ -10635,7 +10724,7 @@ $\begin{array}{lcc}
             # Check if any data is selected
             selected = [key for key, var in check_vars.items() if var.get()]
             if not selected:
-                messagebox.showwarning("경고", "내보낼 데이터를 선택하세요.", parent=dialog)
+                self._show_status("내보낼 데이터를 선택하세요.", 'warning')
                 return
 
             # Ask for save directory
@@ -10689,7 +10778,7 @@ $\begin{array}{lcc}
                     exported_files.append(filename)
 
                 dialog.destroy()
-                messagebox.showinfo("완료", f"CSV 파일 내보내기 완료:\n\n" + "\n".join(exported_files) + f"\n\n저장 위치: {save_dir}")
+                self._show_status(f"CSV 파일 내보내기 완료:\n\n" + "\n".join(exported_files) + f"\n\n저장 위치: {save_dir}", 'success')
                 self.status_var.set(f"CSV 내보내기 완료: {len(exported_files)}개 파일")
 
             except Exception as e:
@@ -10854,7 +10943,7 @@ $\begin{array}{lcc}
         """Calculate and visualize integrands for G(q) and μ_visc."""
         # Check if data is available
         if self.psd_model is None or self.material is None:
-            messagebox.showwarning("경고", "먼저 PSD와 DMA 데이터를 로드하세요.")
+            self._show_status("먼저 PSD와 DMA 데이터를 로드하세요.", 'warning')
             return
 
         try:
@@ -11437,7 +11526,7 @@ $\begin{array}{lcc}
             if filepath:
                 with open(filepath, 'w', encoding='utf-8') as f:
                     f.write(self.debug_log_text.get(1.0, tk.END))
-                messagebox.showinfo("저장 완료", f"로그가 저장되었습니다:\n{filepath}")
+                self._show_status(f"로그가 저장되었습니다:\n{filepath}", 'success')
 
     def _run_debug_diagnostic(self):
         """Run comprehensive debug diagnostic for mu_visc calculation."""
@@ -12039,7 +12128,7 @@ $\begin{array}{lcc}
         """Load a preset PSD file."""
         selected = self.preset_psd_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "내장 PSD 파일을 선택하세요.")
+            self._show_status("내장 PSD 파일을 선택하세요.", 'warning')
             return
 
         try:
@@ -12075,7 +12164,7 @@ $\begin{array}{lcc}
             # 그래프에 표시
             self._plot_psd_direct_on_tab0()
 
-            messagebox.showinfo("성공", f"내장 PSD 로드 완료:\n{selected}")
+            self._show_status(f"내장 PSD 로드 완료:\n{selected}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 PSD 로드 실패:\n{str(e)}")
@@ -12084,7 +12173,7 @@ $\begin{array}{lcc}
         """Delete selected preset PSD file."""
         selected = self.preset_psd_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "삭제할 내장 PSD 파일을 선택하세요.")
+            self._show_status("삭제할 내장 PSD 파일을 선택하세요.", 'warning')
             return
 
         if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
@@ -12096,7 +12185,7 @@ $\begin{array}{lcc}
             os.remove(filepath)
             self._refresh_preset_psd_list()
             self.preset_psd_var.set("(선택...)")
-            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+            self._show_status(f"삭제 완료: {selected}", 'success')
         except Exception as e:
             messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
@@ -12118,7 +12207,7 @@ $\begin{array}{lcc}
                 source_name = "profile analysis"
 
         if psd_data is None:
-            messagebox.showwarning("경고", "먼저 PSD 파일을 로드하세요.\n(Tab 0에서 PSD 직접 로드 또는 프로파일 분석)")
+            self._show_status("먼저 PSD 파일을 로드하세요.\n(Tab 0에서 PSD 직접 로드 또는 프로파일 분석)", 'warning')
             return
 
         # 파일 이름 입력 받기
@@ -12142,7 +12231,7 @@ $\begin{array}{lcc}
             np.savetxt(filepath, np.column_stack([q, C]), header=header, comments='', delimiter='\t')
 
             self._refresh_preset_psd_list()
-            messagebox.showinfo("성공", f"내장 PSD 추가 완료:\n{name}")
+            self._show_status(f"내장 PSD 추가 완료:\n{name}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 PSD 추가 실패:\n{str(e)}")
@@ -12164,7 +12253,7 @@ $\begin{array}{lcc}
         """Load a preset master curve file."""
         selected = self.preset_mc_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "내장 마스터 커브 파일을 선택하세요.")
+            self._show_status("내장 마스터 커브 파일을 선택하세요.", 'warning')
             return
 
         try:
@@ -12204,7 +12293,7 @@ $\begin{array}{lcc}
             # 그래프에 표시
             self._plot_persson_master_curve()
 
-            messagebox.showinfo("성공", f"내장 마스터 커브 로드 완료:\n{selected}")
+            self._show_status(f"내장 마스터 커브 로드 완료:\n{selected}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 마스터 커브 로드 실패:\n{str(e)}")
@@ -12213,7 +12302,7 @@ $\begin{array}{lcc}
         """Delete selected preset master curve file."""
         selected = self.preset_mc_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "삭제할 내장 마스터 커브 파일을 선택하세요.")
+            self._show_status("삭제할 내장 마스터 커브 파일을 선택하세요.", 'warning')
             return
 
         if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
@@ -12225,14 +12314,14 @@ $\begin{array}{lcc}
             os.remove(filepath)
             self._refresh_preset_mastercurve_list()
             self.preset_mc_var.set("(선택...)")
-            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+            self._show_status(f"삭제 완료: {selected}", 'success')
         except Exception as e:
             messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
     def _add_preset_mastercurve(self):
         """Add current master curve to preset list."""
         if not hasattr(self, 'persson_master_curve') or self.persson_master_curve is None:
-            messagebox.showwarning("경고", "먼저 마스터 커브를 로드하세요.\n(Tab 1에서 Persson 정품 마스터 커브 로드)")
+            self._show_status("먼저 마스터 커브를 로드하세요.\n(Tab 1에서 Persson 정품 마스터 커브 로드)", 'warning')
             return
 
         from tkinter import simpledialog
@@ -12256,7 +12345,7 @@ $\begin{array}{lcc}
             np.savetxt(filepath, np.column_stack([freq, E_storage, E_loss]), header=header, comments='', delimiter='\t')
 
             self._refresh_preset_mastercurve_list()
-            messagebox.showinfo("성공", f"내장 마스터 커브 추가 완료:\n{name}")
+            self._show_status(f"내장 마스터 커브 추가 완료:\n{name}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 마스터 커브 추가 실패:\n{str(e)}")
@@ -12278,7 +12367,7 @@ $\begin{array}{lcc}
         """Load a preset aT shift factor file."""
         selected = self.preset_aT_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "내장 aT 시프트 팩터 파일을 선택하세요.")
+            self._show_status("내장 aT 시프트 팩터 파일을 선택하세요.", 'warning')
             return
 
         try:
@@ -12357,10 +12446,9 @@ $\begin{array}{lcc}
             self._plot_persson_aT()
 
             self.status_var.set(f"내장 aT 시프트 팩터 로드 완료: {selected}")
-            messagebox.showinfo("성공",
-                f"내장 aT 시프트 팩터 로드 완료:\n{selected}\n\n"
+            self._show_status(f"내장 aT 시프트 팩터 로드 완료:\n{selected}\n\n"
                 f"데이터: {len(T)}pts, Tref={T_ref:.0f}°C\n"
-                f"aT 범위: {aT.min():.2e} ~ {aT.max():.2e}")
+                f"aT 범위: {aT.min():.2e} ~ {aT.max():.2e}", 'success')
 
         except Exception as e:
             import traceback
@@ -12370,7 +12458,7 @@ $\begin{array}{lcc}
         """Delete selected preset aT shift factor file."""
         selected = self.preset_aT_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "삭제할 내장 aT 파일을 선택하세요.")
+            self._show_status("삭제할 내장 aT 파일을 선택하세요.", 'warning')
             return
 
         if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
@@ -12382,7 +12470,7 @@ $\begin{array}{lcc}
             os.remove(filepath)
             self._refresh_preset_aT_list()
             self.preset_aT_var.set("(선택...)")
-            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+            self._show_status(f"삭제 완료: {selected}", 'success')
         except Exception as e:
             messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
@@ -12396,7 +12484,7 @@ $\begin{array}{lcc}
             aT_data = self.persson_aT
 
         if aT_data is None:
-            messagebox.showwarning("경고", "먼저 aT 시프트 팩터를 로드하세요.\n(Tab 1에서 aT 시프트 팩터 로드)")
+            self._show_status("먼저 aT 시프트 팩터를 로드하세요.\n(Tab 1에서 aT 시프트 팩터 로드)", 'warning')
             return
 
         from tkinter import simpledialog
@@ -12418,7 +12506,7 @@ $\begin{array}{lcc}
             np.savetxt(filepath, np.column_stack([T, aT]), header=header, comments='', delimiter='\t')
 
             self._refresh_preset_aT_list()
-            messagebox.showinfo("성공", f"내장 aT 시프트 팩터 추가 완료:\n{name}")
+            self._show_status(f"내장 aT 시프트 팩터 추가 완료:\n{name}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 aT 시프트 팩터 추가 실패:\n{str(e)}")
@@ -12444,7 +12532,7 @@ $\begin{array}{lcc}
         """Load a preset Strain Sweep file."""
         selected = self.preset_ss_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "내장 Strain Sweep 파일을 선택하세요.")
+            self._show_status("내장 Strain Sweep 파일을 선택하세요.", 'warning')
             return
 
         try:
@@ -12475,7 +12563,7 @@ $\begin{array}{lcc}
                     lb.selection_set(tk.END)
 
             self.status_var.set(f"내장 Strain Sweep 로드 완료: {selected}")
-            messagebox.showinfo("성공", f"내장 Strain Sweep 로드 완료:\n{selected}\n온도 블록: {len(self.strain_data)}개")
+            self._show_status(f"내장 Strain Sweep 로드 완료:\n{selected}\n온도 블록: {len(self.strain_data)}개", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 Strain Sweep 로드 실패:\n{str(e)}")
@@ -12529,7 +12617,7 @@ $\begin{array}{lcc}
         """Delete selected preset Strain Sweep file."""
         selected = self.preset_ss_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "삭제할 내장 Strain Sweep 파일을 선택하세요.")
+            self._show_status("삭제할 내장 Strain Sweep 파일을 선택하세요.", 'warning')
             return
 
         if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
@@ -12541,14 +12629,14 @@ $\begin{array}{lcc}
             os.remove(filepath)
             self._refresh_preset_strain_sweep_list()
             self.preset_ss_var.set("(선택...)")
-            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+            self._show_status(f"삭제 완료: {selected}", 'success')
         except Exception as e:
             messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
     def _add_preset_strain_sweep(self):
         """Add current Strain Sweep file to preset list (copy original file)."""
         if not hasattr(self, 'strain_data') or self.strain_data is None:
-            messagebox.showwarning("경고", "먼저 Strain Sweep 파일을 로드하세요.")
+            self._show_status("먼저 Strain Sweep 파일을 로드하세요.", 'warning')
             return
 
         from tkinter import simpledialog
@@ -12589,7 +12677,7 @@ $\begin{array}{lcc}
                             f.write(f"{T}\t{freq}\t{s}\t{es}\t{el}\n")
 
             self._refresh_preset_strain_sweep_list()
-            messagebox.showinfo("성공", f"내장 Strain Sweep 추가 완료:\n{name}")
+            self._show_status(f"내장 Strain Sweep 추가 완료:\n{name}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 Strain Sweep 추가 실패:\n{str(e)}")
@@ -12613,7 +12701,7 @@ $\begin{array}{lcc}
         """Load a preset f,g curve file."""
         selected = self.preset_fg_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "내장 f,g 곡선 파일을 선택하세요.")
+            self._show_status("내장 f,g 곡선 파일을 선택하세요.", 'warning')
             return
 
         try:
@@ -12650,7 +12738,7 @@ $\begin{array}{lcc}
             self.fg_file_label.config(text=f"내장: {selected} ({len(strain)}pts)")
             self._update_fg_plot()
             self.status_var.set(f"내장 f,g 곡선 로드 완료: {selected}")
-            messagebox.showinfo("성공", f"내장 f,g 곡선 로드 완료:\n{selected}")
+            self._show_status(f"내장 f,g 곡선 로드 완료:\n{selected}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 f,g 곡선 로드 실패:\n{str(e)}")
@@ -12659,7 +12747,7 @@ $\begin{array}{lcc}
         """Delete selected preset f,g curve file."""
         selected = self.preset_fg_var.get()
         if not selected or selected.startswith('('):
-            messagebox.showwarning("경고", "삭제할 내장 f,g 곡선 파일을 선택하세요.")
+            self._show_status("삭제할 내장 f,g 곡선 파일을 선택하세요.", 'warning')
             return
 
         if not messagebox.askyesno("확인", f"'{selected}' 파일을 삭제하시겠습니까?"):
@@ -12671,14 +12759,14 @@ $\begin{array}{lcc}
             os.remove(filepath)
             self._refresh_preset_fg_list()
             self.preset_fg_var.set("(선택...)")
-            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+            self._show_status(f"삭제 완료: {selected}", 'success')
         except Exception as e:
             messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
 
     def _add_preset_fg(self):
         """Add current f,g curve to preset list."""
         if not hasattr(self, 'fg_averaged') or self.fg_averaged is None:
-            messagebox.showwarning("경고", "먼저 f,g 곡선을 계산하거나 로드하세요.")
+            self._show_status("먼저 f,g 곡선을 계산하거나 로드하세요.", 'warning')
             return
 
         from tkinter import simpledialog
@@ -12702,7 +12790,7 @@ $\begin{array}{lcc}
                        header=header, comments='', delimiter='\t')
 
             self._refresh_preset_fg_list()
-            messagebox.showinfo("성공", f"내장 f,g 곡선 추가 완료:\n{name}")
+            self._show_status(f"내장 f,g 곡선 추가 완료:\n{name}", 'success')
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 f,g 곡선 추가 실패:\n{str(e)}")
@@ -12940,13 +13028,13 @@ $\begin{array}{lcc}
 
         # ── Validate prerequisites ──
         if self.psd_model is None:
-            messagebox.showwarning("경고", "PSD 데이터가 없습니다. Tab 0에서 PSD를 확정하세요.")
+            self._show_status("PSD 데이터가 없습니다. Tab 0에서 PSD를 확정하세요.", 'warning')
             return
         if self.material is None:
-            messagebox.showwarning("경고", "마스터 커브가 없습니다. Tab 1에서 확정하세요.")
+            self._show_status("마스터 커브가 없습니다. Tab 1에서 확정하세요.", 'warning')
             return
         if not self.results or '2d_results' not in self.results:
-            messagebox.showwarning("경고", "G(q,v) 결과가 없습니다. 탭 3에서 계산을 먼저 실행하세요.")
+            self._show_status("G(q,v) 결과가 없습니다. 탭 3에서 계산을 먼저 실행하세요.", 'warning')
             return
 
         try:
