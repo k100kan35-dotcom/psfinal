@@ -11683,11 +11683,13 @@ $\begin{array}{lcc}
             freq = data[:, 0]
             E_storage = data[:, 1]
             E_loss = data[:, 2]
+            omega = 2 * np.pi * freq
 
             # 저장
             self.persson_master_curve = {
                 'freq': freq,
                 'f': freq,
+                'omega': omega,
                 'E_storage': E_storage,
                 'E_loss': E_loss,
                 'filename': selected,
