@@ -662,9 +662,10 @@ class App(tk.Tk):
     def _build_plot(self, parent):
         self.fig = Figure(figsize=(7.7, 6.3), dpi=110)
         self.ax = self.fig.add_subplot(111)
-        self.ax.set_title("f(ε), g(ε) vs strain (linear axes)")
-        self.ax.set_xlabel("strain ε (fraction)")
-        self.ax.set_ylabel("factor")
+        self.ax.set_title("f(ε), g(ε) vs strain (linear axes)", fontsize=15, fontweight='bold')
+        self.ax.set_xlabel("strain ε (fraction)", fontsize=13)
+        self.ax.set_ylabel("factor", fontsize=13)
+        self.ax.tick_params(labelsize=12)
         self.ax.grid(True, alpha=0.4)
 
         self.canvas = FigureCanvasTkAgg(self.fig, master=parent)
@@ -850,9 +851,10 @@ class App(tk.Tk):
 
     def _redraw_plot(self):
         self.ax.clear()
-        self.ax.set_title("f(ε), g(ε) vs strain (linear axes)")
-        self.ax.set_xlabel("strain ε (fraction)")
-        self.ax.set_ylabel("factor")
+        self.ax.set_title("f(ε), g(ε) vs strain (linear axes)", fontsize=15, fontweight='bold')
+        self.ax.set_xlabel("strain ε (fraction)", fontsize=13)
+        self.ax.set_ylabel("factor", fontsize=13)
+        self.ax.tick_params(labelsize=12)
         self.ax.grid(True, alpha=0.4)
 
         # show individual T curves (thin), union of A/B selected
@@ -905,7 +907,7 @@ class App(tk.Tk):
         # linear axes only
         self.ax.set_xlim(left=0.0)
         self.ax.set_ylim(bottom=0.0)
-        self.ax.legend(loc="upper right", frameon=True)
+        self.ax.legend(loc="upper right", frameon=True, fontsize=12)
         self.canvas.draw_idle()
 
     def on_add_snapshot(self):
