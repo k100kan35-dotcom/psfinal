@@ -8906,15 +8906,15 @@ $\begin{array}{lcc}
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - μ_visc 데이터 선택")
-        dialog.geometry("450x480")
-        dialog.resizable(False, False)
+        dialog.geometry("450x620")
+        dialog.resizable(False, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
         # Center the dialog
         dialog.update_idletasks()
         x = self.root.winfo_x() + (self.root.winfo_width() - 450) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 480) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 620) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
@@ -8923,7 +8923,15 @@ $\begin{array}{lcc}
         ttk.Label(desc_frame, text="내보낼 데이터를 선택하세요.\n각 데이터는 별도의 CSV 파일로 저장됩니다.",
                   font=('Segoe UI', 17)).pack(anchor=tk.W)
 
-        # Checkbox frame
+        # Export button frame - pack at bottom FIRST so it's always visible
+        export_frame = ttk.Frame(dialog, padding=10)
+        export_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Select all / Deselect all buttons - pack at bottom before checkboxes
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Checkbox frame - fills remaining space
         check_frame = ttk.LabelFrame(dialog, text="데이터 선택", padding=10)
         check_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
@@ -8992,10 +9000,6 @@ $\begin{array}{lcc}
         v_info_label.pack(side=tk.LEFT)
         self.export_v_idx_var.trace('w', update_v_label)
 
-        # Select all / Deselect all buttons
-        btn_frame = ttk.Frame(dialog, padding=10)
-        btn_frame.pack(fill=tk.X)
-
         def select_all():
             for var in check_vars.values():
                 var.set(True)
@@ -9006,10 +9010,6 @@ $\begin{array}{lcc}
 
         ttk.Button(btn_frame, text="전체 선택", command=select_all).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="전체 해제", command=deselect_all).pack(side=tk.LEFT, padx=5)
-
-        # Export button frame
-        export_frame = ttk.Frame(dialog, padding=10)
-        export_frame.pack(fill=tk.X)
 
         def do_export():
             # Check if any data is selected
@@ -10069,15 +10069,15 @@ $\begin{array}{lcc}
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - 데이터 선택")
-        dialog.geometry("400x500")
-        dialog.resizable(False, False)
+        dialog.geometry("400x600")
+        dialog.resizable(False, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
         # Center the dialog
         dialog.update_idletasks()
         x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 500) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 600) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
@@ -10086,7 +10086,15 @@ $\begin{array}{lcc}
         ttk.Label(desc_frame, text="내보낼 데이터를 선택하세요.\n각 데이터는 별도의 CSV 파일로 저장됩니다.",
                   font=('Segoe UI', 17)).pack(anchor=tk.W)
 
-        # Checkbox frame
+        # Export button frame - pack at bottom FIRST so it's always visible
+        export_frame = ttk.Frame(dialog, padding=10)
+        export_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Select all / Deselect all buttons - pack at bottom before checkboxes
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(side=tk.BOTTOM, fill=tk.X)
+
+        # Checkbox frame - fills remaining space
         check_frame = ttk.LabelFrame(dialog, text="데이터 선택", padding=10)
         check_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
@@ -10111,10 +10119,6 @@ $\begin{array}{lcc}
             cb = ttk.Checkbutton(check_frame, text=display_name, variable=var)
             cb.pack(anchor=tk.W, pady=2)
 
-        # Select all / Deselect all buttons
-        btn_frame = ttk.Frame(dialog, padding=10)
-        btn_frame.pack(fill=tk.X)
-
         def select_all():
             for var in check_vars.values():
                 var.set(True)
@@ -10125,10 +10129,6 @@ $\begin{array}{lcc}
 
         ttk.Button(btn_frame, text="전체 선택", command=select_all).pack(side=tk.LEFT, padx=5)
         ttk.Button(btn_frame, text="전체 해제", command=deselect_all).pack(side=tk.LEFT, padx=5)
-
-        # Export button frame
-        export_frame = ttk.Frame(dialog, padding=10)
-        export_frame.pack(fill=tk.X)
 
         def do_export():
             # Check if any data is selected
