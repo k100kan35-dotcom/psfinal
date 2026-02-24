@@ -9348,6 +9348,51 @@ $\begin{array}{lcc}
                 for lv, a in zip(log_v, area):
                     area_text.insert(tk.END, f"{lv:.6e}\t{a:.6e}\n")
 
+        # Button to load calculation results into text areas
+        calc_load_frame = ttk.Frame(left_frame)
+        calc_load_frame.pack(fill=tk.X, pady=(3, 0))
+
+        def load_calc_results():
+            """Load current mu_visc calculation results into text areas."""
+            if not hasattr(self, 'mu_visc_results') or self.mu_visc_results is None:
+                messagebox.showwarning("계산 결과 없음",
+                                       "먼저 μ_visc 계산을 실행하세요.", parent=dialog)
+                return
+            v = self.mu_visc_results.get('v')
+            mu = self.mu_visc_results.get('mu')
+            P_qmax = self.mu_visc_results.get('P_qmax')
+            if v is None or mu is None:
+                messagebox.showwarning("데이터 부족",
+                                       "계산 결과에 속도/mu 데이터가 없습니다.", parent=dialog)
+                return
+            # Fill mu_visc text
+            mu_text.delete("1.0", tk.END)
+            for vi, mi in zip(v, mu):
+                log_v = np.log10(vi) if vi > 0 else -99
+                mu_text.insert(tk.END, f"{log_v:.6e}\t{mi:.6e}\n")
+            # Fill A/A0 text
+            if P_qmax is not None:
+                area_text.delete("1.0", tk.END)
+                for vi, ai in zip(v, P_qmax):
+                    log_v = np.log10(vi) if vi > 0 else -99
+                    area_text.insert(tk.END, f"{log_v:.6e}\t{ai:.6e}\n")
+            n_mu = len(mu)
+            n_area = len(P_qmax) if P_qmax is not None else 0
+            messagebox.showinfo("불러오기 완료",
+                                f"계산 결과를 불러왔습니다.\n"
+                                f"mu_visc: {n_mu}pts"
+                                + (f", A/A0: {n_area}pts" if n_area > 0 else ""),
+                                parent=dialog)
+
+        calc_result_btn = ttk.Button(calc_load_frame, text="계산 결과 불러오기",
+                                      command=load_calc_results)
+        calc_result_btn.pack(side=tk.LEFT, padx=2, ipady=2)
+        has_results = hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None
+        ttk.Label(calc_load_frame,
+                  text="(계산 결과 있음)" if has_results else "(계산 결과 없음)",
+                  foreground='#16A34A' if has_results else '#9CA3AF',
+                  font=('Segoe UI', 14)).pack(side=tk.LEFT, padx=5)
+
         # === RIGHT: saved datasets panel ===
         right_frame = ttk.LabelFrame(main_pane, text="저장된 데이터셋", padding=5)
         main_pane.add(right_frame, weight=2)
@@ -9361,44 +9406,85 @@ $\begin{array}{lcc}
         name_entry = ttk.Entry(save_frame, textvariable=dataset_name_var, width=20)
         name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
 
-        # Dataset Listbox
+        # Dataset checkbox list (scrollable)
         list_frame = ttk.Frame(right_frame)
         list_frame.pack(fill=tk.BOTH, expand=True)
 
-        dataset_listbox = tk.Listbox(list_frame, font=('Segoe UI', 14), selectmode=tk.EXTENDED)
-        ds_scroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=dataset_listbox.yview)
-        dataset_listbox.configure(yscrollcommand=ds_scroll.set)
-        ds_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        dataset_listbox.pack(fill=tk.BOTH, expand=True)
+        ds_canvas = tk.Canvas(list_frame, highlightthickness=0)
+        ds_scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=ds_canvas.yview)
+        ds_inner_frame = ttk.Frame(ds_canvas)
+        ds_canvas.configure(yscrollcommand=ds_scrollbar.set)
+        ds_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        ds_canvas.pack(fill=tk.BOTH, expand=True)
+        ds_canvas_window = ds_canvas.create_window((0, 0), window=ds_inner_frame, anchor='nw')
+
+        def _on_ds_inner_configure(event=None):
+            ds_canvas.configure(scrollregion=ds_canvas.bbox("all"))
+
+        def _on_ds_canvas_configure(event=None):
+            ds_canvas.itemconfig(ds_canvas_window, width=event.width)
+
+        ds_inner_frame.bind('<Configure>', _on_ds_inner_configure)
+        ds_canvas.bind('<Configure>', _on_ds_canvas_configure)
+
+        ds_check_vars = {}  # {dataset_name: BooleanVar}
 
         # Load saved datasets
         saved_datasets = self._load_saved_datasets()
-        for ds_name in sorted(saved_datasets.keys()):
-            ds = saved_datasets[ds_name]
-            mu_count = len(ds.get('mu_log_v', []))
-            area_count = len(ds.get('area_log_v', []))
-            dataset_listbox.insert(tk.END, f"{ds_name}  (mu:{mu_count}, A/A0:{area_count})")
+
+        def get_checked_names():
+            """Return list of checked dataset names."""
+            return [name for name, var in ds_check_vars.items() if var.get()]
+
+        def _bind_scroll(widget):
+            """Bind mouse wheel scroll events to a widget for the dataset canvas."""
+            widget.bind('<Button-4>', lambda e: ds_canvas.yview_scroll(-1, "units"))
+            widget.bind('<Button-5>', lambda e: ds_canvas.yview_scroll(1, "units"))
+            widget.bind('<MouseWheel>', lambda e: ds_canvas.yview_scroll(int(-1 * (e.delta / 120)), "units"))
+
+        _bind_scroll(ds_canvas)
+
+        def refresh_checkbox_list():
+            """Rebuild the checkbox list from saved_datasets."""
+            for widget in ds_inner_frame.winfo_children():
+                widget.destroy()
+            ds_check_vars.clear()
+            for ds_name in sorted(saved_datasets.keys()):
+                ds = saved_datasets[ds_name]
+                mu_count = len(ds.get('mu_log_v', []))
+                area_count = len(ds.get('area_log_v', []))
+                var = tk.BooleanVar(value=False)
+                ds_check_vars[ds_name] = var
+                row = ttk.Frame(ds_inner_frame)
+                row.pack(fill=tk.X, pady=1, padx=2)
+                cb = ttk.Checkbutton(row, variable=var,
+                                     command=lambda n=ds_name: on_checkbox_toggle(n))
+                cb.pack(side=tk.LEFT, padx=(2, 4))
+                lbl = ttk.Label(row, text=f"{ds_name}  (mu:{mu_count}, A/A0:{area_count})",
+                                font=('Segoe UI', 14))
+                lbl.pack(side=tk.LEFT, fill=tk.X, expand=True)
+                _bind_scroll(row)
+                _bind_scroll(cb)
+                _bind_scroll(lbl)
+
+        refresh_checkbox_list()
 
         # Detail label
         detail_label = ttk.Label(right_frame, text="", font=('Segoe UI', 13),
                                  wraplength=280, foreground='#64748B')
         detail_label.pack(fill=tk.X, pady=3)
 
-        def on_dataset_select(event=None):
-            sel = dataset_listbox.curselection()
-            if not sel:
-                detail_label.config(text="")
-                return
-            idx = sel[0]
-            ds_name = sorted(saved_datasets.keys())[idx]
-            ds = saved_datasets[ds_name]
-            mu_n = len(ds.get('mu_log_v', []))
-            area_n = len(ds.get('area_log_v', []))
-            detail_label.config(
-                text=f"mu_visc: {mu_n}pts, A/A0: {area_n}pts\n"
-                     f"저장일: {ds.get('saved_date', 'N/A')}")
-
-        dataset_listbox.bind('<<ListboxSelect>>', on_dataset_select)
+        def on_checkbox_toggle(ds_name):
+            """Show detail for the toggled checkbox dataset."""
+            ds = saved_datasets.get(ds_name)
+            if ds:
+                mu_n = len(ds.get('mu_log_v', []))
+                area_n = len(ds.get('area_log_v', []))
+                checked = get_checked_names()
+                detail_label.config(
+                    text=f"[{ds_name}] mu_visc: {mu_n}pts, A/A0: {area_n}pts\n"
+                         f"저장일: {ds.get('saved_date', 'N/A')}\n"
+                         f"선택됨: {len(checked)}개")
 
         # Buttons for dataset management
         ds_btn_frame = ttk.Frame(right_frame)
@@ -9463,13 +9549,8 @@ $\begin{array}{lcc}
             saved_datasets[name] = ds_entry
             self._save_datasets_to_file(saved_datasets)
 
-            # Refresh listbox
-            dataset_listbox.delete(0, tk.END)
-            for dn in sorted(saved_datasets.keys()):
-                d = saved_datasets[dn]
-                mc = len(d.get('mu_log_v', []))
-                ac = len(d.get('area_log_v', []))
-                dataset_listbox.insert(tk.END, f"{dn}  (mu:{mc}, A/A0:{ac})")
+            # Refresh checkbox list
+            refresh_checkbox_list()
 
             messagebox.showinfo("저장 완료",
                                 f"'{name}' 데이터셋 저장 완료\n"
@@ -9477,13 +9558,12 @@ $\begin{array}{lcc}
                                 parent=dialog)
 
         def load_dataset():
-            """Load selected dataset into text areas."""
-            sel = dataset_listbox.curselection()
-            if not sel:
-                messagebox.showwarning("선택 필요", "불러올 데이터셋을 선택하세요.", parent=dialog)
+            """Load checked dataset into text areas."""
+            checked = get_checked_names()
+            if not checked:
+                messagebox.showwarning("선택 필요", "불러올 데이터셋을 체크하세요.", parent=dialog)
                 return
-            idx = sel[0]
-            ds_name = sorted(saved_datasets.keys())[idx]
+            ds_name = checked[0]
             ds = saved_datasets[ds_name]
 
             # Fill mu_visc text
@@ -9499,39 +9579,33 @@ $\begin{array}{lcc}
             dataset_name_var.set(ds_name)
 
         def delete_dataset():
-            """Delete selected dataset."""
-            sel = dataset_listbox.curselection()
-            if not sel:
-                messagebox.showwarning("선택 필요", "삭제할 데이터셋을 선택하세요.", parent=dialog)
+            """Delete checked datasets."""
+            checked = get_checked_names()
+            if not checked:
+                messagebox.showwarning("선택 필요", "삭제할 데이터셋을 체크하세요.", parent=dialog)
                 return
-            idx = sel[0]
-            ds_name = sorted(saved_datasets.keys())[idx]
-            if not messagebox.askyesno("삭제 확인", f"'{ds_name}' 데이터셋을 삭제하시겠습니까?", parent=dialog):
+            names_str = ', '.join(checked)
+            if not messagebox.askyesno("삭제 확인",
+                                       f"선택한 {len(checked)}개 데이터셋을 삭제하시겠습니까?\n({names_str})",
+                                       parent=dialog):
                 return
-            del saved_datasets[ds_name]
+            for ds_name in checked:
+                del saved_datasets[ds_name]
             self._save_datasets_to_file(saved_datasets)
-
-            dataset_listbox.delete(0, tk.END)
-            for dn in sorted(saved_datasets.keys()):
-                d = saved_datasets[dn]
-                mc = len(d.get('mu_log_v', []))
-                ac = len(d.get('area_log_v', []))
-                dataset_listbox.insert(tk.END, f"{dn}  (mu:{mc}, A/A0:{ac})")
+            refresh_checkbox_list()
             detail_label.config(text="")
 
         ttk.Button(save_frame, text="저장", command=save_dataset, width=6).pack(side=tk.LEFT)
 
         def plot_selected_datasets():
-            """Plot selected datasets on the graph (multiple overlay)."""
-            sel = dataset_listbox.curselection()
-            if not sel:
-                messagebox.showwarning("선택 필요", "플롯할 데이터셋을 선택하세요.\n(Ctrl+클릭으로 여러 개 선택 가능)", parent=dialog)
+            """Plot checked datasets on the graph (multiple overlay)."""
+            checked = get_checked_names()
+            if not checked:
+                messagebox.showwarning("선택 필요", "플롯할 데이터셋을 체크하세요.", parent=dialog)
                 return
 
-            sorted_names = sorted(saved_datasets.keys())
             self.plotted_ref_datasets = []
-            for idx in sel:
-                ds_name = sorted_names[idx]
+            for ds_name in checked:
                 ds = saved_datasets[ds_name]
                 self.plotted_ref_datasets.append({
                     'name': ds_name,
@@ -9553,10 +9627,9 @@ $\begin{array}{lcc}
                 # Even without calculation results, plot reference data on initial axes
                 self._plot_ref_datasets_on_initial_axes()
 
-            names = [sorted_names[i] for i in sel]
             messagebox.showinfo("플롯 완료",
-                                f"선택한 {len(sel)}개 데이터셋을 그래프에 표시했습니다.\n"
-                                f"데이터셋: {', '.join(names)}",
+                                f"선택한 {len(checked)}개 데이터셋을 그래프에 표시했습니다.\n"
+                                f"데이터셋: {', '.join(checked)}",
                                 parent=dialog)
 
         ttk.Button(ds_btn_frame, text="불러오기", command=load_dataset, width=10).pack(side=tk.LEFT, padx=3)
@@ -9565,7 +9638,7 @@ $\begin{array}{lcc}
         # Plot button (separate row for visibility)
         plot_btn_frame = ttk.Frame(right_frame)
         plot_btn_frame.pack(fill=tk.X, pady=3)
-        plot_btn = ttk.Button(plot_btn_frame, text="선택 데이터 플롯", command=plot_selected_datasets)
+        plot_btn = ttk.Button(plot_btn_frame, text="체크된 데이터 플롯", command=plot_selected_datasets)
         plot_btn.pack(fill=tk.X, padx=3, ipady=4)
 
         # Button frame
