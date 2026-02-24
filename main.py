@@ -7912,12 +7912,14 @@ $\begin{array}{lcc}
             q_min = float(self.q_min_var.get())
             G_matrix_corrected = np.zeros_like(G_matrix)
             P_matrix_corrected = np.zeros_like(G_matrix)
+            G_integrand_corrected = np.zeros_like(G_matrix)
 
             for j, v_j in enumerate(v):
                 self.g_calculator.velocity = v_j
                 results_recalc = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
                 G_matrix_corrected[:, j] = results_recalc['G']
                 P_matrix_corrected[:, j] = results_recalc['contact_area_ratio']
+                G_integrand_corrected[:, j] = results_recalc['G_integrand']
 
                 # Progress update (0-25%)
                 if j % max(1, len(v) // 10) == 0:
@@ -7928,6 +7930,7 @@ $\begin{array}{lcc}
             # Update self.results['2d_results'] so Tab 2's G(q) graph shows correct values
             self.results['2d_results']['G_matrix'] = G_matrix_corrected
             self.results['2d_results']['P_matrix'] = P_matrix_corrected
+            self.results['2d_results']['G_integrand_matrix'] = G_integrand_corrected
 
             self.status_var.set("G(q) 재계산 완료")
             self.root.update()
@@ -7965,6 +7968,7 @@ $\begin{array}{lcc}
                     results_nl = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
                     G_matrix_corrected[:, j] = results_nl['G']
                     P_matrix_corrected[:, j] = results_nl['contact_area_ratio']
+                    G_integrand_corrected[:, j] = results_nl['G_integrand']
 
                     # Progress update (25-50%)
                     if j % max(1, len(v) // 10) == 0:
@@ -7978,6 +7982,7 @@ $\begin{array}{lcc}
                 # Update self.results['2d_results'] with nonlinear-corrected values
                 self.results['2d_results']['G_matrix'] = G_matrix_corrected
                 self.results['2d_results']['P_matrix'] = P_matrix_corrected
+                self.results['2d_results']['G_integrand_matrix'] = G_integrand_corrected
 
                 self.status_var.set("비선형 G(q) 재계산 완료 - μ_visc 계산 중...")
                 self.root.update()
@@ -9454,7 +9459,7 @@ $\begin{array}{lcc}
 
         # 3x4 subplots layout:
         # Row 1: Local Strain | E' Storage (linear) | E'' Loss (linear) | E''*g Loss (nonlinear)
-        # Row 2: f,g Factors  | E'*f Storage (nl)   | G Integrand (lin) | G Integrand (nl)
+        # Row 2: f,g Factors  | E'*f Storage (nl)   | G(q) (lin)        | G(q) (nl)
         # Row 3: (empty)      | (empty)              | A/A0 (linear)     | A/A0 (nonlinear)
         self.ax_strain_contour = self.fig_strain_map.add_subplot(3, 4, 1)
         self.ax_E_storage = self.fig_strain_map.add_subplot(3, 4, 2)
@@ -9485,8 +9490,8 @@ $\begin{array}{lcc}
             (self.ax_E_loss_linear, "E'' Loss [MPa]"),
             (self.ax_E_loss_nonlinear, "E''×g [MPa]"),
             (self.ax_E_storage_nonlinear, "E'×f [MPa]"),
-            (self.ax_G_integrand_linear, "G Integrand (lin)"),
-            (self.ax_G_integrand, "G Integrand (nl)"),
+            (self.ax_G_integrand_linear, "G(q) (lin)"),
+            (self.ax_G_integrand, "G(q) (nl)"),
             (self.ax_contact_linear, "A/A0 (linear)"),
             (self.ax_contact_nonlinear, "A/A0 (nonlinear)")
         ]
@@ -9575,6 +9580,7 @@ $\begin{array}{lcc}
                 method='linear', bounds_error=False, fill_value=None
             )
 
+
             # Get PSD values
             C_q = self.psd_model(q_array)
 
@@ -9660,7 +9666,7 @@ $\begin{array}{lcc}
                         f_val = 1.0
                         E_storage_nonlinear[i, j] = E_storage
 
-                    # Get G value from Tab 3 results (interpolated)
+                    # Get G(q) value from Tab 3 results (interpolated cumulative G)
                     # G_interp uses log scale
                     try:
                         log_G_val = G_interp((np.log10(q), np.log10(v)))
@@ -9668,14 +9674,20 @@ $\begin{array}{lcc}
                     except:
                         G_linear = 1e-10
 
-                    # Store G as "integrand" for visualization (actually the cumulative G value)
                     G_integrand_linear[i, j] = G_linear
 
-                    # Calculate nonlinear G with f(ε) correction
-                    # G_nonlinear ≈ G_linear * f(ε)^2 (since G ~ |E|^2)
-                    if self.f_interpolator is not None:
-                        f_val_sq = f_val ** 2  # f_val was calculated above
-                        G_nonlinear = G_linear * f_val_sq
+                    # Calculate nonlinear G(q) with f(ε) and g(ε) correction
+                    # G ~ |E_eff|² = (E'f)² + (E''g)²
+                    # Correction ratio: ((E'f)² + (E''g)²) / (E'² + E''²)
+                    E_sq = E_storage**2 + E_loss**2
+                    if E_sq > 0 and (self.f_interpolator is not None or self.g_interpolator is not None):
+                        g_val = 1.0
+                        if self.g_interpolator is not None:
+                            g_val = self.g_interpolator(strain)
+                            g_val = np.clip(g_val, 0.01, None)
+                        E_eff_sq = (E_storage * f_val)**2 + (E_loss * g_val)**2
+                        nl_ratio = E_eff_sq / E_sq
+                        G_nonlinear = G_linear * nl_ratio
                     else:
                         G_nonlinear = G_linear
 
@@ -9728,11 +9740,11 @@ $\begin{array}{lcc}
 
         Layout:
         Row 1: Local Strain | E' Storage | E'' Loss | E''×g
-        Row 2: f,g Factors  | E'×f       | G (lin)  | G (nl)
+        Row 2: f,g Factors  | E'×f       | G(q) lin | G(q) nl
         Row 3: (empty)      | (empty)    | A/A0 lin | A/A0 nl
 
         - E' + E'' LogNorm 공유, E'×f + E''×g LogNorm 공유
-        - G integrand lin/nl 공유 범위, Y축 유효영역 크롭
+        - G(q) lin/nl 공유 범위, Y축 유효영역 크롭
         """
         if not hasattr(self, 'strain_map_results') or self.strain_map_results is None:
             return
@@ -9967,7 +9979,7 @@ $\begin{array}{lcc}
             log_G_lin_masked = _masked(g_lin_log)
             im7a = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_masked, cmap=g_cmap, shading='auto',
                                                           vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand_linear.set_title('G Integrand (lin) [log]', fontweight='bold', fontsize=12)
+            self.ax_G_integrand_linear.set_title('G(q) (lin) [log]', fontweight='bold', fontsize=12)
             self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=11)
             self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=11)
             cbar7a = self.fig_strain_map.colorbar(im7a, ax=self.ax_G_integrand_linear)
@@ -9980,7 +9992,7 @@ $\begin{array}{lcc}
             log_G_nl_masked = _masked(g_nl_log)
             im7b = self.ax_G_integrand.pcolormesh(V, Q, log_G_nl_masked, cmap=g_cmap, shading='auto',
                                                    vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand.set_title('G Integrand (nl) [log]', fontweight='bold', fontsize=12)
+            self.ax_G_integrand.set_title('G(q) (nl) [log]', fontweight='bold', fontsize=12)
             self.ax_G_integrand.set_xlabel('log10(v)', fontsize=11)
             self.ax_G_integrand.set_ylabel('log10(q)', fontsize=11)
             cbar7b = self.fig_strain_map.colorbar(im7b, ax=self.ax_G_integrand)
@@ -10085,7 +10097,7 @@ $\begin{array}{lcc}
             ("E'' Loss [Pa] (linear)", "E_loss_linear", True),
             ("E''×g Loss [Pa]", "E_loss_nonlinear", True),
             ("E'×f Storage [Pa]", "E_storage_nonlinear", True),
-            ("G Integrand", "G_integrand_nonlinear", True),
+            ("G(q)", "G_integrand_nonlinear", True),
             ("A/A0 Contact (linear)", "contact_linear", True),
             ("A/A0 Contact (nonlinear)", "contact_nonlinear", True),
         ]
