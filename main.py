@@ -10069,7 +10069,7 @@ $\begin{array}{lcc}
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - 데이터 선택")
-        dialog.geometry("400x400")
+        dialog.geometry("400x430")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -10077,7 +10077,7 @@ $\begin{array}{lcc}
         # Center the dialog
         dialog.update_idletasks()
         x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 400) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 430) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
@@ -10097,7 +10097,8 @@ $\begin{array}{lcc}
             ("E'' Loss [Pa] (linear)", "E_loss_linear", True),
             ("E''×g Loss [Pa]", "E_loss_nonlinear", True),
             ("E'×f Storage [Pa]", "E_storage_nonlinear", True),
-            ("G(q)", "G_integrand_nonlinear", True),
+            ("G(q) (linear)", "G_integrand_linear", True),
+            ("G(q) (nonlinear)", "G_integrand_nonlinear", True),
             ("A/A0 Contact (linear)", "contact_linear", True),
             ("A/A0 Contact (nonlinear)", "contact_nonlinear", True),
         ]
@@ -10180,8 +10181,8 @@ $\begin{array}{lcc}
                         lines.append(",".join(row_data))
 
                     # Write file
-                    with open(filepath, 'w', encoding='utf-8') as f:
-                        f.write("\n".join(lines))
+                    with open(filepath, 'w', encoding='utf-8-sig', newline='') as f:
+                        f.write("\n".join(lines) + "\n")
 
                     exported_files.append(filename)
 
