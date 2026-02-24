@@ -2154,7 +2154,7 @@ class PerssonModelGUI_V2:
         slider_frame = ttk.Frame(smooth_frame)
         slider_frame.pack(fill=tk.X, pady=2)
         ttk.Label(slider_frame, text="스무딩 강도:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
-        self.mc_smooth_window_var = tk.IntVar(value=11)
+        self.mc_smooth_window_var = tk.IntVar(value=23)
         self.mc_smooth_slider = ttk.Scale(
             slider_frame,
             from_=5, to=51,
@@ -2163,7 +2163,7 @@ class PerssonModelGUI_V2:
             command=lambda v: self.mc_smooth_label.config(text=f"{int(float(v))}")
         )
         self.mc_smooth_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=5)
-        self.mc_smooth_label = ttk.Label(slider_frame, text="11", width=3)
+        self.mc_smooth_label = ttk.Label(slider_frame, text="23", width=3)
         self.mc_smooth_label.pack(side=tk.RIGHT)
 
         # bT comparison checkbox
@@ -3817,6 +3817,27 @@ class PerssonModelGUI_V2:
         self.q_min_var = tk.StringVar(value="2.00e-01")
         ttk.Entry(input_frame, textvariable=self.q_min_var, width=15).grid(row=row, column=1, pady=5)
 
+        # Surface type q1 presets
+        row += 1
+        ttk.Label(input_frame, text="표면 종류 (q1 프리셋):").grid(row=row, column=0, sticky=tk.W, pady=5)
+        self.SURFACE_Q1_PRESETS = {
+            '(직접 입력)': None,
+            '화강암 (granite)': 1.0e7,
+            '아스팔트 (asphalt)': 3.0e6,
+            '콘크리트 (concrete)': 5.0e6,
+            '타이어시험로 (test track)': 1.0e6,
+            '유리 (glass)': 5.0e7,
+            '사포 P80 (sandpaper)': 2.0e7,
+            '사포 P240': 5.0e7,
+            '고무시트 (rubber sheet)': 5.0e5,
+        }
+        self.surface_q1_var = tk.StringVar(value='(직접 입력)')
+        surface_combo = ttk.Combobox(input_frame, textvariable=self.surface_q1_var,
+                                      values=list(self.SURFACE_Q1_PRESETS.keys()),
+                                      state='readonly', width=22, font=self.FONTS['body'])
+        surface_combo.grid(row=row, column=1, pady=5, sticky=tk.W)
+        surface_combo.bind('<<ComboboxSelected>>', self._on_surface_q1_selected)
+
         row += 1
         ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
         self.q_max_var = tk.StringVar(value="1.0e+6")
@@ -4064,6 +4085,28 @@ class PerssonModelGUI_V2:
         except (ValueError, AttributeError):
             # Invalid value or variables not yet initialized
             pass
+
+    def _on_surface_q1_selected(self, event=None):
+        """표면 종류 선택 시 q_max와 목표 q1을 자동 적용."""
+        selected = self.surface_q1_var.get()
+        q1_val = self.SURFACE_Q1_PRESETS.get(selected)
+        if q1_val is None:
+            return  # '(직접 입력)' selected
+
+        q1_str = f"{q1_val:.1e}"
+        # Apply to q_max
+        self.q_max_var.set(q1_str)
+        # Apply to target q1 in q1→h'rms mode
+        self.input_q1_var.set(q1_str)
+        # Switch to q1→h'rms mode and auto-calculate
+        self.hrms_q1_mode_var.set("q1_to_hrms")
+        self._on_hrms_q1_mode_changed()
+        # Auto-trigger q1→h'rms calculation
+        try:
+            self._calculate_hrms_q1()
+        except Exception as e:
+            print(f"[표면 q1] h'rms 자동 계산 건너뜀: {e}")
+        self.status_var.set(f"표면 선택: {selected}, q1={q1_str}")
 
     def _on_hrms_q1_mode_changed(self):
         """모드 변경 시 UI 상태 업데이트."""
@@ -4747,11 +4790,41 @@ class PerssonModelGUI_V2:
             import traceback
             traceback.print_exc()
 
+    def _get_mc_prefix(self):
+        """Return a filename prefix based on the loaded master curve file name."""
+        if hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None:
+            fname = self.persson_master_curve.get('filename', '')
+            if fname:
+                base = os.path.splitext(fname)[0]
+                # Sanitize for filename use
+                base = base.replace(' ', '_').replace('/', '_').replace('\\', '_')
+                return base
+        if hasattr(self, 'material_source') and self.material_source:
+            src = str(self.material_source)
+            # Extract short name from source string
+            for prefix in ['Persson 정품: ', 'Persson 정품 (', '기본 파일 (', 'Tab 1 마스터 커브']:
+                if src.startswith(prefix):
+                    src = src[len(prefix):].rstrip(')')
+                    break
+            src = src.replace(' ', '_').replace('/', '_').replace('\\', '_')
+            if len(src) > 30:
+                src = src[:30]
+            return src
+        return ""
+
+    def _make_export_filename(self, base_name, ext=".csv"):
+        """Create export filename with master curve prefix included."""
+        mc = self._get_mc_prefix()
+        if mc:
+            return f"{mc}_{base_name}{ext}"
+        return f"{base_name}{ext}"
+
     def _save_plot(self, fig, default_name):
         """Save matplotlib figure to file."""
+        mc_name = self._make_export_filename(default_name, ext=".png")
         filename = filedialog.asksaveasfilename(
             defaultextension=".png",
-            initialfile=f"{default_name}.png",
+            initialfile=mc_name,
             filetypes=[
                 ("PNG files", "*.png"),
                 ("PDF files", "*.pdf"),
@@ -5775,10 +5848,11 @@ class PerssonModelGUI_V2:
             name = data_names[idx]
             data = self.available_graph_data[name]
 
-            # Generate filename with timestamp
+            # Generate filename with MC prefix and timestamp
             from datetime import datetime
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"{name}_{timestamp}.txt"
+            mc_prefix = self._get_mc_prefix()
+            filename = f"{mc_prefix}_{name}_{timestamp}.txt" if mc_prefix else f"{name}_{timestamp}.txt"
             filepath = os.path.join(output_dir, filename)
 
             try:
@@ -6492,7 +6566,7 @@ $\begin{array}{lcc}
 
         filename = filedialog.asksaveasfilename(
             defaultextension=".csv",
-            initialfile="hrms_slope_data.csv",
+            initialfile=self._make_export_filename("hrms_slope_data"),
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
 
@@ -7117,7 +7191,7 @@ $\begin{array}{lcc}
 
         filename = filedialog.asksaveasfilename(
             defaultextension=".csv",
-            initialfile="fg_curves.csv",
+            initialfile=self._make_export_filename("fg_curves"),
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
 
@@ -9057,10 +9131,16 @@ $\begin{array}{lcc}
                     calc_temp = 20.0
                 nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
 
+                # MC prefix for filenames
+                mc_prefix = self._get_mc_prefix()
+                def mc_fn(base):
+                    return f"{mc_prefix}_{base}" if mc_prefix else base
+
                 # 공통 헤더 정보 (쉼표 구분)
                 def get_header_lines():
                     return [
                         f"# 생성일시,{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                        f"# 마스터커브,{mc_prefix if mc_prefix else 'N/A'}",
                         f"# 공칭하중(MPa),{load_mpa:.3f}",
                         f"# 계산온도(°C),{calc_temp:.1f}",
                         f"# 비선형보정적용,{'예' if nonlinear_applied else '아니오'}",
@@ -9069,7 +9149,7 @@ $\begin{array}{lcc}
 
                 # Export main results (v vs value)
                 if check_vars['mu_v'].get():
-                    filename = "mu_visc_vs_velocity.csv"
+                    filename = mc_fn("mu_visc_vs_velocity.csv")
                     filepath = os.path.join(save_dir, filename)
                     lines = get_header_lines() + ["velocity [m/s],mu_visc"]
                     for vi, mui in zip(v, mu):
@@ -9079,7 +9159,7 @@ $\begin{array}{lcc}
                     exported_files.append(filename)
 
                 if check_vars['mu_raw_v'].get():
-                    filename = "mu_visc_raw_vs_velocity.csv"
+                    filename = mc_fn("mu_visc_raw_vs_velocity.csv")
                     filepath = os.path.join(save_dir, filename)
                     lines = get_header_lines() + ["velocity [m/s],mu_visc_raw"]
                     for vi, mui in zip(v, mu_raw):
@@ -9109,7 +9189,7 @@ $\begin{array}{lcc}
                         if check_vars[key].get():
                             data = det.get(data_key)
                             if data is not None and len(data) == len(q_arr):
-                                filename = f"{file_suffix}_v{v_idx}_{v_selected:.2e}.csv"
+                                filename = mc_fn(f"{file_suffix}_v{v_idx}_{v_selected:.2e}.csv")
                                 filepath = os.path.join(save_dir, filename)
                                 lines = [f"# velocity = {v_selected:.6e} m/s", f"q [1/m],{data_key}"]
                                 for qi, di in zip(q_arr, data):
@@ -9205,7 +9285,7 @@ $\begin{array}{lcc}
             title="μ_visc + A/A0 데이터 내보내기",
             defaultextension=".csv",
             filetypes=[("CSV 파일", "*.csv"), ("텍스트 파일", "*.txt"), ("모든 파일", "*.*")],
-            initialfile="mu_visc_and_area.csv"
+            initialfile=self._make_export_filename("mu_visc_and_area")
         )
 
         if not file_path:
@@ -9227,8 +9307,10 @@ $\begin{array}{lcc}
 
             with open(file_path, 'w', encoding='utf-8-sig') as f:
                 # 헤더 정보 (주석은 별도 행으로)
+                mc_prefix = self._get_mc_prefix()
                 f.write("# mu_visc and A/A0 data\n")
                 f.write(f"# 생성일시: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                f.write(f"# 마스터커브: {mc_prefix if mc_prefix else 'N/A'}\n")
                 f.write(f"# 공칭하중(MPa): {load_mpa:.3f}\n")
                 f.write(f"# 계산온도(°C): {calc_temp:.1f}\n")
                 f.write(f"# 비선형보정적용: {'예' if nonlinear_applied else '아니오'}\n")
@@ -10493,8 +10575,9 @@ $\begin{array}{lcc}
                     if key == "strain":
                         data = data * 100
 
-                    # Create filename
-                    filename = f"strain_map_{key}.csv"
+                    # Create filename with MC prefix
+                    mc_prefix = self._get_mc_prefix()
+                    filename = f"{mc_prefix}_strain_map_{key}.csv" if mc_prefix else f"strain_map_{key}.csv"
                     filepath = os.path.join(save_dir, filename)
 
                     # Build CSV content
@@ -12129,20 +12212,72 @@ $\begin{array}{lcc}
             T = data[:, 0]
             aT = data[:, 1]
 
+            # Check for bT column
+            has_bT = data.shape[1] >= 3
+            if has_bT:
+                bT = data[:, 2]
+            else:
+                bT = np.ones_like(T)
+
+            # Compute log_aT
+            log_aT = np.log10(np.maximum(aT, 1e-20))
+
+            # Sort by temperature
+            sort_idx = np.argsort(T)
+            T = T[sort_idx]
+            aT = aT[sort_idx]
+            log_aT = log_aT[sort_idx]
+            bT = bT[sort_idx]
+
+            # Find reference temperature (where aT ≈ 1)
+            ref_idx = np.argmin(np.abs(aT - 1.0))
+            T_ref = T[ref_idx]
+
             # 저장 - persson_aT_data에도 저장
             self.persson_aT_data = {
-                'T': T,
-                'aT': aT,
+                'T': T.copy(),
+                'aT': aT.copy(),
+                'log_aT': log_aT.copy(),
+                'bT': bT.copy(),
+                'T_ref': T_ref,
+                'has_bT': has_bT,
                 'filename': selected,
                 'source': f'내장: {selected}'
             }
 
-            self.mc_aT_info_var.set(f"내장 aT: {selected} ({len(T)}pts)")
+            # Create interpolation functions
+            from scipy.interpolate import interp1d
+            self.persson_aT_interp = interp1d(
+                T, log_aT,
+                kind='linear',
+                bounds_error=False,
+                fill_value='extrapolate'
+            )
+            self.persson_bT_interp = interp1d(
+                T, bT,
+                kind='linear',
+                bounds_error=False,
+                fill_value='extrapolate'
+            )
+
+            # Update info display
+            bT_info = f", bT={bT.min():.2f}~{bT.max():.2f}" if has_bT else ""
+            self.mc_aT_info_var.set(
+                f"내장 aT: {selected} ({len(T)}pts, Tref={T_ref:.0f}°C{bT_info})"
+            )
+
+            # Plot aT on the master curve tab
+            self._plot_persson_aT()
+
             self.status_var.set(f"내장 aT 시프트 팩터 로드 완료: {selected}")
-            messagebox.showinfo("성공", f"내장 aT 시프트 팩터 로드 완료:\n{selected}")
+            messagebox.showinfo("성공",
+                f"내장 aT 시프트 팩터 로드 완료:\n{selected}\n\n"
+                f"데이터: {len(T)}pts, Tref={T_ref:.0f}°C\n"
+                f"aT 범위: {aT.min():.2e} ~ {aT.max():.2e}")
 
         except Exception as e:
-            messagebox.showerror("오류", f"내장 aT 시프트 팩터 로드 실패:\n{str(e)}")
+            import traceback
+            messagebox.showerror("오류", f"내장 aT 시프트 팩터 로드 실패:\n{str(e)}\n\n{traceback.format_exc()}")
 
     def _delete_preset_aT(self):
         """Delete selected preset aT shift factor file."""
