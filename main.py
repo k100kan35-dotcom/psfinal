@@ -3817,26 +3817,20 @@ class PerssonModelGUI_V2:
         self.q_min_var = tk.StringVar(value="2.00e-01")
         ttk.Entry(input_frame, textvariable=self.q_min_var, width=15).grid(row=row, column=1, pady=5)
 
-        # Surface type q1 presets
+        # Surface type q1 presets (user-defined)
         row += 1
-        ttk.Label(input_frame, text="표면 종류 (q1 프리셋):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.SURFACE_Q1_PRESETS = {
-            '(직접 입력)': None,
-            '화강암 (granite)': 1.0e7,
-            '아스팔트 (asphalt)': 3.0e6,
-            '콘크리트 (concrete)': 5.0e6,
-            '타이어시험로 (test track)': 1.0e6,
-            '유리 (glass)': 5.0e7,
-            '사포 P80 (sandpaper)': 2.0e7,
-            '사포 P240': 5.0e7,
-            '고무시트 (rubber sheet)': 5.0e5,
-        }
-        self.surface_q1_var = tk.StringVar(value='(직접 입력)')
-        surface_combo = ttk.Combobox(input_frame, textvariable=self.surface_q1_var,
-                                      values=list(self.SURFACE_Q1_PRESETS.keys()),
-                                      state='readonly', width=22, font=self.FONTS['body'])
-        surface_combo.grid(row=row, column=1, pady=5, sticky=tk.W)
-        surface_combo.bind('<<ComboboxSelected>>', self._on_surface_q1_selected)
+        ttk.Label(input_frame, text="q_max/q1 프리셋:").grid(row=row, column=0, sticky=tk.W, pady=5)
+        preset_q1_frame = ttk.Frame(input_frame)
+        preset_q1_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
+        self.surface_q1_var = tk.StringVar(value='(선택...)')
+        self.surface_q1_combo = ttk.Combobox(preset_q1_frame, textvariable=self.surface_q1_var,
+                                              state='readonly', width=18, font=self.FONTS['body'])
+        self.surface_q1_combo.pack(side=tk.LEFT)
+        ttk.Button(preset_q1_frame, text="로드", command=self._load_preset_surface_q1, width=4,
+                   style='Outline.TButton').pack(side=tk.LEFT, padx=1)
+        ttk.Button(preset_q1_frame, text="삭제", command=self._delete_preset_surface_q1, width=4).pack(side=tk.LEFT, padx=1)
+        ttk.Button(preset_q1_frame, text="현재값 저장", command=self._add_preset_surface_q1, width=8).pack(side=tk.LEFT, padx=1)
+        self._refresh_preset_surface_q1_list()
 
         row += 1
         ttk.Label(input_frame, text="최대 파수 q_max (1/m):").grid(row=row, column=0, sticky=tk.W, pady=5)
@@ -4086,27 +4080,120 @@ class PerssonModelGUI_V2:
             # Invalid value or variables not yet initialized
             pass
 
-    def _on_surface_q1_selected(self, event=None):
-        """표면 종류 선택 시 q_max와 목표 q1을 자동 적용."""
-        selected = self.surface_q1_var.get()
-        q1_val = self.SURFACE_Q1_PRESETS.get(selected)
-        if q1_val is None:
-            return  # '(직접 입력)' selected
-
-        q1_str = f"{q1_val:.1e}"
-        # Apply to q_max
-        self.q_max_var.set(q1_str)
-        # Apply to target q1 in q1→h'rms mode
-        self.input_q1_var.set(q1_str)
-        # Switch to q1→h'rms mode and auto-calculate
-        self.hrms_q1_mode_var.set("q1_to_hrms")
-        self._on_hrms_q1_mode_changed()
-        # Auto-trigger q1→h'rms calculation
+    def _refresh_preset_surface_q1_list(self):
+        """Refresh the preset surface q1 list in the combobox."""
         try:
-            self._calculate_hrms_q1()
+            preset_dir = self._get_preset_data_dir('surface_q1')
+            files = [f.replace('.txt', '') for f in os.listdir(preset_dir) if f.endswith('.txt')]
+            if files:
+                self.surface_q1_combo['values'] = sorted(files)
+            else:
+                self.surface_q1_combo['values'] = ['(데이터 없음)']
         except Exception as e:
-            print(f"[표면 q1] h'rms 자동 계산 건너뜀: {e}")
-        self.status_var.set(f"표면 선택: {selected}, q1={q1_str}")
+            print(f"[q1 프리셋] 목록 로드 오류: {e}")
+            self.surface_q1_combo['values'] = ['(오류)']
+
+    def _load_preset_surface_q1(self):
+        """Load a preset surface q1 file and apply q_max, q1 values."""
+        selected = self.surface_q1_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "로드할 프리셋을 선택하세요.")
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('surface_q1')
+            filepath = os.path.join(preset_dir, selected + '.txt')
+
+            q_max_val = None
+            q1_val = None
+            with open(filepath, 'r', encoding='utf-8') as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith('#') or not line:
+                        continue
+                    if line.startswith('q_max='):
+                        q_max_val = line.split('=', 1)[1].strip()
+                    elif line.startswith('q1='):
+                        q1_val = line.split('=', 1)[1].strip()
+
+            if q_max_val is None or q1_val is None:
+                messagebox.showerror("오류", "프리셋 파일 형식이 올바르지 않습니다.")
+                return
+
+            # Apply q_max to the field
+            self.q_max_var.set(q_max_val)
+            # Apply q1 to the target q1 field
+            self.input_q1_var.set(q1_val)
+            # Switch to q1→h'rms mode
+            self.hrms_q1_mode_var.set("q1_to_hrms")
+            self._on_hrms_q1_mode_changed()
+            # Auto-trigger q1→h'rms calculation
+            try:
+                self._calculate_hrms_q1()
+            except Exception as e:
+                print(f"[q1 프리셋] h'rms 자동 계산 건너뜀: {e}")
+            self.status_var.set(f"프리셋 로드: {selected}, q_max={q_max_val}, q1={q1_val}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"프리셋 로드 실패:\n{str(e)}")
+
+    def _delete_preset_surface_q1(self):
+        """Delete selected preset surface q1 file."""
+        selected = self.surface_q1_var.get()
+        if not selected or selected.startswith('('):
+            messagebox.showwarning("경고", "삭제할 프리셋을 선택하세요.")
+            return
+
+        if not messagebox.askyesno("확인", f"'{selected}' 프리셋을 삭제하시겠습니까?"):
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('surface_q1')
+            filepath = os.path.join(preset_dir, selected + '.txt')
+            os.remove(filepath)
+            self._refresh_preset_surface_q1_list()
+            self.surface_q1_var.set("(선택...)")
+            messagebox.showinfo("성공", f"삭제 완료: {selected}")
+        except Exception as e:
+            messagebox.showerror("오류", f"삭제 실패:\n{str(e)}")
+
+    def _add_preset_surface_q1(self):
+        """Save current q_max and q1 values as a preset."""
+        q_max_val = self.q_max_var.get().strip()
+        q1_val = self.input_q1_var.get().strip()
+
+        if not q_max_val or not q1_val:
+            messagebox.showwarning("경고", "q_max와 목표 q1 값을 먼저 입력하세요.")
+            return
+
+        # Validate that they are valid numbers
+        try:
+            float(q_max_val)
+            float(q1_val)
+        except ValueError:
+            messagebox.showwarning("경고", "q_max와 q1에 유효한 숫자를 입력하세요.")
+            return
+
+        from tkinter import simpledialog
+        name = simpledialog.askstring("프리셋 저장", f"프리셋 이름을 입력하세요:\n(현재 q_max={q_max_val}, q1={q1_val})")
+        if not name:
+            return
+
+        try:
+            preset_dir = self._get_preset_data_dir('surface_q1')
+            filepath = os.path.join(preset_dir, name + '.txt')
+
+            with open(filepath, 'w', encoding='utf-8') as f:
+                f.write(f"# q_max/q1 프리셋: {name}\n")
+                f.write(f"q_max={q_max_val}\n")
+                f.write(f"q1={q1_val}\n")
+
+            self._refresh_preset_surface_q1_list()
+            self.surface_q1_var.set(name)
+            messagebox.showinfo("성공", f"프리셋 저장 완료: {name}\nq_max={q_max_val}, q1={q1_val}")
+
+        except Exception as e:
+            messagebox.showerror("오류", f"프리셋 저장 실패:\n{str(e)}")
 
     def _on_hrms_q1_mode_changed(self):
         """모드 변경 시 UI 상태 업데이트."""
