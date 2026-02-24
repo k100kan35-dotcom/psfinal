@@ -45,7 +45,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 matplotlib.rcParams.update({
     'axes.unicode_minus': False,       # ASCII 마이너스 (유니코드 − 깨짐 방지)
     'text.usetex': False,              # LaTeX 비활성화
-    'mathtext.fontset': 'dejavusans',  # 수식 폰트: DejaVu Sans (matplotlib 내장, 항상 존재)
+    'mathtext.fontset': 'cm',  # 수식 폰트: Computer Modern (LaTeX 스타일, Cambria Math 유사)
     'font.size': 14,
     'axes.titlesize': 15,
     'axes.labelsize': 13,
@@ -553,6 +553,11 @@ class PerssonModelGUI_V2:
         file_menu.add_command(label="  Graph Data Export...", command=self._show_graph_data_export_popup)
         file_menu.add_separator()
         file_menu.add_command(label="  Exit", command=self.root.quit)
+
+        # Settings menu
+        settings_menu = tk.Menu(menubar, tearoff=0, **menu_cfg)
+        menubar.add_cascade(label="  Settings  ", menu=settings_menu)
+        settings_menu.add_command(label="  레이아웃 설정...", command=self._open_layout_settings)
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0, **menu_cfg)
@@ -6336,6 +6341,232 @@ Persson Friction Calculator v2.1 - User Guide
         """
         self._show_status(help_text, 'success')
 
+    def _open_layout_settings(self):
+        """Open global layout settings control panel."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("레이아웃 설정")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        dlg_w, dlg_h = 600, 700
+        x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - dlg_h) // 2
+        dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
+
+        C = self.COLORS
+
+        # Title
+        title_frame = tk.Frame(dialog, bg=C['sidebar'], padx=12, pady=8)
+        title_frame.pack(fill=tk.X)
+        tk.Label(title_frame, text="레이아웃 제어판", bg=C['sidebar'], fg='white',
+                 font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
+
+        # Scrollable content
+        content_frame = ttk.Frame(dialog, padding=15)
+        content_frame.pack(fill=tk.BOTH, expand=True)
+
+        # ── Section 1: Font Settings ──
+        font_frame = ttk.LabelFrame(content_frame, text="글꼴 설정", padding=10)
+        font_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # UI Font Family
+        row1 = ttk.Frame(font_frame)
+        row1.pack(fill=tk.X, pady=3)
+        ttk.Label(row1, text="UI 글꼴:", width=15).pack(side=tk.LEFT)
+        ui_font_var = tk.StringVar(value=self.FONTS['body'][0])
+        ui_font_combo = ttk.Combobox(row1, textvariable=ui_font_var, width=20,
+                                      values=['Segoe UI', 'Malgun Gothic', 'NanumGothic',
+                                              'Arial', 'Helvetica', 'Verdana', 'Consolas'])
+        ui_font_combo.pack(side=tk.LEFT, padx=5)
+
+        # UI Font Size
+        row2 = ttk.Frame(font_frame)
+        row2.pack(fill=tk.X, pady=3)
+        ttk.Label(row2, text="UI 글꼴 크기:", width=15).pack(side=tk.LEFT)
+        ui_size_var = tk.IntVar(value=self.FONTS['body'][1])
+        ui_size_spin = ttk.Spinbox(row2, from_=10, to=30, textvariable=ui_size_var, width=6)
+        ui_size_spin.pack(side=tk.LEFT, padx=5)
+        ttk.Label(row2, text="pt", font=('Segoe UI', 13)).pack(side=tk.LEFT)
+
+        # Plot Font Size
+        row3 = ttk.Frame(font_frame)
+        row3.pack(fill=tk.X, pady=3)
+        ttk.Label(row3, text="그래프 글꼴 크기:", width=15).pack(side=tk.LEFT)
+        plot_size_var = tk.IntVar(value=self.PLOT_FONTS['title'])
+        plot_size_spin = ttk.Spinbox(row3, from_=8, to=28, textvariable=plot_size_var, width=6)
+        plot_size_spin.pack(side=tk.LEFT, padx=5)
+        ttk.Label(row3, text="pt (title 기준)", font=('Segoe UI', 13)).pack(side=tk.LEFT)
+
+        # Mono Font
+        row4 = ttk.Frame(font_frame)
+        row4.pack(fill=tk.X, pady=3)
+        ttk.Label(row4, text="코드 글꼴:", width=15).pack(side=tk.LEFT)
+        mono_font_var = tk.StringVar(value=self.FONTS['mono'][0])
+        mono_font_combo = ttk.Combobox(row4, textvariable=mono_font_var, width=20,
+                                        values=['Consolas', 'Courier New', 'Lucida Console',
+                                                'DejaVu Sans Mono', 'Source Code Pro'])
+        mono_font_combo.pack(side=tk.LEFT, padx=5)
+
+        # ── Section 2: Panel Width Settings ──
+        panel_frame = ttk.LabelFrame(content_frame, text="패널 폭 설정", padding=10)
+        panel_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # Get current left panel width (default 600)
+        current_panel_width = getattr(self, '_left_panel_width', 600)
+
+        row5 = ttk.Frame(panel_frame)
+        row5.pack(fill=tk.X, pady=3)
+        ttk.Label(row5, text="컨트롤 패널 폭:", width=15).pack(side=tk.LEFT)
+        panel_width_var = tk.IntVar(value=current_panel_width)
+        panel_width_scale = ttk.Scale(row5, from_=400, to=900, variable=panel_width_var,
+                                       orient=tk.HORIZONTAL, length=250)
+        panel_width_scale.pack(side=tk.LEFT, padx=5)
+        panel_width_label = ttk.Label(row5, text=f"{current_panel_width}px", width=8)
+        panel_width_label.pack(side=tk.LEFT)
+
+        def _update_panel_width_label(*args):
+            panel_width_label.config(text=f"{panel_width_var.get()}px")
+        panel_width_var.trace_add('write', _update_panel_width_label)
+
+        # ── Section 3: Window Settings ──
+        window_frame = ttk.LabelFrame(content_frame, text="창 설정", padding=10)
+        window_frame.pack(fill=tk.X, pady=(0, 10))
+
+        row6 = ttk.Frame(window_frame)
+        row6.pack(fill=tk.X, pady=3)
+        ttk.Label(row6, text="창 크기:", width=15).pack(side=tk.LEFT)
+        win_w_var = tk.IntVar(value=self.root.winfo_width())
+        win_h_var = tk.IntVar(value=self.root.winfo_height())
+        ttk.Spinbox(row6, from_=1000, to=3000, textvariable=win_w_var, width=6).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row6, text="x").pack(side=tk.LEFT)
+        ttk.Spinbox(row6, from_=600, to=2000, textvariable=win_h_var, width=6).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row6, text="px", font=('Segoe UI', 13)).pack(side=tk.LEFT, padx=3)
+
+        # ── Section 4: Plot Theme ──
+        theme_frame = ttk.LabelFrame(content_frame, text="그래프 테마", padding=10)
+        theme_frame.pack(fill=tk.X, pady=(0, 10))
+
+        row7 = ttk.Frame(theme_frame)
+        row7.pack(fill=tk.X, pady=3)
+        ttk.Label(row7, text="수식 폰트:", width=15).pack(side=tk.LEFT)
+        math_font_var = tk.StringVar(value=matplotlib.rcParams.get('mathtext.fontset', 'dejavusans'))
+        math_combo = ttk.Combobox(row7, textvariable=math_font_var, width=20,
+                                   values=['cm', 'stix', 'stixsans', 'dejavusans', 'dejavuserif'])
+        math_combo.pack(side=tk.LEFT, padx=5)
+        ttk.Label(row7, text="(cm=Cambria Math \uc2a4\ud0c0\uc77c)", font=('Segoe UI', 13),
+                  foreground='#64748B').pack(side=tk.LEFT, padx=3)
+
+        # ── Buttons ──
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(fill=tk.X)
+
+        def apply_settings():
+            """Apply all layout settings."""
+            import tkinter.font as tkfont
+
+            # 1. Update FONTS dict
+            new_family = ui_font_var.get()
+            new_size = ui_size_var.get()
+            mono_family = mono_font_var.get()
+
+            self.FONTS = {
+                'heading':   (new_family, new_size + 5, 'bold'),
+                'subheading':(new_family, new_size + 3, 'bold'),
+                'body':      (new_family, new_size),
+                'body_bold': (new_family, new_size, 'bold'),
+                'small':     (new_family, new_size - 1),
+                'small_bold':(new_family, new_size - 1, 'bold'),
+                'tiny':      (new_family, new_size - 2),
+                'mono':      (mono_family, new_size),
+                'mono_small':(mono_family, new_size - 1),
+            }
+
+            # Update tk default fonts
+            for fname in ('TkDefaultFont', 'TkTextFont'):
+                try:
+                    f = tkfont.nametofont(fname)
+                    f.configure(family=new_family, size=new_size)
+                except Exception:
+                    pass
+            try:
+                f = tkfont.nametofont('TkFixedFont')
+                f.configure(family=mono_family, size=new_size)
+            except Exception:
+                pass
+
+            # 2. Update plot font sizes
+            new_plot_title = plot_size_var.get()
+            scale = new_plot_title / 15.0  # 15 is default title size
+            self.PLOT_FONTS = {
+                'title': new_plot_title,
+                'label': max(8, round(13 * scale)),
+                'tick': max(8, round(12 * scale)),
+                'legend': max(8, round(12 * scale)),
+                'suptitle': max(10, round(16 * scale)),
+                'annotation': max(8, round(12 * scale)),
+                'title_sm': max(8, round(13 * scale)),
+                'label_sm': max(8, round(12 * scale)),
+                'legend_sm': max(7, round(10 * scale)),
+            }
+
+            # Update matplotlib rcParams
+            matplotlib.rcParams.update({
+                'font.size': self.PLOT_FONTS['label'],
+                'axes.titlesize': self.PLOT_FONTS['title'],
+                'axes.labelsize': self.PLOT_FONTS['label'],
+                'xtick.labelsize': self.PLOT_FONTS['tick'],
+                'ytick.labelsize': self.PLOT_FONTS['tick'],
+                'legend.fontsize': self.PLOT_FONTS['legend'],
+                'figure.titlesize': self.PLOT_FONTS['suptitle'],
+                'mathtext.fontset': math_font_var.get(),
+            })
+
+            # 3. Update base font config for responsive scaling
+            self._base_font_cfg = {
+                'font.size':        self.PLOT_FONTS['label'],
+                'axes.titlesize':   self.PLOT_FONTS['title'],
+                'axes.labelsize':   self.PLOT_FONTS['label'],
+                'xtick.labelsize':  self.PLOT_FONTS['tick'],
+                'ytick.labelsize':  self.PLOT_FONTS['tick'],
+                'legend.fontsize':  self.PLOT_FONTS['legend'],
+                'figure.titlesize': self.PLOT_FONTS['suptitle'],
+            }
+
+            # 4. Update left panel width
+            new_panel_w = panel_width_var.get()
+            self._left_panel_width = new_panel_w
+
+            # 5. Update window size
+            new_win_w = win_w_var.get()
+            new_win_h = win_h_var.get()
+            self.root.geometry(f"{new_win_w}x{new_win_h}")
+
+            # 6. Re-apply theme with new fonts
+            self._setup_modern_theme()
+
+            # 7. Rescale all existing plot fonts
+            self._font_scale = 0  # force rescale
+            self._rescale_all_fonts()
+
+            dialog.destroy()
+            self._show_status("레이아웃 설정이 적용되었습니다.\n일부 변경은 탭 전환 시 반영됩니다.", 'success')
+
+        def reset_defaults():
+            """Reset to default settings."""
+            ui_font_var.set('Segoe UI')
+            ui_size_var.set(17)
+            plot_size_var.set(15)
+            mono_font_var.set('Consolas')
+            panel_width_var.set(600)
+            win_w_var.set(1600)
+            win_h_var.set(1000)
+            math_font_var.set('dejavusans')
+
+        ttk.Button(btn_frame, text="적용", command=apply_settings, width=12).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="초기화", command=reset_defaults, width=12).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=12).pack(side=tk.RIGHT, padx=5)
+
     def _show_about(self):
         """Show about dialog."""
         about_text = """
@@ -6354,200 +6585,193 @@ Rubber friction theory
         self._show_status(about_text, 'success')
 
     def _create_equations_tab(self, parent):
-        """Create equations reference tab with all formulas used in calculations."""
+        """Create equations reference tab - single unified scrollable layout with Cambria Math."""
         # Toolbar
         self._create_panel_toolbar(parent)
 
-        # Create scrollable frame
-        canvas = tk.Canvas(parent, bg='white')
+        # Single scrollable canvas for the entire tab
+        canvas = tk.Canvas(parent, bg='white', highlightthickness=0)
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        scrollable_frame = tk.Frame(canvas, bg='white')
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
 
-        # Enable mouse wheel scrolling
+        # Make scrollable_frame fill canvas width
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        canvas.bind('<Configure>', _on_canvas_configure)
+
+        def _update_scrollregion(event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        scrollable_frame.bind("<Configure>", _update_scrollregion)
+
+        # Mouse wheel scrolling (cross-platform)
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        def _on_mousewheel_linux_up(event):
+            canvas.yview_scroll(-3, "units")
+        def _on_mousewheel_linux_down(event):
+            canvas.yview_scroll(3, "units")
 
         def _bind_mousewheel(event):
             canvas.bind_all("<MouseWheel>", _on_mousewheel)
-
+            canvas.bind_all("<Button-4>", _on_mousewheel_linux_up)
+            canvas.bind_all("<Button-5>", _on_mousewheel_linux_down)
         def _unbind_mousewheel(event):
             canvas.unbind_all("<MouseWheel>")
+            canvas.unbind_all("<Button-4>")
+            canvas.unbind_all("<Button-5>")
 
         canvas.bind('<Enter>', _bind_mousewheel)
         canvas.bind('<Leave>', _unbind_mousewheel)
 
-        # Create matplotlib figure for equations
+        # Pack scrollbar and canvas
+        scrollbar.pack(side="right", fill="y")
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # --- Helper: create a matplotlib figure for a LaTeX equation block ---
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
-        import platform
 
-        # 전역 rcParams에서 설정된 sans-serif 폰트 사용 (한글 폰트 자동 적용)
-        fig = Figure(figsize=(12, 20), facecolor='white')
-        fig.suptitle('Persson 마찰 이론 - 계산 수식 정리', fontsize=18, fontweight='bold', y=0.985)
+        # Use Cambria Math for mathtext (good LaTeX rendering)
+        math_fontfamily = 'cm'  # Computer Modern (built-in, best LaTeX look)
 
-        # Single axis for all equations
-        ax = fig.add_subplot(111)
-        ax.axis('off')
+        def add_section_title(title_text, bg_color='#1B2A4A', fg_color='white'):
+            """Add a colored section header."""
+            frame = tk.Frame(scrollable_frame, bg=bg_color, padx=12, pady=8)
+            frame.pack(fill=tk.X, padx=10, pady=(12, 2))
+            tk.Label(frame, text=title_text, bg=bg_color, fg=fg_color,
+                     font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
 
-        # Equation text with LaTeX and detailed Korean explanations
-        # Based on user's comprehensive formula documentation
-        equations_text = r"""
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【0. 기본 물리량 정의】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        def add_text(text, font_size=15, fg='#1E293B', bold=False, padx=20, pady=2):
+            """Add a plain text label."""
+            weight = 'bold' if bold else 'normal'
+            lbl = tk.Label(scrollable_frame, text=text, bg='white', fg=fg,
+                           font=('Segoe UI', font_size, weight),
+                           justify=tk.LEFT, anchor='w', wraplength=1200)
+            lbl.pack(fill=tk.X, padx=padx, pady=pady, anchor='w')
 
-주파수 (고무가 느끼는 진동수):
-  $\omega = q \cdot v \cdot \cos\phi$
-  (응력 분포 계산 등 각도 적분 없는 경우: $\omega = q \cdot v$)
+        def add_equation(latex_str, fig_height=0.8, font_size=18):
+            """Add a LaTeX equation rendered via matplotlib."""
+            fig = Figure(figsize=(11, fig_height), facecolor='white')
+            ax = fig.add_subplot(111)
+            ax.axis('off')
+            ax.text(0.02, 0.5, latex_str, transform=ax.transAxes,
+                    fontsize=font_size, verticalalignment='center',
+                    horizontalalignment='left', usetex=False,
+                    math_fontfamily=math_fontfamily)
+            fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.05)
+            eq_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
+            eq_canvas.draw()
+            eq_canvas.get_tk_widget().configure(height=int(fig_height * 72))
+            eq_canvas.get_tk_widget().pack(fill=tk.X, padx=20, pady=1)
 
-유효 탄성률 (평면 변형 상태):
-  $E^*(\omega) = \frac{E(\omega)}{1-\nu^2}$
-  (여기서 $E(\omega)$는 DMA 데이터에서 보간한 복소 탄성률 크기)
+        def add_separator():
+            tk.Frame(scrollable_frame, bg='#CBD5E1', height=1).pack(fill=tk.X, padx=10, pady=6)
 
+        # === Title ===
+        title_frame = tk.Frame(scrollable_frame, bg='white', pady=10)
+        title_frame.pack(fill=tk.X, padx=10)
+        tk.Label(title_frame, text='Persson 마찰 이론 - 계산 수식 정리',
+                 bg='white', fg='#1B2A4A',
+                 font=('Segoe UI', 22, 'bold')).pack(anchor='w', padx=10)
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【1. 마찰 및 접촉 면적 계산용】(무차원, $\sigma_0$ 포함)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # ═══════════════════════════════════════════════════════
+        # Section 0: 기본 물리량 정의
+        # ═══════════════════════════════════════════════════════
+        add_section_title('0. 기본 물리량 정의')
 
-A. 면적 계산용 파워 스펙트럼 적분함수 $G_{area}(q)$:
+        add_text('주파수 (고무가 느끼는 진동수):', font_size=15, bold=True, pady=(6, 0))
+        add_equation(r'$\omega = q \cdot v \cdot \cos\phi$', fig_height=0.6, font_size=18)
+        add_text('  (응력 분포 계산 등 각도 적분 없는 경우: \u03c9 = q \u00b7 v)', font_size=14, fg='#64748B')
 
-$G_{area}(q) = \frac{1}{8} \int_{q_0}^{q} dq' (q')^3 C(q') \int_{0}^{2\pi} d\phi | \frac{E(q'v\cos\phi)}{(1-\nu^2)\sigma_0} |^2$
+        add_text('유효 탄성률 (평면 변형 상태):', font_size=15, bold=True, pady=(8, 0))
+        add_equation(r'$E^*(\omega) = \frac{E(\omega)}{1-\nu^2}$', fig_height=0.7, font_size=18)
+        add_text('  (E(\u03c9)는 DMA 데이터에서 보간한 복소 탄성률 크기)', font_size=14, fg='#64748B')
 
-  변수: $E$는 $\cos\phi$에 따라 주파수가 변하므로 각도 적분 내부에서 업데이트
-  단위: 무차원 (dimensionless)
-  물리적 의미: 거칠기에 의한 고무 변형 정도 (접촉 불균일성 지표)
-  용도: 그래프 (a), (c)의 G(q) 곡선
+        # ═══════════════════════════════════════════════════════
+        # Section 1: 마찰 및 접촉 면적 계산용
+        # ═══════════════════════════════════════════════════════
+        add_section_title('1. 마찰 및 접촉 면적 계산용 (무차원, \u03c3\u2080 포함)')
 
-B. 실접촉 면적 비율 $P(q)$:
+        add_text('A. 면적 계산용 파워 스펙트럼 적분함수 G_area(q):', font_size=15, bold=True, pady=(6, 0))
+        add_equation(
+            r'$G_{area}(q) = \frac{1}{8} \int_{q_0}^{q} dq^{\prime}\, (q^{\prime})^3\, C(q^{\prime})'
+            r' \int_{0}^{2\pi} d\phi\, \left| \frac{E(q^{\prime}v\cos\phi)}{(1-\nu^2)\sigma_0} \right|^2$',
+            fig_height=0.9, font_size=17)
+        add_text('  변수: E는 cos\u03c6에 따라 주파수가 변하므로 각도 적분 내부에서 업데이트', font_size=14, fg='#64748B')
+        add_text('  단위: 무차원 (dimensionless) | 물리적 의미: 거칠기에 의한 고무 변형 정도', font_size=14, fg='#64748B')
 
-$\frac{A(q)}{A_0} = P(q) \approx \mathrm{erf}( \frac{1}{2\sqrt{G_{area}(q)}} )$
+        add_separator()
+        add_text('B. 실접촉 면적 비율 P(q):', font_size=15, bold=True, pady=(4, 0))
+        add_equation(
+            r'$\frac{A(q)}{A_0} = P(q) \approx \mathrm{erf}\!\left( \frac{1}{2\sqrt{G_{area}(q)}} \right)$',
+            fig_height=0.9, font_size=18)
+        add_text('  물리적 의미: 배율 q에서 고무가 바닥과 닿아있는 면적 비율 (0 \u2264 P \u2264 1)', font_size=14, fg='#64748B')
 
-  물리적 의미: 배율 q에서 고무가 바닥과 닿아있는 면적 비율
-  범위: 0 <= P <= 1
-  용도: 그래프 (c), (d)의 접촉 면적 곡선
+        add_separator()
+        add_text('C. 점탄성 마찰 계수 \u03bc_visc:', font_size=15, bold=True, pady=(4, 0))
+        add_equation(
+            r'$\mu_{visc} \approx \frac{1}{2} \int_{q_0}^{q_1} dq\, q^3 C(q)\, S(q)\, P(q)'
+            r' \int_{0}^{2\pi} d\phi\, \cos\phi\, \mathrm{Im}\!\left( \frac{E(qv\cos\phi)}{(1-\nu^2)\sigma_0} \right)$',
+            fig_height=0.9, font_size=17)
+        add_text('  물리적 의미: 에너지 손실에 의한 마찰 계수 (접촉 면적 P(q)가 가중치)', font_size=14, fg='#64748B')
 
-C. 점탄성 마찰 계수 $\mu_{visc}$:
+        add_text('보정 계수 S(q) (대변형 시 접촉 면적 감소 보정):', font_size=15, bold=True, pady=(8, 0))
+        add_equation(r'$S(q) = \gamma + (1-\gamma)\,P^2(q) \qquad (\gamma \approx 0.5)$', fig_height=0.6, font_size=18)
 
-$\mu_{visc} \approx \frac{1}{2} \int_{q_0}^{q_1} dq \, q^3 C(q) S(q) P(q) \int_{0}^{2\pi} d\phi \, \cos\phi \, \mathrm{Im}( \frac{E(qv\cos\phi)}{(1-\nu^2)\sigma_0} )$
+        # ═══════════════════════════════════════════════════════
+        # Section 2: 응력 분포 계산용
+        # ═══════════════════════════════════════════════════════
+        add_section_title('2. 응력 분포 계산용 (Pa\u00b2 단위, \u03c3\u2080 없음, 각도 적분 없음)')
 
-  물리적 의미: 에너지 손실에 의한 마찰 계수 (접촉 면적 $P(q)$가 가중치)
-  영향 요인: 접촉 면적 $P(q)$, 에너지 소산, 재료 물성 ($E'$, $E''$)
+        add_text('A. 응력 분산 함수 G_stress(q):', font_size=15, bold=True, pady=(6, 0))
+        add_equation(
+            r'$G_{stress}(q) = \frac{\pi}{4} \int_{q_0}^{q} dq^{\prime}\, (q^{\prime})^3\, C(q^{\prime})'
+            r'\, \left| \frac{E(q^{\prime}v)}{1-\nu^2} \right|^2$',
+            fig_height=0.9, font_size=18)
+        add_text('  주의: 각도 적분 없음! \u03c3\u2080가 분모에 없음!', font_size=14, fg='#DC2626', bold=True)
+        add_text('  단위: Pa\u00b2 (압력의 제곱) | 물리적 의미: 접촉 압력 분포의 분산 (variance)', font_size=14, fg='#64748B')
 
-보정 계수 $S(q)$ (대변형 시 접촉 면적 감소 보정):
-  $S(q) = \gamma + (1-\gamma)P^2(q)$  (보통 $\gamma \approx 0.5$)
+        add_separator()
+        add_text('B. 국소 응력 확률 분포 P(\u03c3, q):', font_size=15, bold=True, pady=(4, 0))
+        add_equation(
+            r'$P(\sigma, q) = \frac{1}{\sqrt{4\pi G_{stress}}} '
+            r'\left[ \exp\!\left( -\frac{(\sigma - \sigma_0)^2}{4\,G_{stress}} \right)'
+            r' - \exp\!\left( -\frac{(\sigma + \sigma_0)^2}{4\,G_{stress}} \right) \right]$',
+            fig_height=1.0, font_size=17)
+        add_text('  \u03c3: 국소 접촉 응력 | \u03c3\u2080: 명목 압력 (평균 압력, 분포의 중심)', font_size=14, fg='#64748B')
+        add_text('  핵심: 피크 위치 = \u03c3\u2080 (속도 무관), G_stress \u2191 \u2192 분포 넓어짐, \u03c3\u21920 \u2192 P\u21920', font_size=14, fg='#64748B')
 
+        # ═══════════════════════════════════════════════════════
+        # Section 3: 핵심 비교 G_area vs G_stress
+        # ═══════════════════════════════════════════════════════
+        add_section_title('핵심 비교: G_area vs G_stress', bg_color='#7C3AED')
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【2. 응력 분포 계산용】(Pa² 단위, $\sigma_0$ 없음, 각도 적분 없음)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        add_equation(
+            r'$\begin{array}{lcc}'
+            r'\hline'
+            r' \mathrm{항목} & G_{area}(q,v) & G_{stress}(q,v) \\'
+            r'\hline'
+            r' \mathrm{단위} & \mathrm{무차원} & \mathrm{Pa}^2 \\'
+            r' \mathrm{각도\;적분} & \mathrm{있음}\;(\int_0^{2\pi} d\phi) & \mathrm{없음} \\'
+            r' \mathrm{탄성률\;항} & |E/((1\!-\!\nu^2)\sigma_0)|^2 & |E/(1\!-\!\nu^2)|^2 \\'
+            r' \mathrm{주파수} & \omega = qv\cos\phi & \omega = qv \\'
+            r' \mathrm{용도} & P(q),\;\mu\;\mathrm{계산} & P(\sigma)\;\mathrm{계산} \\'
+            r'\hline'
+            r'\end{array}$',
+            fig_height=2.2, font_size=16)
 
-A. 응력 분산 함수 $G_{stress}(q)$:
+        add_text('주의: 같은 이름 "G"를 사용하지만 완전히 다른 물리량!', font_size=15, fg='#DC2626', bold=True)
+        add_text('  G_area: "얼마나 띄엄띄엄 닿는가" (접촉의 불균일성)', font_size=14, fg='#64748B')
+        add_text('  G_stress: "압력이 얼마나 들쭉날쭉한가" (응력의 분산)', font_size=14, fg='#64748B')
 
-$G_{stress}(q) = \frac{\pi}{4} \int_{q_0}^{q} dq' (q')^3 C(q') | \frac{E(q'v)}{1-\nu^2} |^2$
+        # Bottom padding for scroll
+        tk.Frame(scrollable_frame, bg='white', height=80).pack(fill=tk.X)
 
-  주의: 각도 적분 없음! $\sigma_0$ 분모에 없음!
-  단위: Pa² (압력의 제곱)
-  물리적 의미: 접촉 압력 분포의 분산 (variance)
-    - $G_{stress}$ 크다 = 응력이 넓게 퍼짐 (일부 매우 높은 압력)
-    - $G_{stress}$ 작다 = 응력이 명목 압력 근처에 집중
-  용도: 그래프 (b)의 응력 확률 분포 계산
-
-  속도 의존성 정확도 향상 팁:
-    일부 문헌에서는 E를 상수로 가정하여 적분 밖으로 빼지만,
-    속도에 따른 변화를 정확히 보려면 E(q'v)를 적분 안에 넣고
-    누적 적분(cumtrapz) 필요
-
-B. 국소 응력 확률 분포 $P(\sigma, q)$:
-
-$P(\sigma, q) = \frac{1}{\sqrt{4\pi G_{stress}(q)}} [ \exp( -\frac{(\sigma - \sigma_0)^2}{4 G_{stress}(q)} ) - \exp( -\frac{(\sigma + \sigma_0)^2}{4 G_{stress}(q)} ) ]$
-
-  변수:
-    - $\sigma$: 국소 접촉 응력 (특정 지점에서 실제 받는 압력)
-    - $\sigma_0$: 명목 압력 (평균 압력, 분포의 중심)
-
-  물리적 의미:
-    특정 압력값을 받는 접촉점의 확률 분포
-    평균은 $\sigma_0$이지만 일부 돌기는 매우 높은 압력 (10 MPa 이상)
-
-  핵심 특징:
-    1. 피크 위치 = $\sigma_0$ (속도 무관, 항상 명목 압력에서 최대)
-    2. $G_{stress}$ 증가 시 분포 넓어짐 (고압 구간 증가)
-    3. $\sigma \to 0$일 때 P $\to$ 0 (음의 응력 불가능)
-
-  용도: 그래프 (b)의 속도별 응력 분포 곡선
-
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【핵심 비교: $G_{area}$ vs $G_{stress}$】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-$\begin{array}{lcc}
-\hline
-\text{항목} & G_{area}(q,v) & G_{stress}(q,v) \\
-\hline
-\text{단위} & \text{무차원} & \text{Pa}^2 \\
-\text{각도 적분} & \text{있음}\ (\int_0^{2\pi} d\phi) & \text{없음} \\
-\text{탄성률 항} & |E/((1-\nu^2)\sigma_0)|^2 & |E/(1-\nu^2)|^2 \\
-\text{주파수} & \omega = qv\cos\phi & \omega = qv \\
-\text{물리적 의미} & \text{접촉 불균일성} & \text{응력 분산} \\
-\text{용도} & P(q), \mu\ \text{계산} & P(\sigma)\ \text{계산} \\
-\text{그래프} & (a), (c), (d) & (b) \\
-\hline
-\end{array}$
-
-주의: 같은 이름 "G"를 사용하지만 완전히 다른 물리량!
-  $G_{area}$: "얼마나 띄엄띄엄 닿는가" (접촉의 불균일성)
-  $G_{stress}$: "압력이 얼마나 들쭉날쭉한가" (응력의 분산)
-"""
-
-        # Render text with proper LaTeX support
-        # matplotlib's text() requires each $...$ to be recognized as math mode
-        lines = equations_text.strip().split('\n')
-        y_position = 0.98
-        line_spacing = 0.018  # Spacing between lines
-
-        import re
-
-        for line in lines:
-            line_stripped = line.strip()
-            if line_stripped:
-                # Check if line contains LaTeX (starts with $ or contains inline $...$)
-                if line_stripped.startswith('$') and line_stripped.endswith('$'):
-                    # Full LaTeX line - render as math
-                    ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
-                           fontsize=12, verticalalignment='top', horizontalalignment='left',
-                           usetex=False)
-                elif '$' in line_stripped:
-                    # Mixed content - split and render parts separately
-                    # For simplicity, render whole line and let matplotlib handle it
-                    ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
-                           fontsize=12, verticalalignment='top', horizontalalignment='left',
-                           usetex=False)
-                else:
-                    # Plain text - use Korean font (from global rcParams)
-                    ax.text(0.02, y_position, line_stripped, transform=ax.transAxes,
-                           fontsize=12, verticalalignment='top', horizontalalignment='left',
-                           usetex=False)
-                y_position -= line_spacing
-            else:
-                y_position -= line_spacing * 0.5  # Half spacing for empty lines
-
-        # Embed in tkinter
-        canvas_eq = FigureCanvasTkAgg(fig, master=scrollable_frame)
-        canvas_eq.draw()
-        canvas_eq.get_tk_widget().pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
-
-        # Pack scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+        # Force scrollregion update after all widgets are added
+        self.root.after(100, _update_scrollregion)
 
     def _create_rms_slope_tab(self, parent):
         """Create h'rms / Local Strain calculation tab."""
@@ -7396,6 +7620,33 @@ $\begin{array}{lcc}
                   width=8).pack(side=tk.LEFT, padx=2)
         ttk.Button(ref_row1, text="비교 분석", command=self._analyze_mu_comparison,
                   width=10).pack(side=tk.RIGHT, padx=2)
+
+        # Row 2: Plot clear/reset buttons
+        ref_row2 = ttk.Frame(ref_frame)
+        ref_row2.pack(fill=tk.X, pady=1)
+
+        def _clear_ref_plots():
+            self.plotted_ref_datasets = []
+            if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
+                v = self.mu_visc_results.get('v')
+                mu = self.mu_visc_results.get('mu')
+                details = self.mu_visc_results.get('details')
+                if v is not None and mu is not None and details is not None:
+                    use_nl = self.mu_use_fg_var.get() if hasattr(self, 'mu_use_fg_var') else False
+                    self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nl)
+            else:
+                self._reset_mu_visc_axes()
+            self._show_status("참조 데이터 플롯을 지웠습니다.", 'info')
+
+        def _reset_all_plots():
+            self.plotted_ref_datasets = []
+            self._reset_mu_visc_axes()
+            self._show_status("그래프를 초기화했습니다.", 'info')
+
+        ttk.Button(ref_row2, text="참조 플롯 지우기", command=_clear_ref_plots,
+                   width=14).pack(side=tk.LEFT, padx=2)
+        ttk.Button(ref_row2, text="플롯 초기화", command=_reset_all_plots,
+                   width=10).pack(side=tk.LEFT, padx=2)
 
         # Gap display (A/A0 계산값 vs 참조값 차이)
         self.area_gap_var = tk.StringVar(value="A/A0 Gap: 계산 후 표시")
@@ -8960,6 +9211,45 @@ $\begin{array}{lcc}
         except Exception as e:
             print(f"[DEBUG] _plot_ref_datasets_on_initial_axes error: {e}")
 
+    def _reset_mu_visc_axes(self):
+        """Reset all mu_visc plot axes to initial empty state."""
+        try:
+            pf = self.PLOT_FONTS
+            # Top-left: f,g curves
+            self.ax_fg_curves.clear()
+            self.ax_fg_curves.set_title('f(\u03b5), g(\u03b5) 곡선', fontweight='bold', fontsize=pf['title'])
+            self.ax_fg_curves.set_xlabel('변형률 \u03b5 (fraction)', fontsize=pf['label'])
+            self.ax_fg_curves.set_ylabel('보정 계수', fontsize=pf['label'])
+            self.ax_fg_curves.grid(True, alpha=0.3)
+
+            # Top-right: mu_visc vs velocity
+            self.ax_mu_v.clear()
+            self.ax_mu_v.set_title('\u03bc_visc(v) 곡선', fontweight='bold', fontsize=pf['title'])
+            self.ax_mu_v.set_xlabel('속도 v (m/s)', fontsize=pf['label'])
+            self.ax_mu_v.set_ylabel('마찰 계수 \u03bc_visc', fontsize=pf['label'])
+            self.ax_mu_v.set_xscale('log')
+            self.ax_mu_v.grid(True, alpha=0.3)
+
+            # Bottom-left: Contact Area Ratio vs Velocity
+            self.ax_mu_cumulative.clear()
+            self.ax_mu_cumulative.set_title('실접촉 면적비율 P(v)', fontweight='bold', fontsize=pf['title'])
+            self.ax_mu_cumulative.set_xlabel('속도 v (m/s)', fontsize=pf['label'])
+            self.ax_mu_cumulative.set_ylabel('평균 P(q)', fontsize=pf['label'])
+            self.ax_mu_cumulative.set_xscale('log')
+            self.ax_mu_cumulative.grid(True, alpha=0.3)
+
+            # Bottom-right: P(q) and S(q)
+            self.ax_ps.clear()
+            self.ax_ps.set_title('P(q), S(q) 분포', fontweight='bold', fontsize=pf['title'])
+            self.ax_ps.set_xlabel('파수 q (1/m)', fontsize=pf['label'])
+            self.ax_ps.set_ylabel('P(q), S(q)', fontsize=pf['label'])
+            self.ax_ps.set_xscale('log')
+            self.ax_ps.grid(True, alpha=0.3)
+
+            self.canvas_mu_visc.draw()
+        except Exception as e:
+            print(f"[DEBUG] _reset_mu_visc_axes error: {e}")
+
     def _analyze_mu_comparison(self):
         """Analyze difference between calculated and reference μ_visc and provide recommendations."""
         if self.mu_visc_results is None:
@@ -10245,11 +10535,167 @@ $\begin{array}{lcc}
         ttk.Button(ds_btn_frame, text="불러오기", command=load_dataset, width=10).pack(side=tk.LEFT, padx=3)
         ttk.Button(ds_btn_frame, text="삭제", command=delete_dataset, width=8).pack(side=tk.LEFT, padx=3)
 
+        # Export to Excel button
+        def export_to_excel():
+            """Export checked datasets to a single Excel file."""
+            checked = get_checked_names()
+            if not checked:
+                self._show_status("엑셀로 내보낼 데이터셋을 체크하세요.", 'warning')
+                return
+
+            file_path = filedialog.asksaveasfilename(
+                parent=dialog,
+                title="엑셀 파일로 내보내기",
+                defaultextension=".xlsx",
+                filetypes=[("Excel Files", "*.xlsx"), ("All Files", "*.*")],
+                initialfile=f"reference_data_{checked[0]}.xlsx" if len(checked) == 1
+                            else "reference_data_combined.xlsx"
+            )
+            if not file_path:
+                return
+
+            try:
+                # Try openpyxl first, fall back to csv if not available
+                try:
+                    from openpyxl import Workbook
+                    wb = Workbook()
+
+                    # Sheet 1: mu_visc data
+                    ws_mu = wb.active
+                    ws_mu.title = "mu_visc"
+                    # Header row
+                    header = ["log10(v)"]
+                    for ds_name in checked:
+                        header.append(f"mu_visc ({ds_name})")
+                    ws_mu.append(header)
+
+                    # Collect all unique log_v values
+                    all_log_v = set()
+                    for ds_name in checked:
+                        ds = saved_datasets[ds_name]
+                        for lv in ds.get('mu_log_v', []):
+                            all_log_v.add(round(lv, 8))
+                    all_log_v = sorted(all_log_v)
+
+                    # Write data rows
+                    for lv in all_log_v:
+                        row_data = [lv]
+                        for ds_name in checked:
+                            ds = saved_datasets[ds_name]
+                            mu_lv = ds.get('mu_log_v', [])
+                            mu_vals = ds.get('mu_vals', [])
+                            val = None
+                            for i, mlv in enumerate(mu_lv):
+                                if abs(round(mlv, 8) - lv) < 1e-7:
+                                    val = mu_vals[i]
+                                    break
+                            row_data.append(val if val is not None else "")
+                        ws_mu.append(row_data)
+
+                    # Sheet 2: A/A0 data
+                    ws_area = wb.create_sheet("A_A0")
+                    header_area = ["log10(v)"]
+                    for ds_name in checked:
+                        header_area.append(f"A/A0 ({ds_name})")
+                    ws_area.append(header_area)
+
+                    all_log_v_area = set()
+                    for ds_name in checked:
+                        ds = saved_datasets[ds_name]
+                        for lv in ds.get('area_log_v', []):
+                            all_log_v_area.add(round(lv, 8))
+                    all_log_v_area = sorted(all_log_v_area)
+
+                    for lv in all_log_v_area:
+                        row_data = [lv]
+                        for ds_name in checked:
+                            ds = saved_datasets[ds_name]
+                            area_lv = ds.get('area_log_v', [])
+                            area_vals = ds.get('area_vals', [])
+                            val = None
+                            for i, alv in enumerate(area_lv):
+                                if abs(round(alv, 8) - lv) < 1e-7:
+                                    val = area_vals[i]
+                                    break
+                            row_data.append(val if val is not None else "")
+                        ws_area.append(row_data)
+
+                    # Auto-fit column widths
+                    for ws in [ws_mu, ws_area]:
+                        for col in ws.columns:
+                            max_len = max(len(str(cell.value or "")) for cell in col)
+                            ws.column_dimensions[col[0].column_letter].width = max(12, max_len + 2)
+
+                    wb.save(file_path)
+                    self._show_status(f"엑셀 파일 저장 완료: {os.path.basename(file_path)}\n"
+                                        f"데이터셋: {', '.join(checked)}", 'success')
+
+                except ImportError:
+                    # Fallback: save as CSV if openpyxl not available
+                    import csv
+                    csv_path = file_path.replace('.xlsx', '.csv')
+                    with open(csv_path, 'w', newline='', encoding='utf-8-sig') as f:
+                        writer = csv.writer(f)
+                        writer.writerow(["# Reference Data Export"])
+                        writer.writerow([])
+                        writer.writerow(["# mu_visc data"])
+                        header = ["log10(v)"] + [f"mu_visc ({n})" for n in checked]
+                        writer.writerow(header)
+                        for ds_name in checked:
+                            ds = saved_datasets[ds_name]
+                            for lv, mv in zip(ds.get('mu_log_v', []), ds.get('mu_vals', [])):
+                                writer.writerow([lv, mv])
+                        writer.writerow([])
+                        writer.writerow(["# A/A0 data"])
+                        header_area = ["log10(v)"] + [f"A/A0 ({n})" for n in checked]
+                        writer.writerow(header_area)
+                        for ds_name in checked:
+                            ds = saved_datasets[ds_name]
+                            for lv, av in zip(ds.get('area_log_v', []), ds.get('area_vals', [])):
+                                writer.writerow([lv, av])
+                    self._show_status(f"CSV 파일 저장 완료 (openpyxl 미설치): {os.path.basename(csv_path)}", 'success')
+
+            except Exception as e:
+                messagebox.showerror("오류", f"엑셀 내보내기 실패:\n{str(e)}", parent=dialog)
+
+        ttk.Button(ds_btn_frame, text="엑셀 내보내기", command=export_to_excel, width=12).pack(side=tk.LEFT, padx=3)
+
         # Plot button (separate row for visibility)
         plot_btn_frame = ttk.Frame(right_frame)
         plot_btn_frame.pack(fill=tk.X, pady=3)
         plot_btn = ttk.Button(plot_btn_frame, text="체크된 데이터 플롯", command=plot_selected_datasets)
         plot_btn.pack(fill=tk.X, padx=3, ipady=4)
+
+        # Plot clear and reset buttons
+        plot_ctrl_frame = ttk.Frame(right_frame)
+        plot_ctrl_frame.pack(fill=tk.X, pady=3)
+
+        def clear_plotted_datasets():
+            """Clear all plotted reference datasets from graph."""
+            self.plotted_ref_datasets = []
+            # Refresh plots
+            if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
+                v = self.mu_visc_results.get('v')
+                mu = self.mu_visc_results.get('mu')
+                details = self.mu_visc_results.get('details')
+                if v is not None and mu is not None and details is not None:
+                    use_nonlinear = self.mu_use_fg_var.get() if hasattr(self, 'mu_use_fg_var') else False
+                    self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
+            else:
+                # Reset axes to default empty state
+                self._reset_mu_visc_axes()
+            self._show_status("플롯된 참조 데이터를 모두 지웠습니다.", 'info')
+
+        def reset_plots():
+            """Reset all plots to initial empty state."""
+            self.plotted_ref_datasets = []
+            self._reset_mu_visc_axes()
+            self._show_status("그래프를 초기화했습니다.", 'info')
+
+        ttk.Button(plot_ctrl_frame, text="플롯 지우기", command=clear_plotted_datasets,
+                   width=14).pack(side=tk.LEFT, padx=3, ipady=2)
+        ttk.Button(plot_ctrl_frame, text="플롯 초기화", command=reset_plots,
+                   width=14).pack(side=tk.LEFT, padx=3, ipady=2)
 
         # Button frame
         btn_frame = ttk.Frame(dialog, padding=10)
@@ -11558,243 +12004,122 @@ $\begin{array}{lcc}
             self.integrand_calc_btn.config(state='normal')
 
     def _create_variables_tab(self, parent):
-        """Create variable relationship explanation tab."""
+        """Create variable relationship explanation tab - compact, no wasted space."""
         # Toolbar
         self._create_panel_toolbar(parent)
 
-        # Main scrollable frame
-        canvas = tk.Canvas(parent)
+        # Main scrollable frame - use canvas+scrollbar for full scrolling
+        canvas = tk.Canvas(parent, highlightthickness=0)
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
+        def _on_canvas_configure(event):
+            canvas.itemconfig(canvas_window, width=event.width)
+        canvas.bind('<Configure>', _on_canvas_configure)
 
-        # Mouse wheel scroll
+        def _update_scrollregion(event=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+        scrollable_frame.bind("<Configure>", _update_scrollregion)
+
+        # Mouse wheel scroll (cross-platform)
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        def _on_mousewheel_linux_up(event):
+            canvas.yview_scroll(-3, "units")
+        def _on_mousewheel_linux_down(event):
+            canvas.yview_scroll(3, "units")
 
-        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        def _bind_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+            canvas.bind_all("<Button-4>", _on_mousewheel_linux_up)
+            canvas.bind_all("<Button-5>", _on_mousewheel_linux_down)
+        def _unbind_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+            canvas.unbind_all("<Button-4>")
+            canvas.unbind_all("<Button-5>")
+
+        canvas.bind('<Enter>', _bind_mousewheel)
+        canvas.bind('<Leave>', _unbind_mousewheel)
+
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Title
-        title_frame = ttk.LabelFrame(scrollable_frame, text="Persson 마찰 이론 - 변수 관계 및 데이터 흐름", padding=15)
-        title_frame.pack(fill=tk.X, padx=10, pady=10)
-
-        # Content text with variable relationships
+        # Content text with variable relationships - use Text widget that fills available space
         content = """
-════════════════════════════════════════════════════════════════════════════════
-                     PERSSON 마찰 이론 변수 관계도
-════════════════════════════════════════════════════════════════════════════════
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+                     PERSSON \ub9c8\ucc30 \uc774\ub860 \ubcc0\uc218 \uad00\uacc4\ub3c4
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-【1. 입력 데이터】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-┌─────────────────────────────────────────────────────────────────────────────┐
-│  DMA 데이터 (재료 물성)                                                      │
-│  ├─ ω (각진동수, rad/s)                                                      │
-│  ├─ E'(ω) : 저장 탄성률 [Pa]                                                 │
-│  ├─ E''(ω) : 손실 탄성률 [Pa]                                                │
-│  └─ tan(δ) = E''/E' : 손실 탄젠트                                            │
-│                                                                              │
-│  PSD 데이터 (표면 거칠기)                                                    │
-│  ├─ q (파수, 1/m)                                                            │
-│  └─ C(q) : 파워 스펙트럼 밀도 [m⁴]                                           │
-│                                                                              │
-│  Strain Sweep 데이터 (비선형 보정용, 선택)                                   │
-│  ├─ γ (strain, %)                                                            │
-│  ├─ f(γ) = E'(γ)/E'(0) : 저장 탄성률 감소율                                  │
-│  └─ g(γ) = E''(γ)/E''(0) : 손실 탄성률 감소율 (Payne 효과)                   │
-└─────────────────────────────────────────────────────────────────────────────┘
+\u30101. \uc785\ub825 \ub370\uc774\ud130\u3011
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+  DMA \ub370\uc774\ud130 (\uc7ac\ub8cc \ubb3c\uc131)
+  \u251c\u2500 \u03c9 (\uac01\uc9c4\ub3d9\uc218, rad/s)
+  \u251c\u2500 E'(\u03c9) : \uc800\uc7a5 \ud0c4\uc131\ub960 [Pa]
+  \u251c\u2500 E''(\u03c9) : \uc190\uc2e4 \ud0c4\uc131\ub960 [Pa]
+  \u2514\u2500 tan(\u03b4) = E''/E' : \uc190\uc2e4 \ud0c4\uc820\ud2b8
 
-【2. 계산 파라미터】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  sigma_0  : 공칭 접촉 압력 [Pa]
-  v   : 슬라이딩 속도 [m/s]
-  T   : 온도 [°C]
-  ν   : 푸아송 비 (일반적으로 0.5)
-  γ   : 접촉 보정 인자 (일반적으로 0.5)
+  PSD \ub370\uc774\ud130 (\ud45c\uba74 \uac70\uce60\uae30)
+  \u251c\u2500 q (\ud30c\uc218, 1/m)
+  \u2514\u2500 C(q) : \ud30c\uc6cc \uc2a4\ud399\ud2b8\ub7fc \ubc00\ub3c4 [m\u2074]
 
-  q0 ~ q1 : PSD 적분 범위 (파수)
+  Strain Sweep \ub370\uc774\ud130 (\ube44\uc120\ud615 \ubcf4\uc815\uc6a9, \uc120\ud0dd)
+  \u251c\u2500 \u03b3 (strain, %)
+  \u251c\u2500 f(\u03b3) = E'(\u03b3)/E'(0) : \uc800\uc7a5 \ud0c4\uc131\ub960 \uac10\uc18c\uc728
+  \u2514\u2500 g(\u03b3) = E''(\u03b3)/E''(0) : \uc190\uc2e4 \ud0c4\uc131\ub960 \uac10\uc18c\uc728 (Payne \ud6a8\uacfc)
 
-【3. 중간 계산 변수】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\u30102. \uacc4\uc0b0 \ud30c\ub77c\ubbf8\ud130\u3011
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+  \u03c3\u2080 : \uacf5\uce6d \uc811\ucd09 \uc555\ub825 [Pa]  |  v : \uc2ac\ub77c\uc774\ub529 \uc18d\ub3c4 [m/s]
+  T  : \uc628\ub3c4 [\u00b0C]           |  \u03bd : \ud478\uc544\uc1a1 \ube44 (0.5)
+  \u03b3  : \uc811\ucd09 \ubcf4\uc815 \uc778\uc790 (0.5)  |  q\u2080~q\u2081 : PSD \uc801\ubd84 \ubc94\uc704
 
-┌─ G(q) 계산 ──────────────────────────────────────────────────────────────────┐
-│                                                                              │
-│  복소 탄성률:  E*(ω) = E'(ω) + i·E''(ω)                                      │
-│                                                                              │
-│  진동수:       ω = q · v · cos(φ)   (슬라이딩에 의한 진동)                   │
-│                                                                              │
-│  G(q) = (π/4) × (E*/(sigma_0(1-ν²)))² × ∫[q0→q] k³ C(k) ∫[0→2π] cos²φ dφ dk     │
-│                                                                              │
-│       = (π/2) × (|E(q·v)|/(sigma_0(1-ν²)))² × ∫[q0→q] k³ C(k) dk                 │
-│                                                                              │
-│                                                                              │
-│  [비선형 보정 적용 시]                                                       │
-│  E'_eff(ω) = E'(ω) × f(ε),  E''_eff(ω) = E''(ω) × g(ε)                      │
-│  G(q)는 보정된 E_eff로 적분 재계산:                                          │
-│  G(q) = (1/8) ∫q³C(q) ∫|E_eff(qv·cosφ)/((1-ν²)σ₀)|² dφ dq                   │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+\u30103. \uc911\uac04 \uacc4\uc0b0 \ubcc0\uc218\u3011
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+  G(q) \uacc4\uc0b0:
+    E*(\u03c9) = E'(\u03c9) + i\u00b7E''(\u03c9)  |  \u03c9 = q\u00b7v\u00b7cos(\u03c6)
+    G(q) = (\u03c0/4)\u00d7(E*/(\u03c3\u2080(1-\u03bd\u00b2)))\u00b2 \u00d7 \u222b[q\u2080\u2192q] k\u00b3 C(k) \u222b cos\u00b2\u03c6 d\u03c6 dk
+    [\ube44\uc120\ud615] E'_eff = E'\u00d7f(\u03b5), E''_eff = E''\u00d7g(\u03b5)
 
-┌─ P(q) 실접촉 면적비율 ───────────────────────────────────────────────────────┐
-│                                                                              │
-│  P(q) = erf(1 / (2√G(q)))                                                    │
-│                                                                              │
-│  ┌───────────────────────────────────────────────────────────┐              │
-│  │ G → 0  : P → 1.0 (완전 접촉)                              │              │
-│  │ G → ∞  : P → 0.0 (접촉 없음)                              │              │
-│  └───────────────────────────────────────────────────────────┘              │
-│                                                                              │
-│  ※ 비선형 모드: G_eff 사용 → P도 비선형 보정됨                               │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+  P(q) = erf(1/(2\u221aG(q)))    (G\u21920: P\u21921, G\u2192\u221e: P\u21920)
+  S(q) = \u03b3 + (1-\u03b3)\u00d7P(q)\u00b2
+  \u03be\u00b2(q) = 2\u03c0 \u222b[q\u2080\u2192q] k\u00b3 C(k) dk  |  \u03b5(q) = factor\u00d7\u03be(q)
 
-┌─ S(q) 접촉 보정 인자 ────────────────────────────────────────────────────────┐
-│                                                                              │
-│  S(q) = γ + (1-γ) × P(q)²                                                    │
-│                                                                              │
-│  ※ S(q)는 P(q)에서 유도됨 → P가 비선형이면 S도 비선형                        │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+\u30104. \ucd5c\uc885 \ucd9c\ub825: \u03bc_visc\u3011
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+  \u03bc_visc = (1/2) \u00d7 \u222b q\u00b3 C(q) P(q) S(q) \u222b cos\u03c6 \u00d7 Im[E(qv\u00b7cos\u03c6)]/((1-\u03bd\u00b2)\u03c3\u2080) d\u03c6 dq
 
-┌─ h'rms & Local Strain (Tab 4) ────────────────────────────────────────────────┐
-│                                                                              │
-│  RMS 경사:    ξ²(q) = 2π ∫[q0→q] k³ C(k) dk                                  │
-│  로컬 변형률: ε(q) = factor × ξ(q)    (factor ≈ 0.5, Persson 권장)           │
-│                                                                              │
-│  ※ 이 ε(q)는 비선형 보정 g(ε)에 사용됨                                       │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
+  [\uc120\ud615] G, P, S \u2190 Tab 3 \uae30\ubc18  |  Im[E] = Im[E_linear]
+  [\ube44\uc120\ud615] E_eff \uc0ac\uc6a9, G\u00b7P\u00b7S \uc7ac\uacc4\uc0b0, Im[E_eff] = Im[E]\u00d7g(\u03b5)
 
-【4. 최종 출력: μ_visc 계산】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+\u30105. \ub370\uc774\ud130 \ud750\ub984\ub3c4\u3011
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+  DMA + PSD \u2192 Tab1(\uac80\uc99d) \u2192 Tab2(\uc124\uc815) \u2192 Tab3(G,P \uacc4\uc0b0)
+  \u2192 Tab4(h'rms, \u03b5) \u2192 Tab5(\u03bc_visc \uacc4\uc0b0)
+  Strain Sweep \u2192 f(\u03b5), g(\u03b5) \u2192 \ube44\uc120\ud615 \ubcf4\uc815
 
-┌─ μ_visc 공식 ────────────────────────────────────────────────────────────────┐
-│                                                                              │
-│  μ_visc = (1/2) × ∫[q0→q1] q³ C(q) P(q) S(q)                                │
-│                   × ∫[0→2π] cosφ × Im[E(qv·cosφ)] / ((1-ν²)sigma_0) dφ dq        │
-│                                                                              │
-│  ┌───────────────────────────────────────────────────────────────┐          │
-│  │ 비선형 보정 적용 시:                                          │          │
-│  │   E'_eff = E' × f(ε), E''_eff = E'' × g(ε)                    │          │
-│  │   G(q) 재계산: 적분 내부에서 E_eff 사용                       │          │
-│  │   P(q), S(q) ← 재계산된 G 기반                                │          │
-│  │   여기서 ε는 Tab 4에서 계산된 local strain                    │          │
-│  └───────────────────────────────────────────────────────────────┘          │
-│                                                                              │
-└──────────────────────────────────────────────────────────────────────────────┘
-
-【5. 데이터 흐름도】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  ┌────────────┐     ┌────────────┐     ┌──────────────────┐
-  │ DMA 데이터 │     │ PSD 데이터 │     │ Strain Sweep     │
-  │ E'(ω),E''(ω)│     │ C(q)       │     │ f(γ), g(γ)       │
-  └─────┬──────┘     └─────┬──────┘     └────────┬─────────┘
-        │                  │                      │
-        └────────┬─────────┘                      │
-                 ▼                                │
-  ┌──────────────────────────────┐                │
-  │  Tab 1: 입력 데이터 검증     │                │
-  │  - Master Curve 확인         │                │
-  │  - PSD 확인                  │                │
-  └──────────────┬───────────────┘                │
-                 ▼                                │
-  ┌──────────────────────────────┐                │
-  │  Tab 2: 계산 설정            │                │
-  │  - sigma_0, v, T, ν 설정          │                │
-  │  - q 범위 설정               │                │
-  └──────────────┬───────────────┘                │
-                 ▼                                │
-  ┌──────────────────────────────┐                │
-  │  Tab 3: G(q,v) 계산          │                │
-  │  - G(q) = f(|E*|, C(q), sigma_0)  │◄───────────────┤
-  │  - P(q) = erf(1/(2√G))       │                │
-  │  - 다중 속도 G_matrix 생성   │                │
-  │                              │                │
-  │  ※ 선형 |E*| 기반 계산       │                │
-  └──────────────┬───────────────┘                │
-                 ▼                                │
-  ┌──────────────────────────────┐                │
-  │  Tab 4: h'rms 계산           │                │
-  │  - ξ(q) from PSD             │                │
-  │  - ε(q) = factor × ξ(q)      │────────────────┤
-  └──────────────┬───────────────┘                │
-                 ▼                                ▼
-  ┌──────────────────────────────────────────────────┐
-  │  Tab 5: μ_visc 계산                              │
-  │  ┌─────────────────────────────────────────────┐ │
-  │  │ 선형 모드:                                  │ │
-  │  │   G(q), P(q), S(q) ← Tab 3 기반 (선형)      │ │
-  │  │   Im[E] = Im[E_linear]                      │ │
-  │  └─────────────────────────────────────────────┘ │
-  │  ┌─────────────────────────────────────────────┐ │
-  │  │ 비선형 모드:                                │ │
-  │  │   ε(q) ← Tab 4의 h'rms 기반                  │ │
-  │  │   E'_eff = E' × f(ε), E''_eff = E'' × g(ε)  │ │
-  │  │   G(q) 재계산 (적분 내 E_eff 사용)          │ │
-  │  │   P(q), S(q) ← 재계산된 G 기반              │ │
-  │  │   Im[E_eff] = Im[E_linear] × g(ε)           │ │
-  │  └─────────────────────────────────────────────┘ │
-  │                                                  │
-  │  ※ 비선형 모드: G(q), P(q), S(q) 모두 보정됨   │
-  └──────────────────────────────────────────────────┘
-
-【6. 비선형 보정 적용 (현재 구현)】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  [선형 모드]
-  ───────────
-  • Tab 3에서 계산된 G(q), P(q), S(q) 그대로 사용
-  • Im[E] = Im[E_linear]
-
-  [비선형 모드]
-  ───────────
-  • Tab 4에서 계산된 ε(q) = factor × ξ(q) 사용
-  • E'_eff = E' × f(ε)     (저장 탄성률 보정)
-  • E''_eff = E'' × g(ε)    (손실 탄성률 보정)
-  • G(q) 재계산: 적분 내부에서 E_eff 사용
-    G = (1/8)∫q³C(q)∫|E_eff/((1-ν²)σ₀)|²dφdq
-  • P(q) = erf(1/(2√G))  ← 재계산된 G 기반
-  • S(q) = γ + (1-γ)P²   ← 재계산된 P 기반
-  • Im[E_eff] = Im[E_linear] × g(ε)  ← 적분에 사용
-
-  ※ 비선형 보정의 물리적 의미:
-     f(ε), g(ε) < 1 이면 |E*|가 감소 → G가 감소 → P가 증가 → 접촉 면적 증가
-     → Payne 효과: 높은 변형에서 재료가 부드러워짐
-
-【7. 단위 정리】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-  변수              단위              설명
-  ────────────────────────────────────────────────────────────
-  q                 1/m              파수 (wavenumber)
-  C(q)              m⁴               2D 등방성 PSD
-  E', E''           Pa               탄성률
-  sigma_0                Pa               공칭 압력
-  v                 m/s              슬라이딩 속도
-  ω = q·v           rad/s            각진동수
-  G(q)              무차원           면적 함수
-  P(q)              무차원 (0~1)     접촉 면적 비율
-  S(q)              무차원           접촉 보정 인자
-  ξ(q)              무차원           RMS 경사
-  ε(q)              무차원 (0~1)     로컬 변형률
-  μ_visc            무차원           점탄성 마찰 계수
-
-════════════════════════════════════════════════════════════════════════════════
+\u30106. \ub2e8\uc704 \uc815\ub9ac\u3011
+\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
+  q [1/m]  C(q) [m\u2074]  E',E'' [Pa]  \u03c3\u2080 [Pa]  v [m/s]
+  \u03c9 [rad/s]  G(q) [\ubb34\ucc28\uc6d0]  P(q) [0~1]  S(q) [\ubb34\ucc28\uc6d0]
+  \u03be(q) [\ubb34\ucc28\uc6d0]  \u03b5(q) [0~1]  \u03bc_visc [\ubb34\ucc28\uc6d0]
 """
 
-        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=('Courier New', 15), height=50, width=90)
-        text_widget.insert(tk.END, content)
-        text_widget.config(state='disabled')  # Read-only
-        text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        text_widget = tk.Text(scrollable_frame, wrap=tk.NONE, font=('Consolas', 15),
+                              bg='white', relief='flat', borderwidth=0)
+        text_widget.insert(tk.END, content.strip())
+        text_widget.config(state='disabled')
+        text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        # Add horizontal scrollbar for wide content
+        h_scroll = ttk.Scrollbar(scrollable_frame, orient=tk.HORIZONTAL, command=text_widget.xview)
+        text_widget.configure(xscrollcommand=h_scroll.set)
+        h_scroll.pack(fill=tk.X, padx=10)
+
+        # Calculate needed height based on content lines
+        line_count = content.strip().count('\n') + 1
+        text_widget.configure(height=line_count + 2)
 
     def _create_debug_tab(self, parent):
         """Create debug log tab for monitoring calculation values."""
