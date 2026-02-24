@@ -9459,7 +9459,7 @@ $\begin{array}{lcc}
 
         # 3x4 subplots layout:
         # Row 1: Local Strain | E' Storage (linear) | E'' Loss (linear) | E''*g Loss (nonlinear)
-        # Row 2: f,g Factors  | E'*f Storage (nl)   | G Integrand (lin) | G Integrand (nl)
+        # Row 2: f,g Factors  | E'*f Storage (nl)   | G(q) (lin)        | G(q) (nl)
         # Row 3: (empty)      | (empty)              | A/A0 (linear)     | A/A0 (nonlinear)
         self.ax_strain_contour = self.fig_strain_map.add_subplot(3, 4, 1)
         self.ax_E_storage = self.fig_strain_map.add_subplot(3, 4, 2)
@@ -9490,8 +9490,8 @@ $\begin{array}{lcc}
             (self.ax_E_loss_linear, "E'' Loss [MPa]"),
             (self.ax_E_loss_nonlinear, "E''×g [MPa]"),
             (self.ax_E_storage_nonlinear, "E'×f [MPa]"),
-            (self.ax_G_integrand_linear, "G Integrand (lin)"),
-            (self.ax_G_integrand, "G Integrand (nl)"),
+            (self.ax_G_integrand_linear, "G(q) (lin)"),
+            (self.ax_G_integrand, "G(q) (nl)"),
             (self.ax_contact_linear, "A/A0 (linear)"),
             (self.ax_contact_nonlinear, "A/A0 (nonlinear)")
         ]
@@ -9580,15 +9580,6 @@ $\begin{array}{lcc}
                 method='linear', bounds_error=False, fill_value=None
             )
 
-            # Create 2D interpolator for actual G integrand (q³C(q)×angle_integral)
-            G_integrand_matrix_orig = results_2d.get('G_integrand_matrix')
-            G_integrand_interp = None
-            if G_integrand_matrix_orig is not None:
-                log_Gint_orig = np.log10(np.maximum(G_integrand_matrix_orig, 1e-30))
-                G_integrand_interp = RegularGridInterpolator(
-                    (log_q_orig, log_v_orig), log_Gint_orig,
-                    method='linear', bounds_error=False, fill_value=None
-                )
 
             # Get PSD values
             C_q = self.psd_model(q_array)
@@ -9675,29 +9666,18 @@ $\begin{array}{lcc}
                         f_val = 1.0
                         E_storage_nonlinear[i, j] = E_storage
 
-                    # Get cumulative G value from Tab 3 results (for A/A0 calculation)
+                    # Get G(q) value from Tab 3 results (interpolated cumulative G)
                     # G_interp uses log scale
                     try:
                         log_G_val = G_interp((np.log10(q), np.log10(v)))
-                        G_cumul_linear = 10 ** log_G_val if np.isfinite(log_G_val) else 1e-10
+                        G_linear = 10 ** log_G_val if np.isfinite(log_G_val) else 1e-10
                     except:
-                        G_cumul_linear = 1e-10
+                        G_linear = 1e-10
 
-                    # Get actual G integrand (q³C(q)×angle_integral) from Tab 3
-                    if G_integrand_interp is not None:
-                        try:
-                            log_Gint_val = G_integrand_interp((np.log10(q), np.log10(v)))
-                            Gint_linear = 10 ** log_Gint_val if np.isfinite(log_Gint_val) else 1e-30
-                        except:
-                            Gint_linear = 1e-30
-                    else:
-                        # Fallback: use cumulative G (old behavior)
-                        Gint_linear = G_cumul_linear
+                    G_integrand_linear[i, j] = G_linear
 
-                    G_integrand_linear[i, j] = Gint_linear
-
-                    # Calculate nonlinear G integrand with f(ε) and g(ε) correction
-                    # G_integrand ~ |E_eff|² = (E'f)² + (E''g)²
+                    # Calculate nonlinear G(q) with f(ε) and g(ε) correction
+                    # G ~ |E_eff|² = (E'f)² + (E''g)²
                     # Correction ratio: ((E'f)² + (E''g)²) / (E'² + E''²)
                     E_sq = E_storage**2 + E_loss**2
                     if E_sq > 0 and (self.f_interpolator is not None or self.g_interpolator is not None):
@@ -9707,22 +9687,16 @@ $\begin{array}{lcc}
                             g_val = np.clip(g_val, 0.01, None)
                         E_eff_sq = (E_storage * f_val)**2 + (E_loss * g_val)**2
                         nl_ratio = E_eff_sq / E_sq
-                        Gint_nonlinear = Gint_linear * nl_ratio
+                        G_nonlinear = G_linear * nl_ratio
                     else:
-                        Gint_nonlinear = Gint_linear
+                        G_nonlinear = G_linear
 
-                    G_integrand_nonlinear[i, j] = Gint_nonlinear
-
-                    # Calculate cumulative nonlinear G for A/A0
-                    if E_sq > 0 and (self.f_interpolator is not None or self.g_interpolator is not None):
-                        G_cumul_nonlinear = G_cumul_linear * nl_ratio
-                    else:
-                        G_cumul_nonlinear = G_cumul_linear
+                    G_integrand_nonlinear[i, j] = G_nonlinear
 
                     # Calculate contact area ratio A/A0 = P(q) = erf(1/(2*sqrt(G)))
                     from scipy.special import erf
-                    G_linear_safe = max(G_cumul_linear, 1e-20)
-                    G_nonlinear_safe = max(G_cumul_nonlinear, 1e-20)
+                    G_linear_safe = max(G_linear, 1e-20)
+                    G_nonlinear_safe = max(G_nonlinear, 1e-20)
 
                     arg_linear = 1.0 / (2.0 * np.sqrt(G_linear_safe))
                     arg_nonlinear = 1.0 / (2.0 * np.sqrt(G_nonlinear_safe))
@@ -9766,11 +9740,11 @@ $\begin{array}{lcc}
 
         Layout:
         Row 1: Local Strain | E' Storage | E'' Loss | E''×g
-        Row 2: f,g Factors  | E'×f       | G (lin)  | G (nl)
+        Row 2: f,g Factors  | E'×f       | G(q) lin | G(q) nl
         Row 3: (empty)      | (empty)    | A/A0 lin | A/A0 nl
 
         - E' + E'' LogNorm 공유, E'×f + E''×g LogNorm 공유
-        - G integrand lin/nl 공유 범위, Y축 유효영역 크롭
+        - G(q) lin/nl 공유 범위, Y축 유효영역 크롭
         """
         if not hasattr(self, 'strain_map_results') or self.strain_map_results is None:
             return
@@ -10005,7 +9979,7 @@ $\begin{array}{lcc}
             log_G_lin_masked = _masked(g_lin_log)
             im7a = self.ax_G_integrand_linear.pcolormesh(V, Q, log_G_lin_masked, cmap=g_cmap, shading='auto',
                                                           vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand_linear.set_title('G Integrand (lin) [log]', fontweight='bold', fontsize=12)
+            self.ax_G_integrand_linear.set_title('G(q) (lin) [log]', fontweight='bold', fontsize=12)
             self.ax_G_integrand_linear.set_xlabel('log10(v)', fontsize=11)
             self.ax_G_integrand_linear.set_ylabel('log10(q)', fontsize=11)
             cbar7a = self.fig_strain_map.colorbar(im7a, ax=self.ax_G_integrand_linear)
@@ -10018,7 +9992,7 @@ $\begin{array}{lcc}
             log_G_nl_masked = _masked(g_nl_log)
             im7b = self.ax_G_integrand.pcolormesh(V, Q, log_G_nl_masked, cmap=g_cmap, shading='auto',
                                                    vmin=g_vmin, vmax=g_vmax)
-            self.ax_G_integrand.set_title('G Integrand (nl) [log]', fontweight='bold', fontsize=12)
+            self.ax_G_integrand.set_title('G(q) (nl) [log]', fontweight='bold', fontsize=12)
             self.ax_G_integrand.set_xlabel('log10(v)', fontsize=11)
             self.ax_G_integrand.set_ylabel('log10(q)', fontsize=11)
             cbar7b = self.fig_strain_map.colorbar(im7b, ax=self.ax_G_integrand)
@@ -10123,7 +10097,7 @@ $\begin{array}{lcc}
             ("E'' Loss [Pa] (linear)", "E_loss_linear", True),
             ("E''×g Loss [Pa]", "E_loss_nonlinear", True),
             ("E'×f Storage [Pa]", "E_storage_nonlinear", True),
-            ("G Integrand", "G_integrand_nonlinear", True),
+            ("G(q)", "G_integrand_nonlinear", True),
             ("A/A0 Contact (linear)", "contact_linear", True),
             ("A/A0 Contact (nonlinear)", "contact_nonlinear", True),
         ]
