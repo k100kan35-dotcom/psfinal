@@ -10069,7 +10069,7 @@ $\begin{array}{lcc}
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - 데이터 선택")
-        dialog.geometry("400x430")
+        dialog.geometry("400x500")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -10077,7 +10077,7 @@ $\begin{array}{lcc}
         # Center the dialog
         dialog.update_idletasks()
         x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 430) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 500) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
