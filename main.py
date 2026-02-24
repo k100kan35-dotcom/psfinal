@@ -59,6 +59,7 @@ from matplotlib.colors import LogNorm
 from scipy.signal import savgol_filter
 from typing import Optional
 import io
+import json
 
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -9243,178 +9244,337 @@ $\begin{array}{lcc}
         except Exception as e:
             messagebox.showerror("오류", f"파일 저장 실패:\n{str(e)}")
 
+    def _get_ref_datasets_path(self):
+        """Return path to the saved reference datasets JSON file."""
+        return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'reference_datasets.json')
+
+    def _load_saved_datasets(self):
+        """Load saved reference datasets from JSON file."""
+        path = self._get_ref_datasets_path()
+        if os.path.exists(path):
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            except Exception:
+                return {}
+        return {}
+
+    def _save_datasets_to_file(self, datasets):
+        """Save reference datasets to JSON file."""
+        path = self._get_ref_datasets_path()
+        with open(path, 'w', encoding='utf-8') as f:
+            json.dump(datasets, f, ensure_ascii=False, indent=2)
+
     def _edit_reference_data(self):
-        """Open dialog for editing reference mu_visc and A/A0 data as list."""
+        """Open dialog for editing reference mu_visc and A/A0 data."""
         dialog = tk.Toplevel(self.root)
         dialog.title("참조 데이터 편집")
-        dialog.geometry("750x650")
+        dialog.geometry("950x650")
         dialog.resizable(True, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
         # Center the dialog
         dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - 750) // 2
+        x = self.root.winfo_x() + (self.root.winfo_width() - 950) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - 650) // 2
         dialog.geometry(f"+{x}+{y}")
 
-        # Bottom buttons - pack first so always visible
-        bottom_frame = ttk.Frame(dialog, padding=10)
-        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X)
+        # Instructions
+        inst_frame = ttk.Frame(dialog, padding=10)
+        inst_frame.pack(fill=tk.X)
+        ttk.Label(inst_frame,
+                  text="참조 데이터를 복사하여 붙여넣기 하세요.\n"
+                       "형식: 각 줄에 'log10(v) [탭 or 공백] 값' (예: -5.0  0.59)",
+                  font=('Segoe UI', 17)).pack(anchor=tk.W)
 
-        # Create notebook for tabs
-        notebook = ttk.Notebook(dialog)
-        notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+        # Main horizontal split: Left = text input, Right = saved datasets
+        main_pane = ttk.PanedWindow(dialog, orient=tk.HORIZONTAL)
+        main_pane.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # === Helper: create a list tab with Treeview ===
-        def create_list_tab(parent, col1_name, col2_name, existing_data_col1, existing_data_col2):
-            """Create a tab with Treeview list, add/delete buttons, and file load."""
-            frame = ttk.Frame(parent, padding=5)
+        # === LEFT: text input area with tabs ===
+        left_frame = ttk.Frame(main_pane)
+        main_pane.add(left_frame, weight=3)
 
-            # Top: add row controls
-            add_frame = ttk.LabelFrame(frame, text="데이터 추가", padding=5)
-            add_frame.pack(fill=tk.X, pady=(0, 5))
-
-            ttk.Label(add_frame, text=f"{col1_name}:").grid(row=0, column=0, padx=3)
-            entry_col1 = ttk.Entry(add_frame, width=15)
-            entry_col1.grid(row=0, column=1, padx=3)
-
-            ttk.Label(add_frame, text=f"{col2_name}:").grid(row=0, column=2, padx=3)
-            entry_col2 = ttk.Entry(add_frame, width=15)
-            entry_col2.grid(row=0, column=3, padx=3)
-
-            def add_item():
-                try:
-                    val1 = float(entry_col1.get())
-                    val2 = float(entry_col2.get())
-                    tree.insert('', tk.END, values=(f"{val1:.6f}", f"{val2:.6e}"))
-                    entry_col1.delete(0, tk.END)
-                    entry_col2.delete(0, tk.END)
-                    count_label.config(text=f"총 {len(tree.get_children())}개")
-                except ValueError:
-                    messagebox.showwarning("입력 오류", "숫자를 입력하세요.", parent=dialog)
-
-            ttk.Button(add_frame, text="추가", command=add_item, width=6).grid(row=0, column=4, padx=5)
-
-            def load_from_file():
-                filepath = filedialog.askopenfilename(
-                    title="참조 데이터 파일 선택",
-                    filetypes=[("Text files", "*.txt"), ("CSV files", "*.csv"), ("All files", "*.*")],
-                    parent=dialog
-                )
-                if not filepath:
-                    return
-                try:
-                    data = np.loadtxt(filepath, comments='#')
-                    if data.ndim == 1:
-                        messagebox.showwarning("오류", "2열 이상의 데이터 파일이 필요합니다.", parent=dialog)
-                        return
-                    for row in data:
-                        tree.insert('', tk.END, values=(f"{row[0]:.6f}", f"{row[1]:.6e}"))
-                    count_label.config(text=f"총 {len(tree.get_children())}개")
-                except Exception as e:
-                    messagebox.showerror("오류", f"파일 로드 실패:\n{e}", parent=dialog)
-
-            ttk.Button(add_frame, text="파일 로드", command=load_from_file, width=8).grid(row=0, column=5, padx=5)
-
-            # Treeview list
-            list_frame = ttk.Frame(frame)
-            list_frame.pack(fill=tk.BOTH, expand=True)
-
-            columns = ('col1', 'col2')
-            tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=15)
-            tree.heading('col1', text=col1_name)
-            tree.heading('col2', text=col2_name)
-            tree.column('col1', width=200, anchor=tk.CENTER)
-            tree.column('col2', width=200, anchor=tk.CENTER)
-
-            scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=tree.yview)
-            tree.configure(yscrollcommand=scrollbar.set)
-            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-            tree.pack(fill=tk.BOTH, expand=True)
-
-            # Pre-fill with existing data
-            if existing_data_col1 is not None and existing_data_col2 is not None:
-                for v1, v2 in zip(existing_data_col1, existing_data_col2):
-                    tree.insert('', tk.END, values=(f"{v1:.6f}", f"{v2:.6e}"))
-
-            # Bottom controls: delete, clear
-            ctrl_frame = ttk.Frame(frame, padding=(0, 5))
-            ctrl_frame.pack(fill=tk.X)
-
-            def delete_selected():
-                selected = tree.selection()
-                if not selected:
-                    messagebox.showwarning("선택 없음", "삭제할 항목을 선택하세요.", parent=dialog)
-                    return
-                for item in selected:
-                    tree.delete(item)
-                count_label.config(text=f"총 {len(tree.get_children())}개")
-
-            def clear_all():
-                if messagebox.askyesno("확인", "모든 데이터를 삭제하시겠습니까?", parent=dialog):
-                    for item in tree.get_children():
-                        tree.delete(item)
-                    count_label.config(text=f"총 0개")
-
-            ttk.Button(ctrl_frame, text="선택 삭제", command=delete_selected, width=10).pack(side=tk.LEFT, padx=3)
-            ttk.Button(ctrl_frame, text="전체 삭제", command=clear_all, width=10).pack(side=tk.LEFT, padx=3)
-            count_label = ttk.Label(ctrl_frame, text=f"총 {len(tree.get_children())}개")
-            count_label.pack(side=tk.RIGHT, padx=5)
-
-            return frame, tree
+        notebook = ttk.Notebook(left_frame)
+        notebook.pack(fill=tk.BOTH, expand=True)
 
         # Tab 1: mu_visc reference
-        mu_col1 = self.reference_mu_data.get('log_v') if self.reference_mu_data else None
-        mu_col2 = self.reference_mu_data.get('mu') if self.reference_mu_data else None
-        mu_tab, mu_tree = create_list_tab(notebook, "log10(v)", "μ_visc", mu_col1, mu_col2)
-        notebook.add(mu_tab, text="  μ_visc 참조 데이터  ")
+        mu_frame = ttk.Frame(notebook, padding=5)
+        notebook.add(mu_frame, text="  mu_visc 참조 데이터  ")
+
+        ttk.Label(mu_frame, text="mu_visc 참조 데이터 (log10(v) \\t mu_visc):",
+                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
+        mu_text = tk.Text(mu_frame, height=20, font=("Courier", 15), wrap=tk.NONE)
+        mu_scroll = ttk.Scrollbar(mu_frame, orient=tk.VERTICAL, command=mu_text.yview)
+        mu_text.configure(yscrollcommand=mu_scroll.set)
+        mu_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        mu_text.pack(fill=tk.BOTH, expand=True)
+
+        # Pre-fill with existing data
+        if hasattr(self, 'reference_mu_data') and self.reference_mu_data is not None:
+            log_v = self.reference_mu_data.get('log_v')
+            mu = self.reference_mu_data.get('mu')
+            if log_v is not None and mu is not None:
+                for lv, m in zip(log_v, mu):
+                    mu_text.insert(tk.END, f"{lv:.6e}\t{m:.6e}\n")
 
         # Tab 2: A/A0 reference
-        area_col1 = self.reference_area_data.get('log_v') if self.reference_area_data else None
-        area_col2 = self.reference_area_data.get('area') if self.reference_area_data else None
-        area_tab, area_tree = create_list_tab(notebook, "log10(v)", "A/A0", area_col1, area_col2)
-        notebook.add(area_tab, text="  A/A0 참조 데이터  ")
+        area_frame = ttk.Frame(notebook, padding=5)
+        notebook.add(area_frame, text="  A/A0 참조 데이터  ")
 
-        # Apply / Cancel buttons
+        ttk.Label(area_frame, text="A/A0 참조 데이터 (log10(v) \\t A/A0):",
+                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
+        area_text = tk.Text(area_frame, height=20, font=("Courier", 15), wrap=tk.NONE)
+        area_scroll = ttk.Scrollbar(area_frame, orient=tk.VERTICAL, command=area_text.yview)
+        area_text.configure(yscrollcommand=area_scroll.set)
+        area_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        area_text.pack(fill=tk.BOTH, expand=True)
+
+        # Pre-fill with existing data
+        if hasattr(self, 'reference_area_data') and self.reference_area_data is not None:
+            log_v = self.reference_area_data.get('log_v')
+            area = self.reference_area_data.get('area')
+            if log_v is not None and area is not None:
+                for lv, a in zip(log_v, area):
+                    area_text.insert(tk.END, f"{lv:.6e}\t{a:.6e}\n")
+
+        # === RIGHT: saved datasets panel ===
+        right_frame = ttk.LabelFrame(main_pane, text="저장된 데이터셋", padding=5)
+        main_pane.add(right_frame, weight=2)
+
+        # Save controls: name entry + save button
+        save_frame = ttk.Frame(right_frame)
+        save_frame.pack(fill=tk.X, pady=(0, 5))
+
+        ttk.Label(save_frame, text="이름:").pack(side=tk.LEFT, padx=(0, 3))
+        dataset_name_var = tk.StringVar()
+        name_entry = ttk.Entry(save_frame, textvariable=dataset_name_var, width=20)
+        name_entry.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(0, 5))
+
+        # Dataset Listbox
+        list_frame = ttk.Frame(right_frame)
+        list_frame.pack(fill=tk.BOTH, expand=True)
+
+        dataset_listbox = tk.Listbox(list_frame, font=('Segoe UI', 14), selectmode=tk.SINGLE)
+        ds_scroll = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=dataset_listbox.yview)
+        dataset_listbox.configure(yscrollcommand=ds_scroll.set)
+        ds_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        dataset_listbox.pack(fill=tk.BOTH, expand=True)
+
+        # Load saved datasets
+        saved_datasets = self._load_saved_datasets()
+        for ds_name in sorted(saved_datasets.keys()):
+            ds = saved_datasets[ds_name]
+            mu_count = len(ds.get('mu_log_v', []))
+            area_count = len(ds.get('area_log_v', []))
+            dataset_listbox.insert(tk.END, f"{ds_name}  (mu:{mu_count}, A/A0:{area_count})")
+
+        # Detail label
+        detail_label = ttk.Label(right_frame, text="", font=('Segoe UI', 13),
+                                 wraplength=280, foreground='#64748B')
+        detail_label.pack(fill=tk.X, pady=3)
+
+        def on_dataset_select(event=None):
+            sel = dataset_listbox.curselection()
+            if not sel:
+                detail_label.config(text="")
+                return
+            idx = sel[0]
+            ds_name = sorted(saved_datasets.keys())[idx]
+            ds = saved_datasets[ds_name]
+            mu_n = len(ds.get('mu_log_v', []))
+            area_n = len(ds.get('area_log_v', []))
+            detail_label.config(
+                text=f"mu_visc: {mu_n}pts, A/A0: {area_n}pts\n"
+                     f"저장일: {ds.get('saved_date', 'N/A')}")
+
+        dataset_listbox.bind('<<ListboxSelect>>', on_dataset_select)
+
+        # Buttons for dataset management
+        ds_btn_frame = ttk.Frame(right_frame)
+        ds_btn_frame.pack(fill=tk.X, pady=5)
+
+        def save_dataset():
+            """Save current text area data as a named dataset."""
+            name = dataset_name_var.get().strip()
+            if not name:
+                messagebox.showwarning("이름 필요", "데이터셋 이름을 입력하세요.", parent=dialog)
+                return
+
+            # Parse current text area data
+            mu_content = mu_text.get("1.0", tk.END).strip()
+            area_content = area_text.get("1.0", tk.END).strip()
+
+            mu_log_v, mu_vals = [], []
+            if mu_content:
+                for line in mu_content.split('\n'):
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            mu_log_v.append(float(parts[0]))
+                            mu_vals.append(float(parts[1]))
+                        except ValueError:
+                            continue
+
+            area_log_v, area_vals = [], []
+            if area_content:
+                for line in area_content.split('\n'):
+                    line = line.strip()
+                    if not line or line.startswith('#'):
+                        continue
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        try:
+                            area_log_v.append(float(parts[0]))
+                            area_vals.append(float(parts[1]))
+                        except ValueError:
+                            continue
+
+            if not mu_log_v and not area_log_v:
+                messagebox.showwarning("데이터 없음", "저장할 데이터가 없습니다.\n텍스트 영역에 데이터를 붙여넣기 하세요.", parent=dialog)
+                return
+
+            from datetime import datetime
+            ds_entry = {
+                'mu_log_v': mu_log_v,
+                'mu_vals': mu_vals,
+                'area_log_v': area_log_v,
+                'area_vals': area_vals,
+                'saved_date': datetime.now().strftime('%Y-%m-%d %H:%M')
+            }
+
+            if name in saved_datasets:
+                if not messagebox.askyesno("덮어쓰기", f"'{name}' 데이터셋이 이미 존재합니다.\n덮어쓰시겠습니까?", parent=dialog):
+                    return
+
+            saved_datasets[name] = ds_entry
+            self._save_datasets_to_file(saved_datasets)
+
+            # Refresh listbox
+            dataset_listbox.delete(0, tk.END)
+            for dn in sorted(saved_datasets.keys()):
+                d = saved_datasets[dn]
+                mc = len(d.get('mu_log_v', []))
+                ac = len(d.get('area_log_v', []))
+                dataset_listbox.insert(tk.END, f"{dn}  (mu:{mc}, A/A0:{ac})")
+
+            messagebox.showinfo("저장 완료",
+                                f"'{name}' 데이터셋 저장 완료\n"
+                                f"mu_visc: {len(mu_log_v)}pts, A/A0: {len(area_log_v)}pts",
+                                parent=dialog)
+
+        def load_dataset():
+            """Load selected dataset into text areas."""
+            sel = dataset_listbox.curselection()
+            if not sel:
+                messagebox.showwarning("선택 필요", "불러올 데이터셋을 선택하세요.", parent=dialog)
+                return
+            idx = sel[0]
+            ds_name = sorted(saved_datasets.keys())[idx]
+            ds = saved_datasets[ds_name]
+
+            # Fill mu_visc text
+            mu_text.delete("1.0", tk.END)
+            for lv, mv in zip(ds.get('mu_log_v', []), ds.get('mu_vals', [])):
+                mu_text.insert(tk.END, f"{lv:.6e}\t{mv:.6e}\n")
+
+            # Fill area text
+            area_text.delete("1.0", tk.END)
+            for lv, av in zip(ds.get('area_log_v', []), ds.get('area_vals', [])):
+                area_text.insert(tk.END, f"{lv:.6e}\t{av:.6e}\n")
+
+            dataset_name_var.set(ds_name)
+
+        def delete_dataset():
+            """Delete selected dataset."""
+            sel = dataset_listbox.curselection()
+            if not sel:
+                messagebox.showwarning("선택 필요", "삭제할 데이터셋을 선택하세요.", parent=dialog)
+                return
+            idx = sel[0]
+            ds_name = sorted(saved_datasets.keys())[idx]
+            if not messagebox.askyesno("삭제 확인", f"'{ds_name}' 데이터셋을 삭제하시겠습니까?", parent=dialog):
+                return
+            del saved_datasets[ds_name]
+            self._save_datasets_to_file(saved_datasets)
+
+            dataset_listbox.delete(0, tk.END)
+            for dn in sorted(saved_datasets.keys()):
+                d = saved_datasets[dn]
+                mc = len(d.get('mu_log_v', []))
+                ac = len(d.get('area_log_v', []))
+                dataset_listbox.insert(tk.END, f"{dn}  (mu:{mc}, A/A0:{ac})")
+            detail_label.config(text="")
+
+        ttk.Button(save_frame, text="저장", command=save_dataset, width=6).pack(side=tk.LEFT)
+
+        ttk.Button(ds_btn_frame, text="불러오기", command=load_dataset, width=10).pack(side=tk.LEFT, padx=3)
+        ttk.Button(ds_btn_frame, text="삭제", command=delete_dataset, width=8).pack(side=tk.LEFT, padx=3)
+
+        # Button frame
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(fill=tk.X)
+
         def apply_data():
-            """Parse tree data and apply as reference."""
+            """Parse and apply the reference data."""
             try:
-                # Parse mu_visc data from tree
-                mu_items = mu_tree.get_children()
-                if mu_items:
-                    mu_data = []
-                    for item in mu_items:
-                        vals = mu_tree.item(item, 'values')
-                        mu_data.append((float(vals[0]), float(vals[1])))
-                    mu_data = np.array(mu_data)
-                    mu_data = mu_data[mu_data[:, 0].argsort()]  # sort by log_v
-                    self.reference_mu_data = {
-                        'v': 10**mu_data[:, 0],
-                        'mu': mu_data[:, 1],
-                        'log_v': mu_data[:, 0],
-                        'show': True
-                    }
-                else:
-                    self.reference_mu_data = None
+                # Parse mu_visc data
+                mu_content = mu_text.get("1.0", tk.END).strip()
+                if mu_content:
+                    mu_lines = [l.strip() for l in mu_content.split('\n') if l.strip() and not l.startswith('#')]
+                    if mu_lines:
+                        mu_data = []
+                        for line in mu_lines:
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                try:
+                                    log_v = float(parts[0])
+                                    mu_val = float(parts[1])
+                                    mu_data.append((log_v, mu_val))
+                                except ValueError:
+                                    continue
+                        if mu_data:
+                            mu_data = np.array(mu_data)
+                            log_v = mu_data[:, 0]
+                            mu = mu_data[:, 1]
+                            self.reference_mu_data = {
+                                'v': 10**log_v,
+                                'mu': mu,
+                                'log_v': log_v,
+                                'show': True
+                            }
+                            print(f"[참조 데이터] mu_visc 업데이트: {len(mu)} points")
 
-                # Parse A/A0 data from tree
-                area_items = area_tree.get_children()
-                if area_items:
-                    area_data = []
-                    for item in area_items:
-                        vals = area_tree.item(item, 'values')
-                        area_data.append((float(vals[0]), float(vals[1])))
-                    area_data = np.array(area_data)
-                    area_data = area_data[area_data[:, 0].argsort()]  # sort by log_v
-                    self.reference_area_data = {
-                        'v': 10**area_data[:, 0],
-                        'area': area_data[:, 1],
-                        'log_v': area_data[:, 0],
-                        'show': True
-                    }
-                else:
-                    self.reference_area_data = None
+                # Parse A/A0 data
+                area_content = area_text.get("1.0", tk.END).strip()
+                if area_content:
+                    area_lines = [l.strip() for l in area_content.split('\n') if l.strip() and not l.startswith('#')]
+                    if area_lines:
+                        area_data = []
+                        for line in area_lines:
+                            parts = line.split()
+                            if len(parts) >= 2:
+                                try:
+                                    log_v = float(parts[0])
+                                    area_val = float(parts[1])
+                                    area_data.append((log_v, area_val))
+                                except ValueError:
+                                    continue
+                        if area_data:
+                            area_data = np.array(area_data)
+                            log_v = area_data[:, 0]
+                            area = area_data[:, 1]
+                            self.reference_area_data = {
+                                'v': 10**log_v,
+                                'area': area,
+                                'log_v': log_v,
+                                'show': True
+                            }
+                            print(f"[참조 데이터] A/A0 업데이트: {len(area)} points")
 
                 # Refresh plots if mu_visc results exist
                 if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
@@ -9426,16 +9586,14 @@ $\begin{array}{lcc}
                         self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
 
                 dialog.destroy()
-                mu_count = len(mu_items)
-                area_count = len(area_items)
-                messagebox.showinfo("완료", f"참조 데이터 업데이트 완료\n\nμ_visc: {mu_count}개\nA/A0: {area_count}개")
+                messagebox.showinfo("완료", "참조 데이터가 업데이트되었습니다.")
 
             except Exception as e:
                 import traceback
-                messagebox.showerror("오류", f"데이터 적용 실패:\n{str(e)}\n\n{traceback.format_exc()}")
+                messagebox.showerror("오류", f"데이터 파싱 실패:\n{str(e)}\n\n{traceback.format_exc()}")
 
-        ttk.Button(bottom_frame, text="적용", command=apply_data, width=15).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(bottom_frame, text="취소", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="적용", command=apply_data, width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
 
     def _create_strain_map_tab(self, parent):
         """Create Local Strain Map visualization tab."""
@@ -11947,6 +12105,10 @@ $\begin{array}{lcc}
 
             self.strain_data = load_strain_sweep_file(filepath)
 
+            # Fallback: 이전 형식 (Temperature 마커 + 4열) 파일 처리
+            if not self.strain_data:
+                self.strain_data = self._parse_legacy_strain_sweep(filepath)
+
             if not self.strain_data:
                 messagebox.showerror("오류", "유효한 데이터를 찾을 수 없습니다.")
                 return
@@ -11969,6 +12131,51 @@ $\begin{array}{lcc}
 
         except Exception as e:
             messagebox.showerror("오류", f"내장 Strain Sweep 로드 실패:\n{str(e)}")
+
+    def _parse_legacy_strain_sweep(self, filepath):
+        """Parse legacy format strain sweep file (Temperature marker + 4-column data)."""
+        import re
+        float_re = re.compile(r"[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?")
+        data_by_T = {}
+        current_T = None
+
+        try:
+            with open(filepath, 'r', encoding='utf-8', errors='ignore') as f:
+                for raw in f:
+                    line = raw.strip()
+                    if not line or line.startswith('#'):
+                        continue
+
+                    # Check for "Temperature <value>" marker line
+                    if line.lower().startswith('temperature'):
+                        nums = float_re.findall(line)
+                        if nums:
+                            current_T = float(nums[0])
+                        continue
+
+                    # Skip header-like lines
+                    if any(h in line.lower() for h in ['strain', 'frequency', 'freq', "e'"]):
+                        continue
+
+                    # Parse numeric data rows (4 columns: strain, freq, E', E'')
+                    nums = float_re.findall(line)
+                    if len(nums) >= 4 and current_T is not None:
+                        strain_val = float(nums[0])
+                        freq = float(nums[1])
+                        ReE = float(nums[2])
+                        ImE = float(nums[3])
+                        data_by_T.setdefault(current_T, []).append((freq, strain_val, ReE, ImE))
+
+            # Sort each temperature block by strain
+            for T in list(data_by_T.keys()):
+                rows = data_by_T[T]
+                rows.sort(key=lambda x: x[1])
+                data_by_T[T] = rows
+
+        except Exception:
+            pass
+
+        return data_by_T
 
     def _delete_preset_strain_sweep(self):
         """Delete selected preset Strain Sweep file."""
@@ -12008,27 +12215,30 @@ $\begin{array}{lcc}
             preset_dir = self._get_preset_data_dir('strain_sweep')
             filepath = os.path.join(preset_dir, name)
 
-            # Strain sweep 데이터를 텍스트 형식으로 저장
-            # 온도별 블록 형식으로 재구성
+            # Strain sweep 데이터를 로더가 읽을 수 있는 5열 형식으로 저장
+            # 형식: T  freq  strain  ReE  ImE
             with open(filepath, 'w', encoding='utf-8') as f:
                 f.write("# Strain Sweep 내장 데이터\n")
+                f.write("# T(C)\tFreq(Hz)\tStrain\tE'(Pa)\tE''(Pa)\n")
                 for T in sorted(self.strain_data.keys()):
                     block = self.strain_data[T]
-                    f.write(f"\n# Temperature: {T} C\n")
-                    f.write(f"Temperature {T}\n")
-                    # 각 블록의 데이터 기록
-                    if 'strain' in block and 'freq' in block:
-                        strains = block['strain']
-                        freqs = block['freq']
+                    # block is list of (freq, strain, ReE, ImE) tuples
+                    if isinstance(block, list):
+                        for row in block:
+                            freq, strain, ReE, ImE = row[0], row[1], row[2], row[3]
+                            f.write(f"{T}\t{freq}\t{strain}\t{ReE}\t{ImE}\n")
+                    elif isinstance(block, dict):
+                        # Legacy dict format fallback
+                        strains = block.get('strain', [])
+                        freqs = block.get('freq', [])
                         E_stor = block.get('E_storage', block.get('E_prime', []))
                         E_loss = block.get('E_loss', block.get('E_double_prime', []))
-                        f.write("Strain(%)\tFrequency(Hz)\tE'(Pa)\tE''(Pa)\n")
                         for k in range(len(strains)):
                             s = strains[k] if k < len(strains) else 0
                             freq = freqs[k] if k < len(freqs) else 0
                             es = E_stor[k] if k < len(E_stor) else 0
                             el = E_loss[k] if k < len(E_loss) else 0
-                            f.write(f"{s}\t{freq}\t{es}\t{el}\n")
+                            f.write(f"{T}\t{freq}\t{s}\t{es}\t{el}\n")
 
             self._refresh_preset_strain_sweep_list()
             messagebox.showinfo("성공", f"내장 Strain Sweep 추가 완료:\n{name}")
