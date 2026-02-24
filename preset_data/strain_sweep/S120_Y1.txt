@@ -1,0 +1,13 @@
+# Strain Sweep 내장 데이터
+
+# Temperature: -0.01 C
+Temperature -0.01
+
+# Temperature: 10.01 C
+Temperature 10.01
+
+# Temperature: 29.87 C
+Temperature 29.87
+
+# Temperature: 49.97 C
+Temperature 49.97

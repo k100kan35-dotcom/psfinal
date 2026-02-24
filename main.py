@@ -46,12 +46,12 @@ matplotlib.rcParams.update({
     'axes.unicode_minus': False,       # ASCII 마이너스 (유니코드 − 깨짐 방지)
     'text.usetex': False,              # LaTeX 비활성화
     'mathtext.fontset': 'dejavusans',  # 수식 폰트: DejaVu Sans (matplotlib 내장, 항상 존재)
-    'font.size': 12,
-    'axes.titlesize': 13,
-    'axes.labelsize': 12,
-    'xtick.labelsize': 11,
-    'ytick.labelsize': 11,
-    'legend.fontsize': 10,
+    'font.size': 10,
+    'axes.titlesize': 11,
+    'axes.labelsize': 10,
+    'xtick.labelsize': 9,
+    'ytick.labelsize': 9,
+    'legend.fontsize': 9,
 })
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg, NavigationToolbar2Tk
 from matplotlib.figure import Figure
@@ -155,7 +155,7 @@ except Exception:
     matplotlib.rcParams['font.sans-serif'] = ['DejaVu Sans', 'Arial']
 
 matplotlib.rcParams['axes.labelweight'] = 'bold'
-matplotlib.rcParams['axes.labelsize'] = 12
+matplotlib.rcParams['axes.labelsize'] = 10
 matplotlib.rcParams['figure.titleweight'] = 'bold'
 matplotlib.rcParams['figure.titlesize'] = 14
 
@@ -1031,37 +1031,37 @@ class PerssonModelGUI_V2:
         # 2x2 subplot layout
         # Top-left: Raw profile
         self.ax_profile_raw = self.fig_psd_profile.add_subplot(221)
-        self.ax_profile_raw.set_title('표면 프로파일', fontweight='bold')
-        self.ax_profile_raw.set_xlabel('Position (m)')
-        self.ax_profile_raw.set_ylabel('Height (m)')
+        self.ax_profile_raw.set_title('표면 프로파일', fontweight='bold', fontsize=11)
+        self.ax_profile_raw.set_xlabel('Position (m)', fontsize=10)
+        self.ax_profile_raw.set_ylabel('Height (m)', fontsize=10)
         self.ax_profile_raw.grid(True, alpha=0.3)
 
         # Top-right: Profile histogram
         self.ax_profile_hist = self.fig_psd_profile.add_subplot(222)
-        self.ax_profile_hist.set_title('높이 분포', fontweight='bold')
-        self.ax_profile_hist.set_xlabel('Height (m)')
-        self.ax_profile_hist.set_ylabel('Count')
+        self.ax_profile_hist.set_title('높이 분포', fontweight='bold', fontsize=11)
+        self.ax_profile_hist.set_xlabel('Height (m)', fontsize=10)
+        self.ax_profile_hist.set_ylabel('Count', fontsize=10)
         self.ax_profile_hist.grid(True, alpha=0.3)
 
         # Bottom-left: h_rms (거칠기) & Parseval 검증
         self.ax_hrms_parseval = self.fig_psd_profile.add_subplot(223)
-        self.ax_hrms_parseval.set_title('h_rms 거칠기 & Parseval 검증', fontweight='bold')
-        self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)')
-        self.ax_hrms_parseval.set_ylabel('누적 h_rms (m)')
+        self.ax_hrms_parseval.set_title('h_rms 거칠기 & Parseval 검증', fontweight='bold', fontsize=11)
+        self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)', fontsize=10)
+        self.ax_hrms_parseval.set_ylabel('누적 h_rms (m)', fontsize=10)
         self.ax_hrms_parseval.set_xscale('log')
         self.ax_hrms_parseval.set_yscale('log')
         self.ax_hrms_parseval.grid(True, alpha=0.3, which='both')
 
         # Bottom-right: 2D isotropic PSD (main result)
         self.ax_psd_2d = self.fig_psd_profile.add_subplot(224)
-        self.ax_psd_2d.set_title('2D Isotropic PSD C(q)', fontweight='bold')
-        self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_2d.set_ylabel('C(q) (m⁴)')
+        self.ax_psd_2d.set_title('2D Isotropic PSD C(q)', fontweight='bold', fontsize=11)
+        self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)', fontsize=10)
+        self.ax_psd_2d.set_ylabel('C(q) (m⁴)', fontsize=10)
         self.ax_psd_2d.set_xscale('log')
         self.ax_psd_2d.set_yscale('log')
         self.ax_psd_2d.grid(True, alpha=0.3, which='both')
 
-        self.fig_psd_profile.tight_layout()
+        self.fig_psd_profile.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.08, hspace=0.38, wspace=0.30)
 
         # Canvas
         self.canvas_psd_profile = FigureCanvasTkAgg(self.fig_psd_profile, master=right_frame)
@@ -1147,9 +1147,9 @@ class PerssonModelGUI_V2:
         # Plot 1: Raw profile
         self.ax_profile_raw.clear()
         self.ax_profile_raw.plot(x * 1e3, h * 1e6, 'b-', linewidth=0.5)
-        self.ax_profile_raw.set_title('표면 프로파일', fontweight='bold')
-        self.ax_profile_raw.set_xlabel('Position (mm)')
-        self.ax_profile_raw.set_ylabel('Height (μm)')
+        self.ax_profile_raw.set_title('표면 프로파일', fontweight='bold', fontsize=11)
+        self.ax_profile_raw.set_xlabel('Position (mm)', fontsize=10)
+        self.ax_profile_raw.set_ylabel('Height (μm)', fontsize=10)
         self.ax_profile_raw.grid(True, alpha=0.3)
 
         # Plot 2: Height histogram
@@ -1157,9 +1157,9 @@ class PerssonModelGUI_V2:
         h_detrended = h - np.mean(h)
         self.ax_profile_hist.hist(h_detrended * 1e6, bins=50, color='steelblue', edgecolor='white', alpha=0.7)
         self.ax_profile_hist.axvline(x=0, color='r', linestyle='--', linewidth=1, label='Mean')
-        self.ax_profile_hist.set_title('높이 분포 (Detrended)', fontweight='bold')
-        self.ax_profile_hist.set_xlabel('Height (μm)')
-        self.ax_profile_hist.set_ylabel('Count')
+        self.ax_profile_hist.set_title('높이 분포 (Detrended)', fontweight='bold', fontsize=11)
+        self.ax_profile_hist.set_xlabel('Height (μm)', fontsize=10)
+        self.ax_profile_hist.set_ylabel('Count', fontsize=10)
         self.ax_profile_hist.grid(True, alpha=0.3)
 
         # Mark top region
@@ -1167,9 +1167,9 @@ class PerssonModelGUI_V2:
         phi = n_top / len(h_detrended)
         self.ax_profile_hist.axvspan(0, np.max(h_detrended) * 1e6, alpha=0.2, color='green',
                                       label=f'Top (φ={phi:.2f})')
-        self.ax_profile_hist.legend(fontsize=11)
+        self.ax_profile_hist.legend(fontsize=9)
 
-        self.fig_psd_profile.tight_layout()
+        self.fig_psd_profile.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.08, hspace=0.38, wspace=0.30)
         self.canvas_psd_profile.draw()
 
     def _calculate_profile_psd(self):
@@ -1259,11 +1259,11 @@ class PerssonModelGUI_V2:
                 self.ax_hrms_parseval.loglog(q[valid_top], hrms_cumulative_top[valid_top]*1e6, 'r-',
                                              linewidth=2, label='Top PSD', alpha=0.8)
 
-        self.ax_hrms_parseval.set_title('h_rms 거칠기 & Parseval 검증', fontweight='bold')
-        self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)')
-        self.ax_hrms_parseval.set_ylabel('누적 h_rms (μm)')
+        self.ax_hrms_parseval.set_title('h_rms 거칠기 & Parseval 검증', fontweight='bold', fontsize=11)
+        self.ax_hrms_parseval.set_xlabel('Wavenumber q (1/m)', fontsize=10)
+        self.ax_hrms_parseval.set_ylabel('누적 h_rms (μm)', fontsize=10)
         self.ax_hrms_parseval.grid(True, alpha=0.3, which='both')
-        self.ax_hrms_parseval.legend(fontsize=11)
+        self.ax_hrms_parseval.legend(fontsize=9)
 
         # Plot 2D isotropic PSD
         self.ax_psd_2d.clear()
@@ -1314,13 +1314,13 @@ class PerssonModelGUI_V2:
             self.ax_psd_2d.loglog(pdata['q'], pdata['C'], 'm-', linewidth=2, alpha=0.7,
                                    label=f'Param PSD (H={pdata["H"]:.3f})')
 
-        self.ax_psd_2d.set_title('2D Isotropic PSD C(q)', fontweight='bold')
-        self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)')
-        self.ax_psd_2d.set_ylabel('C(q) (m^4)')
+        self.ax_psd_2d.set_title('2D Isotropic PSD C(q)', fontweight='bold', fontsize=11)
+        self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)', fontsize=10)
+        self.ax_psd_2d.set_ylabel('C(q) (m^4)', fontsize=10)
         self.ax_psd_2d.grid(True, alpha=0.3, which='both')
-        self.ax_psd_2d.legend(fontsize=11, loc='lower left')
+        self.ax_psd_2d.legend(fontsize=9, loc='lower left')
 
-        self.fig_psd_profile.tight_layout()
+        self.fig_psd_profile.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.08, hspace=0.38, wspace=0.30)
         self.canvas_psd_profile.draw()
 
         # Auto-register graph data
@@ -2889,7 +2889,7 @@ class PerssonModelGUI_V2:
             self.ax_psd_2d.set_title(f"★ PSD 직접 로드: {data['filename']}", fontweight='bold')
             self.ax_psd_2d.legend(loc='upper right')
             self.ax_psd_2d.grid(True, alpha=0.3, which='both')
-            self.fig_psd_profile.tight_layout()
+            self.fig_psd_profile.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.08, hspace=0.38, wspace=0.30)
             self.canvas_psd_profile.draw()
 
     def _plot_persson_master_curve(self):
@@ -5552,8 +5552,8 @@ class PerssonModelGUI_V2:
                     ha='center', va='center', transform=ax6.transAxes, fontsize=LABEL_FONT)
             ax6.set_title('(f) Parseval 정리', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
 
-        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=14, y=0.98)
-        self.fig_results.tight_layout(rect=[0, 0.01, 1, 0.97], pad=1.5, h_pad=2.0, w_pad=1.5)
+        self.fig_results.suptitle('G(q,v) 2D 행렬 계산 결과', fontweight='bold', fontsize=13, y=0.99)
+        self.fig_results.subplots_adjust(left=0.07, right=0.95, top=0.93, bottom=0.07, hspace=0.40, wspace=0.35)
         self.canvas_results.draw()
 
     def _save_detailed_csv(self):
@@ -6225,41 +6225,41 @@ $\begin{array}{lcc}
 
         # Top-left: h'rms vs q
         self.ax_rms_slope = self.fig_rms.add_subplot(221)
-        self.ax_rms_slope.set_title("h'rms ξ(q)", fontweight='bold')
-        self.ax_rms_slope.set_xlabel('파수 q (1/m)')
-        self.ax_rms_slope.set_ylabel("ξ (h'rms)")
+        self.ax_rms_slope.set_title("h'rms ξ(q)", fontweight='bold', fontsize=11)
+        self.ax_rms_slope.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_rms_slope.set_ylabel("ξ (h'rms)", fontsize=10)
         self.ax_rms_slope.set_xscale('log')
         self.ax_rms_slope.set_yscale('log')
         self.ax_rms_slope.grid(True, alpha=0.3)
 
         # Top-right: Local Strain vs q
         self.ax_local_strain = self.fig_rms.add_subplot(222)
-        self.ax_local_strain.set_title('Local Strain ε(q)', fontweight='bold')
-        self.ax_local_strain.set_xlabel('파수 q (1/m)')
-        self.ax_local_strain.set_ylabel('ε (fraction)')
+        self.ax_local_strain.set_title('Local Strain ε(q)', fontweight='bold', fontsize=11)
+        self.ax_local_strain.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_local_strain.set_ylabel('ε (fraction)', fontsize=10)
         self.ax_local_strain.set_xscale('log')
         self.ax_local_strain.set_yscale('log')
         self.ax_local_strain.grid(True, alpha=0.3)
 
         # Bottom-left: RMS Height vs q
         self.ax_rms_height = self.fig_rms.add_subplot(223)
-        self.ax_rms_height.set_title('RMS Height h_rms(q)', fontweight='bold')
-        self.ax_rms_height.set_xlabel('파수 q (1/m)')
-        self.ax_rms_height.set_ylabel('h_rms (m)')
+        self.ax_rms_height.set_title('RMS Height h_rms(q)', fontweight='bold', fontsize=11)
+        self.ax_rms_height.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_rms_height.set_ylabel('h_rms (m)', fontsize=10)
         self.ax_rms_height.set_xscale('log')
         self.ax_rms_height.set_yscale('log')
         self.ax_rms_height.grid(True, alpha=0.3)
 
         # Bottom-right: PSD (for reference)
         self.ax_psd_ref = self.fig_rms.add_subplot(224)
-        self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold')
-        self.ax_psd_ref.set_xlabel('파수 q (1/m)')
-        self.ax_psd_ref.set_ylabel('C(q) (m⁴)')
+        self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold', fontsize=11)
+        self.ax_psd_ref.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_psd_ref.set_ylabel('C(q) (m⁴)', fontsize=10)
         self.ax_psd_ref.set_xscale('log')
         self.ax_psd_ref.set_yscale('log')
         self.ax_psd_ref.grid(True, alpha=0.3)
 
-        self.fig_rms.tight_layout()
+        self.fig_rms.subplots_adjust(left=0.12, right=0.95, top=0.95, bottom=0.09, hspace=0.38, wspace=0.35)
 
         self.canvas_rms = FigureCanvasTkAgg(self.fig_rms, plot_frame)
         self.canvas_rms.draw()
@@ -6402,9 +6402,9 @@ $\begin{array}{lcc}
         valid_xi = xi > 0
         if np.any(valid_xi):
             self.ax_rms_slope.loglog(q[valid_xi], xi[valid_xi], 'b-', linewidth=2)
-        self.ax_rms_slope.set_title("h'rms ξ(q)", fontweight='bold')
-        self.ax_rms_slope.set_xlabel('파수 q (1/m)')
-        self.ax_rms_slope.set_ylabel("ξ (h'rms)")
+        self.ax_rms_slope.set_title("h'rms ξ(q)", fontweight='bold', fontsize=11)
+        self.ax_rms_slope.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_rms_slope.set_ylabel("ξ (h'rms)", fontsize=10)
         self.ax_rms_slope.grid(True, alpha=0.3)
 
         # Add final value annotation - use target_xi from Tab 2 if available
@@ -6414,55 +6414,55 @@ $\begin{array}{lcc}
             self.ax_rms_slope.axhline(y=xi_max_display, color='r', linestyle='--', alpha=0.5)
             self.ax_rms_slope.annotate(f'ξ_max={xi_max_display:.4f}',
                 xy=(q[-1], xi_max_display), xytext=(0.7, 0.9),
-                textcoords='axes fraction', fontsize=12,
+                textcoords='axes fraction', fontsize=10,
                 arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
 
         # Plot 2: Local Strain
         valid_strain = strain > 0
         if np.any(valid_strain):
             self.ax_local_strain.loglog(q[valid_strain], strain[valid_strain]*100, 'r-', linewidth=2)
-        self.ax_local_strain.set_title('Local Strain ε(q)', fontweight='bold')
-        self.ax_local_strain.set_xlabel('파수 q (1/m)')
-        self.ax_local_strain.set_ylabel('ε (%)')
+        self.ax_local_strain.set_title('Local Strain ε(q)', fontweight='bold', fontsize=11)
+        self.ax_local_strain.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_local_strain.set_ylabel('ε (%)', fontsize=10)
         self.ax_local_strain.grid(True, alpha=0.3)
 
         # Add strain thresholds
         self.ax_local_strain.axhline(y=1, color='g', linestyle=':', alpha=0.5, label='1%')
         self.ax_local_strain.axhline(y=10, color='orange', linestyle=':', alpha=0.5, label='10%')
         self.ax_local_strain.axhline(y=100, color='red', linestyle=':', alpha=0.5, label='100%')
-        self.ax_local_strain.legend(loc='lower right', fontsize=10)
+        self.ax_local_strain.legend(loc='lower right', fontsize=9)
 
         if len(strain) > 0 and strain[-1] > 0:
             self.ax_local_strain.annotate(f'ε_max={strain[-1]*100:.2f}%',
                 xy=(q[-1], strain[-1]*100), xytext=(0.7, 0.9),
-                textcoords='axes fraction', fontsize=12,
+                textcoords='axes fraction', fontsize=10,
                 arrowprops=dict(arrowstyle='->', color='red', alpha=0.5))
 
         # Plot 3: RMS Height
         valid_hrms = hrms > 0
         if np.any(valid_hrms):
             self.ax_rms_height.loglog(q[valid_hrms], hrms[valid_hrms]*1e6, 'g-', linewidth=2)
-        self.ax_rms_height.set_title('RMS Height h_rms(q)', fontweight='bold')
-        self.ax_rms_height.set_xlabel('파수 q (1/m)')
-        self.ax_rms_height.set_ylabel('h_rms (μm)')
+        self.ax_rms_height.set_title('RMS Height h_rms(q)', fontweight='bold', fontsize=11)
+        self.ax_rms_height.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_rms_height.set_ylabel('h_rms (μm)', fontsize=10)
         self.ax_rms_height.grid(True, alpha=0.3)
 
         if len(hrms) > 0 and hrms[-1] > 0:
             self.ax_rms_height.annotate(f'h_rms={hrms[-1]*1e6:.2f}μm',
                 xy=(q[-1], hrms[-1]*1e6), xytext=(0.7, 0.9),
-                textcoords='axes fraction', fontsize=12,
+                textcoords='axes fraction', fontsize=10,
                 arrowprops=dict(arrowstyle='->', color='green', alpha=0.5))
 
         # Plot 4: PSD Reference
         valid_C = C_q > 0
         if np.any(valid_C):
             self.ax_psd_ref.loglog(q[valid_C], C_q[valid_C], 'k-', linewidth=1.5)
-        self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold')
-        self.ax_psd_ref.set_xlabel('파수 q (1/m)')
-        self.ax_psd_ref.set_ylabel('C(q) (m⁴)')
+        self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold', fontsize=11)
+        self.ax_psd_ref.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_psd_ref.set_ylabel('C(q) (m⁴)', fontsize=10)
         self.ax_psd_ref.grid(True, alpha=0.3)
 
-        self.fig_rms.tight_layout()
+        self.fig_rms.subplots_adjust(left=0.12, right=0.95, top=0.95, bottom=0.09, hspace=0.38, wspace=0.35)
         self.canvas_rms.draw()
 
     def _update_rms_result_text(self):
@@ -6939,24 +6939,24 @@ $\begin{array}{lcc}
 
         # Top-left: f,g curves
         self.ax_fg_curves = self.fig_mu_visc.add_subplot(221)
-        self.ax_fg_curves.set_title('f(ε), g(ε) 곡선', fontweight='bold')
-        self.ax_fg_curves.set_xlabel('변형률 ε (fraction)')
-        self.ax_fg_curves.set_ylabel('보정 계수')
+        self.ax_fg_curves.set_title('f(ε), g(ε) 곡선', fontweight='bold', fontsize=11)
+        self.ax_fg_curves.set_xlabel('변형률 ε (fraction)', fontsize=10)
+        self.ax_fg_curves.set_ylabel('보정 계수', fontsize=10)
         self.ax_fg_curves.grid(True, alpha=0.3)
 
         # Top-right: mu_visc vs velocity
         self.ax_mu_v = self.fig_mu_visc.add_subplot(222)
-        self.ax_mu_v.set_title('μ_visc(v) 곡선', fontweight='bold')
-        self.ax_mu_v.set_xlabel('속도 v (m/s)')
-        self.ax_mu_v.set_ylabel('마찰 계수 μ_visc')
+        self.ax_mu_v.set_title('μ_visc(v) 곡선', fontweight='bold', fontsize=11)
+        self.ax_mu_v.set_xlabel('속도 v (m/s)', fontsize=10)
+        self.ax_mu_v.set_ylabel('마찰 계수 μ_visc', fontsize=10)
         self.ax_mu_v.set_xscale('log')
         self.ax_mu_v.grid(True, alpha=0.3)
 
         # Bottom-left: Contact Area Ratio vs Velocity
         self.ax_mu_cumulative = self.fig_mu_visc.add_subplot(223)
-        self.ax_mu_cumulative.set_title('실접촉 면적비율 P(v)', fontweight='bold')
-        self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
-        self.ax_mu_cumulative.set_ylabel('평균 P(q)')
+        self.ax_mu_cumulative.set_title('실접촉 면적비율 P(v)', fontweight='bold', fontsize=11)
+        self.ax_mu_cumulative.set_xlabel('속도 v (m/s)', fontsize=10)
+        self.ax_mu_cumulative.set_ylabel('평균 P(q)', fontsize=10)
         self.ax_mu_cumulative.set_xscale('log')
         self.ax_mu_cumulative.grid(True, alpha=0.3)
 
@@ -6977,13 +6977,13 @@ $\begin{array}{lcc}
 
         # Bottom-right: P(q) and S(q)
         self.ax_ps = self.fig_mu_visc.add_subplot(224)
-        self.ax_ps.set_title('P(q), S(q) 분포', fontweight='bold')
-        self.ax_ps.set_xlabel('파수 q (1/m)')
-        self.ax_ps.set_ylabel('P(q), S(q)')
+        self.ax_ps.set_title('P(q), S(q) 분포', fontweight='bold', fontsize=11)
+        self.ax_ps.set_xlabel('파수 q (1/m)', fontsize=10)
+        self.ax_ps.set_ylabel('P(q), S(q)', fontsize=10)
         self.ax_ps.set_xscale('log')
         self.ax_ps.grid(True, alpha=0.3)
 
-        self.fig_mu_visc.tight_layout()
+        self.fig_mu_visc.subplots_adjust(left=0.10, right=0.92, top=0.95, bottom=0.09, hspace=0.38, wspace=0.35)
 
         self.canvas_mu_visc = FigureCanvasTkAgg(self.fig_mu_visc, plot_frame)
         self.canvas_mu_visc.draw()
@@ -8273,9 +8273,9 @@ $\begin{array}{lcc}
                 self.ax_mu_v.semilogx(v[valid_mask], mu_array[valid_mask], 'b-', linewidth=2.5, marker='o', markersize=4)
             else:
                 self.ax_mu_v.semilogx(v, np.zeros_like(v), 'b-', linewidth=2.5, marker='o', markersize=4)
-            self.ax_mu_v.set_title('μ_visc(v) 곡선', fontweight='bold')
-            self.ax_mu_v.set_xlabel('속도 v (m/s)')
-            self.ax_mu_v.set_ylabel('마찰 계수 μ_visc')
+            self.ax_mu_v.set_title('μ_visc(v) 곡선', fontweight='bold', fontsize=11)
+            self.ax_mu_v.set_xlabel('속도 v (m/s)', fontsize=10)
+            self.ax_mu_v.set_ylabel('마찰 계수 μ_visc', fontsize=10)
             self.ax_mu_v.grid(True, alpha=0.3)
 
             # Find peak (handle NaN values)
@@ -8314,7 +8314,7 @@ $\begin{array}{lcc}
             except Exception as e:
                 print(f"[DEBUG] 참조 μ_visc 플롯 오류: {e}")
 
-            self.ax_mu_v.legend(loc='upper left', fontsize=10)
+            self.ax_mu_v.legend(loc='upper left', fontsize=9)
 
             # Plot 2: Real Contact Area Ratio A/A0 = P(q_max) vs velocity
             P_qmax_array = np.zeros(len(v))
@@ -8361,9 +8361,9 @@ $\begin{array}{lcc}
                 print(f"[DEBUG] 참조 A/A0 플롯 오류: {e}")
 
             self.ax_mu_cumulative.set_title(f'실접촉 면적비율 A/A0{title_suffix}', fontweight='bold', fontsize=11)
-            self.ax_mu_cumulative.set_xlabel('속도 v (m/s)')
-            self.ax_mu_cumulative.set_ylabel('A/A0 = P(q_max)')
-            self.ax_mu_cumulative.legend(loc='best', fontsize=10)
+            self.ax_mu_cumulative.set_xlabel('속도 v (m/s)', fontsize=10)
+            self.ax_mu_cumulative.set_ylabel('A/A0 = P(q_max)', fontsize=10)
+            self.ax_mu_cumulative.legend(loc='best', fontsize=9)
             self.ax_mu_cumulative.grid(True, alpha=0.3)
 
             # Set y-axis to show data with padding (auto-scale based on actual data)
@@ -8396,12 +8396,12 @@ $\begin{array}{lcc}
             self.ax_ps.semilogx(q, S, 'r--', linewidth=1.5, label='S(q)')
             ax_twin.semilogx(q, cumulative, 'g-', linewidth=1.5, alpha=0.7, label='누적μ')
 
-            self.ax_ps.set_title('P(q), S(q) / 누적 μ', fontweight='bold', fontsize=12)
-            self.ax_ps.set_xlabel('파수 q (1/m)')
-            self.ax_ps.set_ylabel('P(q), S(q)', color='blue')
-            ax_twin.set_ylabel('누적 μ', color='green')
-            self.ax_ps.legend(loc='upper left', fontsize=10)
-            ax_twin.legend(loc='upper right', fontsize=10)
+            self.ax_ps.set_title('P(q), S(q) / 누적 μ', fontweight='bold', fontsize=11)
+            self.ax_ps.set_xlabel('파수 q (1/m)', fontsize=10)
+            self.ax_ps.set_ylabel('P(q), S(q)', color='blue', fontsize=10)
+            ax_twin.set_ylabel('누적 μ', color='green', fontsize=10)
+            self.ax_ps.legend(loc='upper left', fontsize=9)
+            ax_twin.legend(loc='upper right', fontsize=9)
             self.ax_ps.grid(True, alpha=0.3)
             self.ax_ps.set_ylim(0, 1.1)
 
@@ -8411,7 +8411,7 @@ $\begin{array}{lcc}
                 cumulative_max = 0.1
             ax_twin.set_ylim(0, cumulative_max * 1.2)
 
-            self.fig_mu_visc.tight_layout()
+            self.fig_mu_visc.subplots_adjust(left=0.10, right=0.92, top=0.95, bottom=0.09, hspace=0.38, wspace=0.35)
             self.canvas_mu_visc.draw()
 
             # Auto-register graph data for friction results
@@ -9244,131 +9244,177 @@ $\begin{array}{lcc}
             messagebox.showerror("오류", f"파일 저장 실패:\n{str(e)}")
 
     def _edit_reference_data(self):
-        """Open dialog for editing reference mu_visc and A/A0 data."""
+        """Open dialog for editing reference mu_visc and A/A0 data as list."""
         dialog = tk.Toplevel(self.root)
         dialog.title("참조 데이터 편집")
-        dialog.geometry("700x600")
+        dialog.geometry("750x650")
         dialog.resizable(True, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
         # Center the dialog
         dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - 700) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 600) // 2
+        x = self.root.winfo_x() + (self.root.winfo_width() - 750) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 650) // 2
         dialog.geometry(f"+{x}+{y}")
 
-        # Instructions
-        inst_frame = ttk.Frame(dialog, padding=10)
-        inst_frame.pack(fill=tk.X)
-        ttk.Label(inst_frame,
-                  text="참조 데이터를 복사하여 붙여넣기 하세요.\n형식: 각 줄에 'log10(v) [탭 or 공백] 값' (예: -5.0  0.59)",
-                  font=('Segoe UI', 17)).pack(anchor=tk.W)
+        # Bottom buttons - pack first so always visible
+        bottom_frame = ttk.Frame(dialog, padding=10)
+        bottom_frame.pack(side=tk.BOTTOM, fill=tk.X)
 
         # Create notebook for tabs
         notebook = ttk.Notebook(dialog)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
+        # === Helper: create a list tab with Treeview ===
+        def create_list_tab(parent, col1_name, col2_name, existing_data_col1, existing_data_col2):
+            """Create a tab with Treeview list, add/delete buttons, and file load."""
+            frame = ttk.Frame(parent, padding=5)
+
+            # Top: add row controls
+            add_frame = ttk.LabelFrame(frame, text="데이터 추가", padding=5)
+            add_frame.pack(fill=tk.X, pady=(0, 5))
+
+            ttk.Label(add_frame, text=f"{col1_name}:").grid(row=0, column=0, padx=3)
+            entry_col1 = ttk.Entry(add_frame, width=15)
+            entry_col1.grid(row=0, column=1, padx=3)
+
+            ttk.Label(add_frame, text=f"{col2_name}:").grid(row=0, column=2, padx=3)
+            entry_col2 = ttk.Entry(add_frame, width=15)
+            entry_col2.grid(row=0, column=3, padx=3)
+
+            def add_item():
+                try:
+                    val1 = float(entry_col1.get())
+                    val2 = float(entry_col2.get())
+                    tree.insert('', tk.END, values=(f"{val1:.6f}", f"{val2:.6e}"))
+                    entry_col1.delete(0, tk.END)
+                    entry_col2.delete(0, tk.END)
+                    count_label.config(text=f"총 {len(tree.get_children())}개")
+                except ValueError:
+                    messagebox.showwarning("입력 오류", "숫자를 입력하세요.", parent=dialog)
+
+            ttk.Button(add_frame, text="추가", command=add_item, width=6).grid(row=0, column=4, padx=5)
+
+            def load_from_file():
+                filepath = filedialog.askopenfilename(
+                    title="참조 데이터 파일 선택",
+                    filetypes=[("Text files", "*.txt"), ("CSV files", "*.csv"), ("All files", "*.*")],
+                    parent=dialog
+                )
+                if not filepath:
+                    return
+                try:
+                    data = np.loadtxt(filepath, comments='#')
+                    if data.ndim == 1:
+                        messagebox.showwarning("오류", "2열 이상의 데이터 파일이 필요합니다.", parent=dialog)
+                        return
+                    for row in data:
+                        tree.insert('', tk.END, values=(f"{row[0]:.6f}", f"{row[1]:.6e}"))
+                    count_label.config(text=f"총 {len(tree.get_children())}개")
+                except Exception as e:
+                    messagebox.showerror("오류", f"파일 로드 실패:\n{e}", parent=dialog)
+
+            ttk.Button(add_frame, text="파일 로드", command=load_from_file, width=8).grid(row=0, column=5, padx=5)
+
+            # Treeview list
+            list_frame = ttk.Frame(frame)
+            list_frame.pack(fill=tk.BOTH, expand=True)
+
+            columns = ('col1', 'col2')
+            tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=15)
+            tree.heading('col1', text=col1_name)
+            tree.heading('col2', text=col2_name)
+            tree.column('col1', width=200, anchor=tk.CENTER)
+            tree.column('col2', width=200, anchor=tk.CENTER)
+
+            scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=tree.yview)
+            tree.configure(yscrollcommand=scrollbar.set)
+            scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+            tree.pack(fill=tk.BOTH, expand=True)
+
+            # Pre-fill with existing data
+            if existing_data_col1 is not None and existing_data_col2 is not None:
+                for v1, v2 in zip(existing_data_col1, existing_data_col2):
+                    tree.insert('', tk.END, values=(f"{v1:.6f}", f"{v2:.6e}"))
+
+            # Bottom controls: delete, clear
+            ctrl_frame = ttk.Frame(frame, padding=(0, 5))
+            ctrl_frame.pack(fill=tk.X)
+
+            def delete_selected():
+                selected = tree.selection()
+                if not selected:
+                    messagebox.showwarning("선택 없음", "삭제할 항목을 선택하세요.", parent=dialog)
+                    return
+                for item in selected:
+                    tree.delete(item)
+                count_label.config(text=f"총 {len(tree.get_children())}개")
+
+            def clear_all():
+                if messagebox.askyesno("확인", "모든 데이터를 삭제하시겠습니까?", parent=dialog):
+                    for item in tree.get_children():
+                        tree.delete(item)
+                    count_label.config(text=f"총 0개")
+
+            ttk.Button(ctrl_frame, text="선택 삭제", command=delete_selected, width=10).pack(side=tk.LEFT, padx=3)
+            ttk.Button(ctrl_frame, text="전체 삭제", command=clear_all, width=10).pack(side=tk.LEFT, padx=3)
+            count_label = ttk.Label(ctrl_frame, text=f"총 {len(tree.get_children())}개")
+            count_label.pack(side=tk.RIGHT, padx=5)
+
+            return frame, tree
+
         # Tab 1: mu_visc reference
-        mu_frame = ttk.Frame(notebook, padding=5)
-        notebook.add(mu_frame, text="μ_visc 참조 데이터")
-
-        ttk.Label(mu_frame, text="μ_visc 참조 데이터 (log10(v) \\t mu_visc):",
-                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        mu_text = tk.Text(mu_frame, height=20, font=("Courier", 15), wrap=tk.NONE)
-        mu_scroll = ttk.Scrollbar(mu_frame, orient=tk.VERTICAL, command=mu_text.yview)
-        mu_text.configure(yscrollcommand=mu_scroll.set)
-        mu_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        mu_text.pack(fill=tk.BOTH, expand=True)
-
-        # Pre-fill with existing data
-        if hasattr(self, 'reference_mu_data') and self.reference_mu_data is not None:
-            log_v = self.reference_mu_data.get('log_v')
-            mu = self.reference_mu_data.get('mu')
-            if log_v is not None and mu is not None:
-                for lv, m in zip(log_v, mu):
-                    mu_text.insert(tk.END, f"{lv:.6e}\t{m:.6e}\n")
+        mu_col1 = self.reference_mu_data.get('log_v') if self.reference_mu_data else None
+        mu_col2 = self.reference_mu_data.get('mu') if self.reference_mu_data else None
+        mu_tab, mu_tree = create_list_tab(notebook, "log10(v)", "μ_visc", mu_col1, mu_col2)
+        notebook.add(mu_tab, text="  μ_visc 참조 데이터  ")
 
         # Tab 2: A/A0 reference
-        area_frame = ttk.Frame(notebook, padding=5)
-        notebook.add(area_frame, text="A/A0 참조 데이터")
+        area_col1 = self.reference_area_data.get('log_v') if self.reference_area_data else None
+        area_col2 = self.reference_area_data.get('area') if self.reference_area_data else None
+        area_tab, area_tree = create_list_tab(notebook, "log10(v)", "A/A0", area_col1, area_col2)
+        notebook.add(area_tab, text="  A/A0 참조 데이터  ")
 
-        ttk.Label(area_frame, text="A/A0 참조 데이터 (log10(v) \\t A/A0):",
-                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        area_text = tk.Text(area_frame, height=20, font=("Courier", 15), wrap=tk.NONE)
-        area_scroll = ttk.Scrollbar(area_frame, orient=tk.VERTICAL, command=area_text.yview)
-        area_text.configure(yscrollcommand=area_scroll.set)
-        area_scroll.pack(side=tk.RIGHT, fill=tk.Y)
-        area_text.pack(fill=tk.BOTH, expand=True)
-
-        # Pre-fill with existing data
-        if hasattr(self, 'reference_area_data') and self.reference_area_data is not None:
-            log_v = self.reference_area_data.get('log_v')
-            area = self.reference_area_data.get('area')
-            if log_v is not None and area is not None:
-                for lv, a in zip(log_v, area):
-                    area_text.insert(tk.END, f"{lv:.6e}\t{a:.6e}\n")
-
-        # Button frame
-        btn_frame = ttk.Frame(dialog, padding=10)
-        btn_frame.pack(fill=tk.X)
-
+        # Apply / Cancel buttons
         def apply_data():
-            """Parse and apply the reference data."""
+            """Parse tree data and apply as reference."""
             try:
-                # Parse mu_visc data
-                mu_content = mu_text.get("1.0", tk.END).strip()
-                if mu_content:
-                    mu_lines = [l.strip() for l in mu_content.split('\n') if l.strip() and not l.startswith('#')]
-                    if mu_lines:
-                        mu_data = []
-                        for line in mu_lines:
-                            parts = line.split()
-                            if len(parts) >= 2:
-                                try:
-                                    log_v = float(parts[0])
-                                    mu_val = float(parts[1])
-                                    mu_data.append((log_v, mu_val))
-                                except ValueError:
-                                    continue
-                        if mu_data:
-                            mu_data = np.array(mu_data)
-                            log_v = mu_data[:, 0]
-                            mu = mu_data[:, 1]
-                            self.reference_mu_data = {
-                                'v': 10**log_v,
-                                'mu': mu,
-                                'log_v': log_v,
-                                'show': True
-                            }
-                            print(f"[참조 데이터] μ_visc 업데이트: {len(mu)} points")
+                # Parse mu_visc data from tree
+                mu_items = mu_tree.get_children()
+                if mu_items:
+                    mu_data = []
+                    for item in mu_items:
+                        vals = mu_tree.item(item, 'values')
+                        mu_data.append((float(vals[0]), float(vals[1])))
+                    mu_data = np.array(mu_data)
+                    mu_data = mu_data[mu_data[:, 0].argsort()]  # sort by log_v
+                    self.reference_mu_data = {
+                        'v': 10**mu_data[:, 0],
+                        'mu': mu_data[:, 1],
+                        'log_v': mu_data[:, 0],
+                        'show': True
+                    }
+                else:
+                    self.reference_mu_data = None
 
-                # Parse A/A0 data
-                area_content = area_text.get("1.0", tk.END).strip()
-                if area_content:
-                    area_lines = [l.strip() for l in area_content.split('\n') if l.strip() and not l.startswith('#')]
-                    if area_lines:
-                        area_data = []
-                        for line in area_lines:
-                            parts = line.split()
-                            if len(parts) >= 2:
-                                try:
-                                    log_v = float(parts[0])
-                                    area_val = float(parts[1])
-                                    area_data.append((log_v, area_val))
-                                except ValueError:
-                                    continue
-                        if area_data:
-                            area_data = np.array(area_data)
-                            log_v = area_data[:, 0]
-                            area = area_data[:, 1]
-                            self.reference_area_data = {
-                                'v': 10**log_v,
-                                'area': area,
-                                'log_v': log_v,
-                                'show': True
-                            }
-                            print(f"[참조 데이터] A/A0 업데이트: {len(area)} points")
+                # Parse A/A0 data from tree
+                area_items = area_tree.get_children()
+                if area_items:
+                    area_data = []
+                    for item in area_items:
+                        vals = area_tree.item(item, 'values')
+                        area_data.append((float(vals[0]), float(vals[1])))
+                    area_data = np.array(area_data)
+                    area_data = area_data[area_data[:, 0].argsort()]  # sort by log_v
+                    self.reference_area_data = {
+                        'v': 10**area_data[:, 0],
+                        'area': area_data[:, 1],
+                        'log_v': area_data[:, 0],
+                        'show': True
+                    }
+                else:
+                    self.reference_area_data = None
 
                 # Refresh plots if mu_visc results exist
                 if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
@@ -9380,14 +9426,16 @@ $\begin{array}{lcc}
                         self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
 
                 dialog.destroy()
-                messagebox.showinfo("완료", "참조 데이터가 업데이트되었습니다.")
+                mu_count = len(mu_items)
+                area_count = len(area_items)
+                messagebox.showinfo("완료", f"참조 데이터 업데이트 완료\n\nμ_visc: {mu_count}개\nA/A0: {area_count}개")
 
             except Exception as e:
                 import traceback
-                messagebox.showerror("오류", f"데이터 파싱 실패:\n{str(e)}\n\n{traceback.format_exc()}")
+                messagebox.showerror("오류", f"데이터 적용 실패:\n{str(e)}\n\n{traceback.format_exc()}")
 
-        ttk.Button(btn_frame, text="적용", command=apply_data, width=15).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(bottom_frame, text="적용", command=apply_data, width=15).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(bottom_frame, text="취소", command=dialog.destroy, width=15).pack(side=tk.RIGHT, padx=5)
 
     def _create_strain_map_tab(self, parent):
         """Create Local Strain Map visualization tab."""
@@ -9511,7 +9559,7 @@ $\begin{array}{lcc}
                ha='center', va='center', transform=self.ax_fg_factors.transAxes,
                fontsize=13, color='gray')
 
-        self.fig_strain_map.tight_layout()
+        self.fig_strain_map.subplots_adjust(left=0.08, right=0.95, top=0.95, bottom=0.08, hspace=0.35, wspace=0.30)
         self.canvas_strain_map.draw()
 
     def _calculate_strain_map(self):
@@ -10057,7 +10105,7 @@ $\begin{array}{lcc}
             ax.set_ylim(q_crop_min, q_crop_max)
             ax.set_facecolor('white')  # 크롭 후 회색 배경 제거
 
-        self.fig_strain_map.tight_layout()
+        self.fig_strain_map.subplots_adjust(left=0.08, right=0.95, top=0.95, bottom=0.08, hspace=0.35, wspace=0.30)
         self.canvas_strain_map.draw()
 
     def _export_strain_map_csv(self):
@@ -10339,7 +10387,7 @@ $\begin{array}{lcc}
         self.ax_freq_range.set_yscale('log')
         self.ax_freq_range.grid(True, alpha=0.3)
 
-        self.fig_integrand.tight_layout()
+        self.fig_integrand.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.09, hspace=0.38, wspace=0.30)
 
         self.canvas_integrand = FigureCanvasTkAgg(self.fig_integrand, plot_frame)
         self.canvas_integrand.draw()
@@ -10595,7 +10643,7 @@ $\begin{array}{lcc}
                 self.freq_range_text.insert(tk.END, f"  {omega_dma_min:.2e} ~ {omega_dma_max:.2e} rad/s\n")
 
             self.integrand_progress_var.set(100)
-            self.fig_integrand.tight_layout()
+            self.fig_integrand.subplots_adjust(left=0.10, right=0.95, top=0.95, bottom=0.09, hspace=0.38, wspace=0.30)
             self.canvas_integrand.draw()
 
             self.status_var.set("피적분함수 계산 완료")
@@ -11683,11 +11731,13 @@ $\begin{array}{lcc}
             freq = data[:, 0]
             E_storage = data[:, 1]
             E_loss = data[:, 2]
+            omega = 2 * np.pi * freq
 
             # 저장
             self.persson_master_curve = {
                 'freq': freq,
                 'f': freq,
+                'omega': omega,
                 'E_storage': E_storage,
                 'E_loss': E_loss,
                 'filename': selected,
