@@ -6749,19 +6749,30 @@ Rubber friction theory
         # ═══════════════════════════════════════════════════════
         add_section_title('핵심 비교: G_area vs G_stress', bg_color='#7C3AED')
 
-        add_equation(
-            r'$\begin{array}{lcc}'
-            r'\hline'
-            r' \mathrm{항목} & G_{area}(q,v) & G_{stress}(q,v) \\'
-            r'\hline'
-            r' \mathrm{단위} & \mathrm{무차원} & \mathrm{Pa}^2 \\'
-            r' \mathrm{각도\;적분} & \mathrm{있음}\;(\int_0^{2\pi} d\phi) & \mathrm{없음} \\'
-            r' \mathrm{탄성률\;항} & |E/((1\!-\!\nu^2)\sigma_0)|^2 & |E/(1\!-\!\nu^2)|^2 \\'
-            r' \mathrm{주파수} & \omega = qv\cos\phi & \omega = qv \\'
-            r' \mathrm{용도} & P(q),\;\mu\;\mathrm{계산} & P(\sigma)\;\mathrm{계산} \\'
-            r'\hline'
-            r'\end{array}$',
-            fig_height=2.2, font_size=16)
+        # Comparison table rendered as tkinter widgets (matplotlib mathtext doesn't support \begin{array})
+        table_frame = tk.Frame(scrollable_frame, bg='white', padx=20, pady=6)
+        table_frame.pack(fill=tk.X, padx=10)
+        table_data = [
+            ('항목',        'G_area(q,v)',              'G_stress(q,v)'),
+            ('단위',        '무차원',                    'Pa²'),
+            ('각도 적분',   '있음 (∫₀²π dφ)',           '없음'),
+            ('탄성률 항',   '|E/((1-ν²)σ₀)|²',         '|E/(1-ν²)|²'),
+            ('주파수',      'ω = qv·cosφ',              'ω = qv'),
+            ('용도',        'P(q), μ 계산',             'P(σ) 계산'),
+        ]
+        for col_idx, header in enumerate(['항목', 'G_area(q,v)', 'G_stress(q,v)']):
+            lbl = tk.Label(table_frame, text=header, bg='#1B2A4A', fg='white',
+                           font=('Segoe UI', 13, 'bold'), padx=10, pady=5, anchor='center')
+            lbl.grid(row=0, column=col_idx, sticky='nsew', padx=1, pady=1)
+        for row_idx, (item, val_area, val_stress) in enumerate(table_data[1:], start=1):
+            bg = '#F1F5F9' if row_idx % 2 == 0 else 'white'
+            for col_idx, val in enumerate([item, val_area, val_stress]):
+                weight = 'bold' if col_idx == 0 else 'normal'
+                lbl = tk.Label(table_frame, text=val, bg=bg, fg='#1E293B',
+                               font=('Segoe UI', 13, weight), padx=10, pady=4, anchor='center')
+                lbl.grid(row=row_idx, column=col_idx, sticky='nsew', padx=1, pady=1)
+        for col_idx in range(3):
+            table_frame.columnconfigure(col_idx, weight=1)
 
         add_text('주의: 같은 이름 "G"를 사용하지만 완전히 다른 물리량!', font_size=15, fg='#DC2626', bold=True)
         add_text('  G_area: "얼마나 띄엄띄엄 닿는가" (접촉의 불균일성)', font_size=14, fg='#64748B')
