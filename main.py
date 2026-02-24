@@ -622,6 +622,41 @@ class PerssonModelGUI_V2:
         tk.Label(logo_container, image=self._logo_image,
                  bg='#F0F2F5').pack(expand=True)
 
+    def _create_panel_toolbar(self, parent, buttons=None):
+        """Create a fixed toolbar at the top of a panel.
+
+        Args:
+            parent: Parent frame (usually left_frame)
+            buttons: List of (text, command, style) tuples. style can be
+                     'Accent.TButton', 'Success.TButton', 'TButton', etc.
+
+        Returns:
+            toolbar frame (tk.Frame)
+        """
+        C = self.COLORS
+        toolbar = tk.Frame(parent, bg='#E2E8F0', padx=4, pady=3)
+        toolbar.pack(side=tk.TOP, fill=tk.X)
+        # Bottom border
+        tk.Frame(parent, bg=C['border'], height=1).pack(side=tk.TOP, fill=tk.X)
+
+        # Toolbar indicator
+        tk.Label(toolbar, text="\u25A0", bg='#E2E8F0',
+                 fg=C['primary'], font=('Segoe UI', 12)).pack(side=tk.LEFT, padx=(0, 4))
+
+        if buttons is None:
+            # Reference-only toolbar (no action buttons)
+            tk.Label(toolbar, text="참조", bg='#E2E8F0',
+                     fg=C['text_secondary'],
+                     font=('Segoe UI', 14)).pack(side=tk.LEFT, padx=2)
+        elif buttons:
+            for item in buttons:
+                text, command = item[0], item[1]
+                style = item[2] if len(item) > 2 else 'Accent.TButton'
+                btn = ttk.Button(toolbar, text=text, command=command, style=style)
+                btn.pack(side=tk.LEFT, padx=3, pady=1)
+
+        return toolbar
+
     def _create_psd_profile_tab(self, parent):
         """Create PSD from Profile tab for calculating PSD from surface height data."""
         # Main container
@@ -635,6 +670,12 @@ class PerssonModelGUI_V2:
 
         # Logo at bottom (pack before canvas so it stays at bottom)
         self._add_logo_to_panel(left_frame)
+
+        # Toolbar (fixed at top, always accessible)
+        self._create_panel_toolbar(left_frame, buttons=[
+            ("PSD 계산", self._calculate_profile_psd, 'Accent.TButton'),
+            ("PSD 확정 \u2192 계산에 사용", self._apply_profile_psd_to_tab3, 'Success.TButton'),
+        ])
 
         # Add scrollbar to left panel
         left_canvas = tk.Canvas(left_frame, highlightthickness=0)
@@ -1914,6 +1955,11 @@ class PerssonModelGUI_V2:
 
         # Logo at bottom (pack before canvas so it stays at bottom)
         self._add_logo_to_panel(left_container)
+
+        # Toolbar (fixed at top, always accessible)
+        self._create_panel_toolbar(left_container, buttons=[
+            ("마스터 커브 확정 \u2192 계산에 사용", self._use_persson_master_curve_for_calc, 'Success.TButton'),
+        ])
 
         # Create canvas and scrollbar for scrolling
         mc_canvas = tk.Canvas(left_container, highlightthickness=0, bg='#F0F2F5')
@@ -3708,40 +3754,71 @@ class PerssonModelGUI_V2:
         main_container = ttk.Frame(parent)
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
-        # Left panel for inputs
-        left_panel = ttk.Frame(main_container)
-        left_panel.pack(side=tk.LEFT, fill=tk.BOTH, padx=(0, 5))
+        # Left panel for inputs (fixed width, scrollable)
+        left_frame = ttk.Frame(main_container, width=600)
+        left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        left_frame.pack_propagate(False)
 
         # Logo at bottom
-        self._add_logo_to_panel(left_panel)
+        self._add_logo_to_panel(left_frame)
+
+        # Toolbar with G(q,v) 계산 button (fixed at top, always accessible)
+        toolbar = self._create_panel_toolbar(left_frame, buttons=[])
+
+        # G(q,v) 계산 button - assigned to self.calc_button for state management
+        self.calc_button = ttk.Button(toolbar, text="G(q,v) 계산 실행",
+                                      command=self._run_calculation,
+                                      style='Accent.TButton')
+        self.calc_button.pack(side=tk.LEFT, padx=3, pady=1)
+
+        # Progress bar in toolbar
+        self.progress_var = tk.IntVar()
+        self.progress_bar = ttk.Progressbar(
+            toolbar, variable=self.progress_var, maximum=100, length=200
+        )
+        self.progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4, pady=1)
 
         # Right panel for visualization
         right_panel = ttk.Frame(main_container)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True, padx=(5, 0))
 
-        # ===== G(q,v) 계산 버튼 (공칭압력 위) =====
-        calc_section = ttk.Frame(left_panel)
-        calc_section.pack(fill=tk.X, pady=(0, 5))
+        # ===== Scrollable left panel =====
+        param_canvas = tk.Canvas(left_frame, highlightthickness=0)
+        param_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=param_canvas.yview)
+        left_panel = ttk.Frame(param_canvas)
 
-        # G(q,v) 계산 실행 버튼
-        self.calc_button = ttk.Button(
-            calc_section,
-            text="G(q,v) 계산 실행",
-            command=self._run_calculation,
-            style='Accent.TButton'
+        left_panel.bind(
+            "<Configure>",
+            lambda e: param_canvas.configure(scrollregion=param_canvas.bbox("all"))
         )
-        self.calc_button.pack(fill=tk.X, pady=2)
 
-        # Progress bar
-        self.progress_var = tk.IntVar()
-        self.progress_bar = ttk.Progressbar(
-            calc_section,
-            variable=self.progress_var,
-            maximum=100
-        )
-        self.progress_bar.pack(fill=tk.X, pady=2)
+        param_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=580)
+        param_canvas.configure(yscrollcommand=param_scrollbar.set)
 
-        # Input panel in left column
+        param_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        param_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Mousewheel scroll (cross-platform)
+        def _on_mw_param(event):
+            if event.delta:
+                param_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+            elif event.num == 4:
+                param_canvas.yview_scroll(-1, "units")
+            elif event.num == 5:
+                param_canvas.yview_scroll(1, "units")
+
+        def _bind_mw_param(event):
+            param_canvas.bind_all("<MouseWheel>", _on_mw_param)
+            param_canvas.bind_all("<Button-4>", _on_mw_param)
+            param_canvas.bind_all("<Button-5>", _on_mw_param)
+        def _unbind_mw_param(event):
+            param_canvas.unbind_all("<MouseWheel>")
+            param_canvas.unbind_all("<Button-4>")
+            param_canvas.unbind_all("<Button-5>")
+        param_canvas.bind("<Enter>", _bind_mw_param)
+        param_canvas.bind("<Leave>", _unbind_mw_param)
+
+        # Input panel in left column (scrollable)
         input_frame = ttk.LabelFrame(left_panel, text="계산 매개변수", padding=10)
         input_frame.pack(fill=tk.X, pady=(0, 5))
 
@@ -4344,6 +4421,11 @@ class PerssonModelGUI_V2:
 
     def _create_results_tab(self, parent):
         """Create G(q,v) results tab."""
+        # Toolbar
+        self._create_panel_toolbar(parent, buttons=[
+            ("결과 그래프 저장", lambda: self._save_plot(self.fig_results, "results_plot"), 'TButton'),
+        ])
+
         # Instruction
         instruction = ttk.LabelFrame(parent, text="탭 설명", padding=10)
         instruction.pack(fill=tk.X, padx=10, pady=5)
@@ -6025,6 +6107,9 @@ Rubber friction theory
 
     def _create_equations_tab(self, parent):
         """Create equations reference tab with all formulas used in calculations."""
+        # Toolbar
+        self._create_panel_toolbar(parent)
+
         # Create scrollable frame
         canvas = tk.Canvas(parent, bg='white')
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
@@ -6229,6 +6314,11 @@ $\begin{array}{lcc}
 
         # Logo at bottom
         self._add_logo_to_panel(left_frame)
+
+        # Toolbar (fixed at top, always accessible)
+        self._create_panel_toolbar(left_frame, buttons=[
+            ("h'rms / Local Strain 계산", self._calculate_rms_slope, 'Accent.TButton'),
+        ])
 
         # ============== Left Panel: Controls ==============
 
@@ -6708,6 +6798,19 @@ $\begin{array}{lcc}
         # Logo at bottom (pack before canvas so it stays at bottom)
         self._add_logo_to_panel(left_frame)
 
+        # Toolbar (fixed at top, always accessible) - mu_visc 계산 button
+        mu_toolbar = self._create_panel_toolbar(left_frame, buttons=[
+            ("\u03bc_visc 계산", self._calculate_mu_visc, 'Accent.TButton'),
+            ("f,g 계산", self._compute_fg_curves, 'TButton'),
+        ])
+
+        # Progress bar in toolbar (linked to same variable as scrollable area)
+        self.mu_progress_var = tk.IntVar()
+        self.mu_toolbar_progress = ttk.Progressbar(
+            mu_toolbar, variable=self.mu_progress_var, maximum=100, length=150
+        )
+        self.mu_toolbar_progress.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=4, pady=1)
+
         # Create canvas and scrollbar for left panel
         left_canvas = tk.Canvas(left_frame, highlightthickness=0)
         left_scrollbar = ttk.Scrollbar(left_frame, orient="vertical", command=left_canvas.yview)
@@ -7012,7 +7115,6 @@ $\begin{array}{lcc}
                                          style='Accent.TButton')
         self.mu_calc_button.pack(side=tk.LEFT, padx=2)
 
-        self.mu_progress_var = tk.IntVar()
         self.mu_progress_bar = ttk.Progressbar(calc_row, variable=self.mu_progress_var, maximum=100, length=150)
         self.mu_progress_bar.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=2)
 
@@ -9983,6 +10085,11 @@ $\begin{array}{lcc}
 
     def _create_strain_map_tab(self, parent):
         """Create Local Strain Map visualization tab."""
+        # Toolbar
+        self._create_panel_toolbar(parent, buttons=[
+            ("계산 및 시각화", self._calculate_strain_map, 'Accent.TButton'),
+        ])
+
         # Main container
         main_frame = ttk.Frame(parent)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
@@ -10802,6 +10909,11 @@ $\begin{array}{lcc}
         # Logo at bottom
         self._add_logo_to_panel(left_frame)
 
+        # Toolbar (fixed at top, always accessible)
+        self._create_panel_toolbar(left_frame, buttons=[
+            ("피적분함수 계산", self._calculate_integrand_visualization, 'Accent.TButton'),
+        ])
+
         # ============== Left Panel: Controls ==============
 
         # 1. Description
@@ -11199,6 +11311,9 @@ $\begin{array}{lcc}
 
     def _create_variables_tab(self, parent):
         """Create variable relationship explanation tab."""
+        # Toolbar
+        self._create_panel_toolbar(parent)
+
         # Main scrollable frame
         canvas = tk.Canvas(parent)
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
@@ -11435,6 +11550,11 @@ $\begin{array}{lcc}
 
     def _create_debug_tab(self, parent):
         """Create debug log tab for monitoring calculation values."""
+        # Toolbar
+        self._create_panel_toolbar(parent, buttons=[
+            ("진단 실행", self._run_debug_diagnostic, 'Accent.TButton'),
+        ])
+
         # Instruction label
         instruction = ttk.LabelFrame(parent, text="디버그 로그 탭 설명", padding=10)
         instruction.pack(fill=tk.X, padx=10, pady=5)
@@ -11881,6 +12001,9 @@ $\begin{array}{lcc}
 
     def _create_friction_factors_tab(self, parent):
         """Create friction factors analysis tab - explains how to increase/decrease μ_visc."""
+        # Toolbar
+        self._create_panel_toolbar(parent)
+
         # Main scrollable frame
         canvas = tk.Canvas(parent)
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
@@ -12809,6 +12932,11 @@ $\begin{array}{lcc}
         left_frame = ttk.Frame(main_container, width=600)
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
+
+        # Toolbar (fixed at top, always accessible)
+        self._create_panel_toolbar(left_frame, buttons=[
+            ("주파수 감도 분석 실행", self._run_ve_advisor_analysis, 'Accent.TButton'),
+        ])
 
         left_canvas = tk.Canvas(left_frame, highlightthickness=0)
         left_scroll = ttk.Scrollbar(left_frame, orient='vertical', command=left_canvas.yview)
