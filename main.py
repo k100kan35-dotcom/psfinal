@@ -10069,7 +10069,7 @@ $\begin{array}{lcc}
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - 데이터 선택")
-        dialog.geometry("400x430")
+        dialog.geometry("400x500")
         dialog.resizable(False, False)
         dialog.transient(self.root)
         dialog.grab_set()
@@ -10077,7 +10077,7 @@ $\begin{array}{lcc}
         # Center the dialog
         dialog.update_idletasks()
         x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 430) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - 500) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
@@ -12548,6 +12548,30 @@ $\begin{array}{lcc}
                 freq_band_low = peak_freq_hz * 0.1
                 freq_band_high = peak_freq_hz * 10
 
+            # ── Convert frequency band to temperature range via aT ──
+            T_band_lo = None
+            T_band_hi = None
+            if temp_sweep_available and T_sweep is not None:
+                # f_eff(T) = 10 Hz × aT(T)  =>  aT = f / 10
+                log_aT_for_flo = np.log10(freq_band_low / 10.0)
+                log_aT_for_fhi = np.log10(freq_band_high / 10.0)
+
+                log_aT_vs_T = np.array([
+                    float(self.persson_aT_interp(T_val))
+                    for T_val in T_sweep])
+                # Invert aT(T): given log_aT, find T
+                sort_idx = np.argsort(log_aT_vs_T)
+                T_from_logaT = interp1d(
+                    log_aT_vs_T[sort_idx], T_sweep[sort_idx],
+                    kind='linear', bounds_error=False, fill_value='extrapolate')
+                # high freq → high aT → low T, low freq → low aT → high T
+                T_band_lo = float(np.clip(T_from_logaT(log_aT_for_fhi),
+                                          T_sweep[0], T_sweep[-1]))
+                T_band_hi = float(np.clip(T_from_logaT(log_aT_for_flo),
+                                          T_sweep[0], T_sweep[-1]))
+                if T_band_lo > T_band_hi:
+                    T_band_lo, T_band_hi = T_band_hi, T_band_lo
+
             # ── Compute improvement ──
             mu_curr_avg = np.mean(mu_current[mu_current > 0]) if np.any(mu_current > 0) else 0
             mu_sugg_avg = np.mean(mu_suggested[mu_suggested > 0]) if np.any(mu_suggested > 0) else 0
@@ -12560,7 +12584,7 @@ $\begin{array}{lcc}
                 f_centers, W_freq,
                 velocities, mu_current, mu_suggested, goal,
                 T_sweep, Ep_vs_T, Epp_vs_T, Ep_sugg_vs_T, Epp_sugg_vs_T,
-                temperature)
+                temperature, T_band_lo, T_band_hi)
 
             # ── Generate result text ──
             self.ve_result_text.delete(1.0, tk.END)
@@ -12589,7 +12613,12 @@ $\begin{array}{lcc}
             txt.insert(tk.END, "\u2501" * 44 + "\n")
             txt.insert(tk.END, f"  피크 주파수: {peak_freq_hz:.1f} Hz\n")
             txt.insert(tk.END, f"  중요 대역: {freq_band_low:.1f} ~ "
-                       f"{freq_band_high:.1f} Hz\n\n")
+                       f"{freq_band_high:.1f} Hz\n")
+            if T_band_lo is not None and T_band_hi is not None:
+                txt.insert(tk.END,
+                    f"  참고 온도 범위 (@10Hz): "
+                    f"{T_band_lo:.1f} ~ {T_band_hi:.1f}\u00b0C\n")
+            txt.insert(tk.END, "\n")
 
             txt.insert(tk.END, "\u2501" * 44 + "\n")
             txt.insert(tk.END, "  설계 제안\n")
@@ -12711,7 +12740,8 @@ $\begin{array}{lcc}
                                   velocities, mu_curr, mu_sugg, goal,
                                   T_sweep, Ep_vs_T, Epp_vs_T,
                                   Ep_sugg_vs_T, Epp_sugg_vs_T,
-                                  temperature):
+                                  temperature,
+                                  T_band_lo=None, T_band_hi=None):
         """Update the 6 plots (2x3) in the advisor tab."""
 
         # ── Plot 1: E'(f) comparison ──
@@ -12800,6 +12830,9 @@ $\begin{array}{lcc}
                 ax.semilogy(T_sweep, Ep_sugg_vs_T, 'r--', linewidth=2, label="제안 E'")
             ax.axvline(temperature, color='gray', linestyle=':', alpha=0.8,
                        label=f'현재 T={temperature}\u00b0C')
+            if T_band_lo is not None and T_band_hi is not None:
+                ax.axvspan(T_band_lo, T_band_hi, alpha=0.15, color='orange',
+                           label=f'핵심 대역 ({T_band_lo:.0f}~{T_band_hi:.0f}\u00b0C)')
             ax.set_xlabel('Temperature (\u00b0C)')
             ax.set_ylabel("E' (Pa)")
             ax.set_title("E'(T) @10 Hz", fontweight='bold', fontsize=9)
@@ -12826,6 +12859,11 @@ $\begin{array}{lcc}
             peak_T = T_sweep[peak_T_idx]
             ax.axvline(peak_T, color='orange', linestyle='--', alpha=0.7,
                        label=f"E'' 피크: {peak_T:.0f}\u00b0C")
+
+            # Mark critical temperature band from frequency spectrum
+            if T_band_lo is not None and T_band_hi is not None:
+                ax.axvspan(T_band_lo, T_band_hi, alpha=0.15, color='orange',
+                           label=f'핵심 대역 ({T_band_lo:.0f}~{T_band_hi:.0f}\u00b0C)')
 
             ax.set_xlabel('Temperature (\u00b0C)')
             ax.set_ylabel("E'' (Pa)")
