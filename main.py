@@ -7912,12 +7912,14 @@ $\begin{array}{lcc}
             q_min = float(self.q_min_var.get())
             G_matrix_corrected = np.zeros_like(G_matrix)
             P_matrix_corrected = np.zeros_like(G_matrix)
+            G_integrand_corrected = np.zeros_like(G_matrix)
 
             for j, v_j in enumerate(v):
                 self.g_calculator.velocity = v_j
                 results_recalc = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
                 G_matrix_corrected[:, j] = results_recalc['G']
                 P_matrix_corrected[:, j] = results_recalc['contact_area_ratio']
+                G_integrand_corrected[:, j] = results_recalc['G_integrand']
 
                 # Progress update (0-25%)
                 if j % max(1, len(v) // 10) == 0:
@@ -7928,6 +7930,7 @@ $\begin{array}{lcc}
             # Update self.results['2d_results'] so Tab 2's G(q) graph shows correct values
             self.results['2d_results']['G_matrix'] = G_matrix_corrected
             self.results['2d_results']['P_matrix'] = P_matrix_corrected
+            self.results['2d_results']['G_integrand_matrix'] = G_integrand_corrected
 
             self.status_var.set("G(q) 재계산 완료")
             self.root.update()
@@ -7965,6 +7968,7 @@ $\begin{array}{lcc}
                     results_nl = self.g_calculator.calculate_G_with_details(q, q_min=q_min)
                     G_matrix_corrected[:, j] = results_nl['G']
                     P_matrix_corrected[:, j] = results_nl['contact_area_ratio']
+                    G_integrand_corrected[:, j] = results_nl['G_integrand']
 
                     # Progress update (25-50%)
                     if j % max(1, len(v) // 10) == 0:
@@ -7978,6 +7982,7 @@ $\begin{array}{lcc}
                 # Update self.results['2d_results'] with nonlinear-corrected values
                 self.results['2d_results']['G_matrix'] = G_matrix_corrected
                 self.results['2d_results']['P_matrix'] = P_matrix_corrected
+                self.results['2d_results']['G_integrand_matrix'] = G_integrand_corrected
 
                 self.status_var.set("비선형 G(q) 재계산 완료 - μ_visc 계산 중...")
                 self.root.update()
@@ -9575,6 +9580,16 @@ $\begin{array}{lcc}
                 method='linear', bounds_error=False, fill_value=None
             )
 
+            # Create 2D interpolator for actual G integrand (q³C(q)×angle_integral)
+            G_integrand_matrix_orig = results_2d.get('G_integrand_matrix')
+            G_integrand_interp = None
+            if G_integrand_matrix_orig is not None:
+                log_Gint_orig = np.log10(np.maximum(G_integrand_matrix_orig, 1e-30))
+                G_integrand_interp = RegularGridInterpolator(
+                    (log_q_orig, log_v_orig), log_Gint_orig,
+                    method='linear', bounds_error=False, fill_value=None
+                )
+
             # Get PSD values
             C_q = self.psd_model(q_array)
 
@@ -9660,31 +9675,54 @@ $\begin{array}{lcc}
                         f_val = 1.0
                         E_storage_nonlinear[i, j] = E_storage
 
-                    # Get G value from Tab 3 results (interpolated)
+                    # Get cumulative G value from Tab 3 results (for A/A0 calculation)
                     # G_interp uses log scale
                     try:
                         log_G_val = G_interp((np.log10(q), np.log10(v)))
-                        G_linear = 10 ** log_G_val if np.isfinite(log_G_val) else 1e-10
+                        G_cumul_linear = 10 ** log_G_val if np.isfinite(log_G_val) else 1e-10
                     except:
-                        G_linear = 1e-10
+                        G_cumul_linear = 1e-10
 
-                    # Store G as "integrand" for visualization (actually the cumulative G value)
-                    G_integrand_linear[i, j] = G_linear
-
-                    # Calculate nonlinear G with f(ε) correction
-                    # G_nonlinear ≈ G_linear * f(ε)^2 (since G ~ |E|^2)
-                    if self.f_interpolator is not None:
-                        f_val_sq = f_val ** 2  # f_val was calculated above
-                        G_nonlinear = G_linear * f_val_sq
+                    # Get actual G integrand (q³C(q)×angle_integral) from Tab 3
+                    if G_integrand_interp is not None:
+                        try:
+                            log_Gint_val = G_integrand_interp((np.log10(q), np.log10(v)))
+                            Gint_linear = 10 ** log_Gint_val if np.isfinite(log_Gint_val) else 1e-30
+                        except:
+                            Gint_linear = 1e-30
                     else:
-                        G_nonlinear = G_linear
+                        # Fallback: use cumulative G (old behavior)
+                        Gint_linear = G_cumul_linear
 
-                    G_integrand_nonlinear[i, j] = G_nonlinear
+                    G_integrand_linear[i, j] = Gint_linear
+
+                    # Calculate nonlinear G integrand with f(ε) and g(ε) correction
+                    # G_integrand ~ |E_eff|² = (E'f)² + (E''g)²
+                    # Correction ratio: ((E'f)² + (E''g)²) / (E'² + E''²)
+                    E_sq = E_storage**2 + E_loss**2
+                    if E_sq > 0 and (self.f_interpolator is not None or self.g_interpolator is not None):
+                        g_val = 1.0
+                        if self.g_interpolator is not None:
+                            g_val = self.g_interpolator(strain)
+                            g_val = np.clip(g_val, 0.01, None)
+                        E_eff_sq = (E_storage * f_val)**2 + (E_loss * g_val)**2
+                        nl_ratio = E_eff_sq / E_sq
+                        Gint_nonlinear = Gint_linear * nl_ratio
+                    else:
+                        Gint_nonlinear = Gint_linear
+
+                    G_integrand_nonlinear[i, j] = Gint_nonlinear
+
+                    # Calculate cumulative nonlinear G for A/A0
+                    if E_sq > 0 and (self.f_interpolator is not None or self.g_interpolator is not None):
+                        G_cumul_nonlinear = G_cumul_linear * nl_ratio
+                    else:
+                        G_cumul_nonlinear = G_cumul_linear
 
                     # Calculate contact area ratio A/A0 = P(q) = erf(1/(2*sqrt(G)))
                     from scipy.special import erf
-                    G_linear_safe = max(G_linear, 1e-20)
-                    G_nonlinear_safe = max(G_nonlinear, 1e-20)
+                    G_linear_safe = max(G_cumul_linear, 1e-20)
+                    G_nonlinear_safe = max(G_cumul_nonlinear, 1e-20)
 
                     arg_linear = 1.0 / (2.0 * np.sqrt(G_linear_safe))
                     arg_nonlinear = 1.0 / (2.0 * np.sqrt(G_nonlinear_safe))

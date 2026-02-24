@@ -677,6 +677,7 @@ class GCalculator:
         # Initialize output matrices
         G_matrix = np.zeros((n_q, n_v))
         P_matrix = np.zeros((n_q, n_v))
+        G_integrand_matrix = np.zeros((n_q, n_v))
 
         # Store original velocity
         original_velocity = self.velocity
@@ -692,6 +693,7 @@ class GCalculator:
             # Store results
             G_matrix[:, j] = results['G']
             P_matrix[:, j] = results['contact_area_ratio']
+            G_integrand_matrix[:, j] = results['G_integrand']
 
             # Progress callback – pass per-velocity results for live
             # visualisation.  The extra arguments are optional so existing
@@ -716,6 +718,7 @@ class GCalculator:
             'v': v_values,
             'G_matrix': G_matrix,
             'P_matrix': P_matrix,
+            'G_integrand_matrix': G_integrand_matrix,
             'log_q': np.log10(q_values),
             'log_v': np.log10(v_values)
         }
