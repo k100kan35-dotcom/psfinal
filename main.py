@@ -346,21 +346,23 @@ class PerssonModelGUI_V2:
         # ── TButton (Default) ──
         style.configure('TButton', font=F['body'], padding=[12, 5],
                         background=C['surface'], foreground=C['text'],
-                        borderwidth=1, relief='flat', anchor='center')
+                        borderwidth=1, relief='raised', anchor='center')
         style.map('TButton',
-                  background=[('active', C['highlight']),
-                              ('pressed', C['border'])],
-                  relief=[('pressed', 'flat')])
+                  background=[('pressed', C['border']),
+                              ('active', C['highlight'])],
+                  relief=[('pressed', 'sunken'), ('!pressed', 'raised')])
 
         # ── Accent.TButton (Primary action - blue) ──
         style.configure('Accent.TButton', font=F['body_bold'],
                         background=C['primary'], foreground=C['primary_fg'],
-                        padding=[14, 6], borderwidth=0, relief='flat')
+                        padding=[14, 6], borderwidth=2, relief='raised')
         style.map('Accent.TButton',
-                  background=[('active', C['primary_hover']),
-                              ('pressed', C['sidebar']),
+                  background=[('pressed', '#0F172A'),
+                              ('active', C['primary_hover']),
                               ('disabled', C['border'])],
-                  foreground=[('disabled', C['text_secondary'])])
+                  foreground=[('disabled', C['text_secondary'])],
+                  relief=[('pressed', 'sunken'), ('!pressed', 'raised')],
+                  padding=[('pressed', [16, 8])])
 
         # ── Outline.TButton (Blue outline / border) ──
         style.configure('Outline.TButton', font=F['body_bold'],
@@ -375,20 +377,26 @@ class PerssonModelGUI_V2:
         # ── Success.TButton (Confirm - green) ──
         style.configure('Success.TButton', font=F['body_bold'],
                         background=C['success'], foreground=C['success_fg'],
-                        padding=[14, 6], borderwidth=0, relief='flat')
+                        padding=[14, 6], borderwidth=2, relief='raised')
         style.map('Success.TButton',
-                  background=[('active', '#047857'), ('pressed', '#065F46'),
+                  background=[('pressed', '#064E3B'),
+                              ('active', '#047857'),
                               ('disabled', C['border'])],
-                  foreground=[('disabled', C['text_secondary'])])
+                  foreground=[('disabled', C['text_secondary'])],
+                  relief=[('pressed', 'sunken'), ('!pressed', 'raised')],
+                  padding=[('pressed', [16, 8])])
 
         # ── Danger.TButton (Warning action - red) ──
         style.configure('Danger.TButton', font=F['body_bold'],
                         background=C['danger'], foreground=C['danger_fg'],
-                        padding=[14, 6], borderwidth=0, relief='flat')
+                        padding=[14, 6], borderwidth=2, relief='raised')
         style.map('Danger.TButton',
-                  background=[('active', '#B91C1C'), ('pressed', '#991B1B'),
+                  background=[('pressed', '#7F1D1D'),
+                              ('active', '#B91C1C'),
                               ('disabled', C['border'])],
-                  foreground=[('disabled', C['text_secondary'])])
+                  foreground=[('disabled', C['text_secondary'])],
+                  relief=[('pressed', 'sunken'), ('!pressed', 'raised')],
+                  padding=[('pressed', [16, 8])])
 
         # ── TEntry ──
         style.configure('TEntry', fieldbackground=C['input_bg'],
@@ -573,6 +581,9 @@ class PerssonModelGUI_V2:
         # Header bottom border
         tk.Frame(self.root, bg=self.COLORS['border'], height=1).pack(fill=tk.X, side=tk.TOP)
 
+        # ── Activity Log Panel (작업 로그) ──
+        self._create_log_panel()
+
         # Create notebook (tabbed interface)
         self.notebook = ttk.Notebook(self.root)
         self.notebook.pack(fill=tk.BOTH, expand=True, padx=8, pady=(4, 0))
@@ -599,6 +610,46 @@ class PerssonModelGUI_V2:
             setattr(self, attr, frame)
             self.notebook.add(frame, text=f'  {label}  ')
             builder(frame)
+
+        # ── Handle tab switch: prevent graph resize flicker ──
+        self._tab_switch_after_id = None
+
+        def _on_tab_changed(event):
+            # Cancel any pending redraw
+            if self._tab_switch_after_id is not None:
+                try:
+                    self.root.after_cancel(self._tab_switch_after_id)
+                except Exception:
+                    pass
+
+            # Freeze notebook size during transition to prevent flicker
+            nb_w = self.notebook.winfo_width()
+            nb_h = self.notebook.winfo_height()
+            if nb_w > 1 and nb_h > 1:
+                self.notebook.configure(width=nb_w, height=nb_h)
+
+            def _stabilize():
+                self._tab_switch_after_id = None
+                # Release fixed size so it can adapt normally
+                self.notebook.configure(width=0, height=0)
+                # Redraw visible canvas
+                for canvas_attr in ('canvas_psd_profile', 'canvas_mc',
+                                    'canvas_calc_progress', 'canvas_results',
+                                    'canvas_rms', 'canvas_mu_visc',
+                                    'canvas_integrand', 'canvas_strain_map',
+                                    'canvas_ve_advisor'):
+                    canvas = getattr(self, canvas_attr, None)
+                    if canvas is not None:
+                        try:
+                            widget = canvas.get_tk_widget()
+                            if widget.winfo_ismapped():
+                                canvas.draw_idle()
+                        except Exception:
+                            pass
+
+            self._tab_switch_after_id = self.root.after(80, _stabilize)
+
+        self.notebook.bind('<<NotebookTabChanged>>', _on_tab_changed)
 
         # Ctrl+Enter shortcut: trigger mu_visc 계산 when on the mu_visc tab
         def _on_ctrl_enter(event):
@@ -784,10 +835,6 @@ class PerssonModelGUI_V2:
                         value="param").pack(side=tk.LEFT)
         ttk.Radiobutton(apply_frame_top, text="직접로드", variable=self.apply_psd_type_var,
                         value="direct").pack(side=tk.LEFT)
-        # PSD 확정 버튼
-        ttk.Button(load_frame, text="PSD 확정 \u2192 계산에 사용",
-                   command=self._apply_profile_psd_to_tab3,
-                   style='Success.TButton').pack(fill=tk.X, pady=2)
 
         # Column settings
         col_frame = ttk.Frame(load_frame)
@@ -2096,14 +2143,6 @@ class PerssonModelGUI_V2:
 
         ttk.Button(aT_direct_btn_frame, text="→ 리스트 추가",
                    command=self._add_preset_aT, width=10).pack(side=tk.LEFT, padx=(3, 0))
-
-        # Persson 정품 마스터 커브 확정 버튼
-        ttk.Separator(load_frame, orient='horizontal').pack(fill=tk.X, pady=3)
-        ttk.Button(
-            load_frame, text="마스터 커브 확정  \u2192  계산에 사용",
-            command=self._use_persson_master_curve_for_calc,
-            style='Success.TButton'
-        ).pack(fill=tk.X, pady=2)
 
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
@@ -4458,11 +4497,107 @@ class PerssonModelGUI_V2:
             command=lambda: self._save_plot(self.fig_results, "results_plot")
         ).pack(side=tk.LEFT, padx=5)
 
+    def _create_log_panel(self):
+        """Create an activity log panel at the top of the main window."""
+        C = self.COLORS
+        log_container = tk.Frame(self.root, bg=C['sidebar'], height=120)
+        log_container.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4, 0))
+        log_container.pack_propagate(False)
+
+        # Title bar
+        title_bar = tk.Frame(log_container, bg=C['sidebar'], height=22)
+        title_bar.pack(fill=tk.X, side=tk.TOP)
+        title_bar.pack_propagate(False)
+        tk.Label(title_bar, text="\u25A0 \uc791\uc5c5 \ub85c\uadf8",
+                 bg=C['sidebar'], fg='#94A3B8',
+                 font=('Segoe UI', 14, 'bold')).pack(side=tk.LEFT, padx=6)
+
+        # Toggle button to expand/collapse
+        self._log_expanded = True
+        self._log_container = log_container
+
+        def _toggle_log():
+            if self._log_expanded:
+                log_container.config(height=22)
+                toggle_btn.config(text="\u25BC")
+                self._log_expanded = False
+            else:
+                log_container.config(height=120)
+                toggle_btn.config(text="\u25B2")
+                self._log_expanded = True
+
+        toggle_btn = tk.Button(title_bar, text="\u25B2", bg=C['sidebar'], fg='#94A3B8',
+                               font=('Segoe UI', 10), bd=0, command=_toggle_log,
+                               activebackground=C['sidebar'], activeforeground='#E2E8F0',
+                               cursor='hand2')
+        toggle_btn.pack(side=tk.RIGHT, padx=6)
+
+        # Clear button
+        def _clear_log():
+            self._log_text.config(state='normal')
+            self._log_text.delete('1.0', tk.END)
+            self._log_text.config(state='disabled')
+
+        clear_btn = tk.Button(title_bar, text="\uc9c0\uc6b0\uae30", bg=C['sidebar'], fg='#94A3B8',
+                              font=('Segoe UI', 12), bd=0, command=_clear_log,
+                              activebackground=C['sidebar'], activeforeground='#E2E8F0',
+                              cursor='hand2')
+        clear_btn.pack(side=tk.RIGHT, padx=4)
+
+        # Log text area
+        log_frame = tk.Frame(log_container, bg=C['sidebar'])
+        log_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
+
+        self._log_text = tk.Text(log_frame, bg='#0F172A', fg='#CBD5E1',
+                                 font=('Consolas', 14), wrap=tk.WORD,
+                                 bd=0, highlightthickness=0,
+                                 state='disabled', cursor='arrow')
+        log_scrollbar = ttk.Scrollbar(log_frame, orient='vertical',
+                                      command=self._log_text.yview)
+        self._log_text.config(yscrollcommand=log_scrollbar.set)
+
+        log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        self._log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # Tag colors for different log levels
+        self._log_text.tag_configure('info', foreground='#93C5FD')
+        self._log_text.tag_configure('success', foreground='#6EE7B7')
+        self._log_text.tag_configure('warning', foreground='#FCD34D')
+        self._log_text.tag_configure('error', foreground='#FCA5A5')
+        self._log_text.tag_configure('timestamp', foreground='#475569')
+
+    def _append_log(self, message, level='info'):
+        """Append a message to the activity log panel."""
+        if not hasattr(self, '_log_text'):
+            return
+        import datetime
+        ts = datetime.datetime.now().strftime('%H:%M:%S')
+        level_prefix = {'info': 'INFO', 'success': '\u2714 OK',
+                        'warning': '\u26A0 WARN', 'error': '\u2716 ERR'}
+        prefix = level_prefix.get(level, 'INFO')
+        clean_msg = message.replace('\n', ' | ').strip()
+
+        self._log_text.config(state='normal')
+        self._log_text.insert(tk.END, f"[{ts}] ", 'timestamp')
+        self._log_text.insert(tk.END, f"{prefix}: {clean_msg}\n", level)
+        self._log_text.see(tk.END)
+        self._log_text.config(state='disabled')
+
     def _create_status_bar(self):
         """Create modern status bar with colored level indicators."""
         C = self.COLORS
         self.status_var = tk.StringVar(value="Ready")
         self._status_clear_id = None  # For auto-clear timer
+        self._status_var_from_show = False  # Flag to avoid double logging
+
+        # Trace status_var writes to auto-log direct .set() calls
+        def _on_status_var_write(*args):
+            if self._status_var_from_show:
+                return
+            msg = self.status_var.get()
+            if msg and msg != "Ready":
+                self._append_log(msg, 'info')
+        self.status_var.trace_add('write', _on_status_var_write)
 
         status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=36)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
@@ -4485,7 +4620,7 @@ class PerssonModelGUI_V2:
                  font=self.FONTS['tiny']).pack(side=tk.RIGHT, padx=12)
 
     def _show_status(self, message, level='info', duration=8000):
-        """Show a status message in the status bar with appropriate color.
+        """Show a status message in the status bar and activity log.
 
         Args:
             message: Status message text (newlines replaced with ' | ')
@@ -4505,12 +4640,17 @@ class PerssonModelGUI_V2:
         # Clean up message (replace newlines with separator)
         clean_msg = message.replace('\n', ' | ').strip()
 
-        # Update status bar
+        # Update status bar (flag to prevent double logging from trace)
+        self._status_var_from_show = True
         self.status_var.set(clean_msg)
+        self._status_var_from_show = False
         if hasattr(self, '_status_dot'):
             self._status_dot.config(fg=dot_color)
         if hasattr(self, '_status_label'):
             self._status_label.config(fg=text_color)
+
+        # Append to activity log panel
+        self._append_log(message, level)
 
         # Cancel previous auto-clear timer
         if self._status_clear_id is not None:
