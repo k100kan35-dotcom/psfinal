@@ -7432,12 +7432,13 @@ class PerssonModelGUI_V2:
 
         add_text('k³이 나타나는 수학적 기원 — 미분의 Fourier 변환:', bold=True, font_size=18, fg='#1E293B', pady=(12, 2))
         add_text('  공간 도메인에서 미분은 Fourier 도메인에서 k 곱셈에 대응합니다:', font_size=17, fg='#64748B')
+        add_text('  h(x) —[Fourier]→ h̃(k)  이면,  h\'(x) = dh/dx —[Fourier]→ ik · h̃(k)', font_size=17, fg='#1E293B', bold=True)
         add_equation(
-            r"$h(x) \;\stackrel{\mathcal{F}}{\longrightarrow}\; \tilde{h}(k) \;\;\Longrightarrow\;\; h'(x) = \frac{dh}{dx} \;\stackrel{\mathcal{F}}{\longrightarrow}\; ik \cdot \tilde{h}(k)$",
-            fig_height=1.8)
+            r"$\mathcal{F}[h'(x)] = ik \cdot \mathcal{F}[h(x)]$",
+            fig_height=1.2)
         add_text('  따라서 기울기의 파워 스펙트럼(PSD)은:', font_size=17, fg='#64748B')
         add_equation(
-            r"$|ik \cdot \tilde{h}(k)|^2 \;=\; k^2 \cdot |\tilde{h}(k)|^2 \;=\; k^2 \cdot C(k)$",
+            r"$|ik \cdot \mathcal{F}[h]|^2 = k^2 \cdot |\mathcal{F}[h]|^2 = k^2 \cdot C(k)$",
             fig_height=1.4)
         add_text('  이 k²·C(k)에 Parseval 정리를 적용하면 (2D 극좌표 Jacobian k 포함):', font_size=17, fg='#64748B')
         add_text('  피적분함수 분해:  k³ = k(2D Jacobian) × k²(미분에서 유래)', font_size=17, bold=True, fg='#7C3AED')
