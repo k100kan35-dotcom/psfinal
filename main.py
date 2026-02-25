@@ -5332,7 +5332,7 @@ class PerssonModelGUI_V2:
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.6667
 
             # Initialize calculation progress plots (2x2 layout)
             try:
@@ -7937,7 +7937,7 @@ class PerssonModelGUI_V2:
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.60")
+        self.gamma_var = tk.StringVar(value="0.55")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="14")
@@ -8767,7 +8767,7 @@ class PerssonModelGUI_V2:
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.6667
 
             # Progress callback
             def progress_callback(percent):
@@ -9015,7 +9015,7 @@ class PerssonModelGUI_V2:
             try:
                 self.g_calculator.PSD_NORMALIZATION_FACTOR = float(self.g_norm_factor_var.get())
             except (ValueError, AttributeError):
-                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.5625
+                self.g_calculator.PSD_NORMALIZATION_FACTOR = 1.6667
 
             # ALWAYS recalculate G(q) with current normalization factor
             # This ensures Tab 2's G(q) graph and Tab 5's A/A0 use consistent values
