@@ -558,6 +558,7 @@ class PerssonModelGUI_V2:
         settings_menu = tk.Menu(menubar, tearoff=0, **menu_cfg)
         menubar.add_cascade(label="  Settings  ", menu=settings_menu)
         settings_menu.add_command(label="  레이아웃 설정...", command=self._open_layout_settings)
+        settings_menu.add_command(label="  초기변수 설정...", command=self._open_initial_vars_settings)
 
         # Help menu
         help_menu = tk.Menu(menubar, tearoff=0, **menu_cfg)
@@ -604,7 +605,7 @@ class PerssonModelGUI_V2:
             ('tab_ve_advisor',      '점탄성 설계',        self._create_ve_advisor_tab),
             ('tab_strain_map',      'Strain Map',         self._create_strain_map_tab),
             ('tab_integrand',       '피적분함수',          self._create_integrand_tab),
-            ('tab_equations',       '수식 정리',           self._create_equations_tab),
+            ('tab_equations',       '핵심개념의 이해',     self._create_equations_tab),
             ('tab_variables',       '변수 관계',           self._create_variables_tab),
             ('tab_debug',           '디버그',              self._create_debug_tab),
             ('tab_friction_factors','영향 인자',           self._create_friction_factors_tab),
@@ -814,7 +815,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -914,7 +915,7 @@ class PerssonModelGUI_V2:
                    style='Accent.TButton').pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(psd_direct_btn_frame, text="→ 리스트 추가",
-                   command=self._add_preset_psd, width=10).pack(side=tk.LEFT, padx=(3, 0))
+                   command=self._add_preset_psd, width=15).pack(side=tk.LEFT, padx=(3, 0))
 
         self.psd_direct_info_var = tk.StringVar(value="PSD 직접 로드: -")
         ttk.Label(load_frame, textvariable=self.psd_direct_info_var,
@@ -2095,7 +2096,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel container (fixed width) with scrollable canvas
-        left_container = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_container = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_container.pack_propagate(False)
 
@@ -2120,7 +2121,7 @@ class PerssonModelGUI_V2:
         left_frame.bind("<Configure>", _configure_scroll)
 
         # Create window inside canvas
-        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
+        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=getattr(self, '_left_panel_width', 850) - 20)
         mc_canvas.configure(yscrollcommand=mc_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -2227,7 +2228,7 @@ class PerssonModelGUI_V2:
         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(mc_direct_btn_frame, text="→ 리스트 추가",
-                   command=self._add_preset_mastercurve, width=10).pack(side=tk.LEFT, padx=(3, 0))
+                   command=self._add_preset_mastercurve, width=15).pack(side=tk.LEFT, padx=(3, 0))
 
         # aT 시프트 팩터 로드 버튼 + 리스트에 추가 버튼
         aT_direct_btn_frame = ttk.Frame(load_frame)
@@ -2241,7 +2242,7 @@ class PerssonModelGUI_V2:
         ).pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         ttk.Button(aT_direct_btn_frame, text="→ 리스트 추가",
-                   command=self._add_preset_aT, width=10).pack(side=tk.LEFT, padx=(3, 0))
+                   command=self._add_preset_aT, width=15).pack(side=tk.LEFT, padx=(3, 0))
 
         self.mc_data_info_var = tk.StringVar(value="데이터 미로드")
         ttk.Label(load_frame, textvariable=self.mc_data_info_var,
@@ -3921,7 +3922,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         # Left panel for inputs (fixed width, scrollable)
-        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -3958,7 +3959,7 @@ class PerssonModelGUI_V2:
             lambda e: param_canvas.configure(scrollregion=param_canvas.bbox("all"))
         )
 
-        param_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
+        param_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 850) - 20)
         param_canvas.configure(yscrollcommand=param_scrollbar.set)
 
         param_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -6441,7 +6442,7 @@ class PerssonModelGUI_V2:
         add('G(q) 및 μ_visc 적분의 피적분함수(integrand)를 시각화하여 어떤 파수 대역이 계산에 가장 큰 기여를 하는지 분석합니다.')
         add('')
 
-        add('탭 10-11: 수식 정리 / 변수 관계', 'section')
+        add('탭 10-11: 핵심개념의 이해 / 변수 관계', 'section')
         add('이론 수식과 변수 관계를 참조할 수 있는 레퍼런스 탭입니다.')
         add('')
 
@@ -6602,7 +6603,7 @@ class PerssonModelGUI_V2:
         panel_frame.pack(fill=tk.X, pady=(0, 10))
 
         # Get current left panel width (default 600)
-        current_panel_width = getattr(self, '_left_panel_width', 600)
+        current_panel_width = getattr(self, '_left_panel_width', 850)
 
         row5 = ttk.Frame(panel_frame)
         row5.pack(fill=tk.X, pady=3)
@@ -6755,7 +6756,7 @@ class PerssonModelGUI_V2:
             ui_size_var.set(17)
             plot_size_var.set(15)
             mono_font_var.set('Consolas')
-            panel_width_var.set(600)
+            panel_width_var.set(850)
             win_w_var.set(1600)
             win_h_var.set(1000)
             math_font_var.set('dejavusans')
@@ -6763,6 +6764,214 @@ class PerssonModelGUI_V2:
         ttk.Button(btn_frame, text="적용", command=apply_settings, width=12).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text="초기화", command=reset_defaults, width=12).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=12).pack(side=tk.RIGHT, padx=5)
+
+    def _open_initial_vars_settings(self):
+        """Open initial variable settings management dialog."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("초기변수 설정")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        dlg_w, dlg_h = 900, 900
+        x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
+        y = self.root.winfo_y() + max(0, (self.root.winfo_height() - dlg_h) // 2)
+        dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
+        dialog.minsize(700, 600)
+
+        C = self.COLORS
+
+        # Title
+        title_frame = tk.Frame(dialog, bg=C['sidebar'], padx=12, pady=8)
+        title_frame.pack(fill=tk.X)
+        tk.Label(title_frame, text="초기변수 설정 관리", bg=C['sidebar'], fg='white',
+                 font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
+        tk.Label(title_frame, text="프로그램의 모든 기본값을 한 곳에서 확인·수정할 수 있습니다.",
+                 bg=C['sidebar'], fg='#94A3B8', font=('Segoe UI', 13)).pack(anchor=tk.W)
+
+        # Scrollable content
+        outer_frame = ttk.Frame(dialog)
+        outer_frame.pack(fill=tk.BOTH, expand=True)
+
+        s_canvas = tk.Canvas(outer_frame, highlightthickness=0)
+        s_scroll = ttk.Scrollbar(outer_frame, orient=tk.VERTICAL, command=s_canvas.yview)
+        content = ttk.Frame(s_canvas, padding=15)
+
+        content.bind("<Configure>", lambda e: s_canvas.configure(scrollregion=s_canvas.bbox("all")))
+        _cw = s_canvas.create_window((0, 0), window=content, anchor="nw")
+        s_canvas.configure(yscrollcommand=s_scroll.set)
+        s_canvas.bind('<Configure>', lambda e: s_canvas.itemconfig(_cw, width=e.width))
+
+        # Mouse wheel
+        def _mw(event):
+            s_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        def _mw_up(event):
+            s_canvas.yview_scroll(-3, "units")
+        def _mw_down(event):
+            s_canvas.yview_scroll(3, "units")
+        s_canvas.bind('<Enter>', lambda e: (s_canvas.bind_all("<MouseWheel>", _mw),
+                                             s_canvas.bind_all("<Button-4>", _mw_up),
+                                             s_canvas.bind_all("<Button-5>", _mw_down)))
+        s_canvas.bind('<Leave>', lambda e: (s_canvas.unbind_all("<MouseWheel>"),
+                                             s_canvas.unbind_all("<Button-4>"),
+                                             s_canvas.unbind_all("<Button-5>")))
+
+        s_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        s_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+
+        # --- Helper to create a settings section ---
+        edit_vars = {}  # {key: (tk_var_on_self, entry_var_in_dialog)}
+
+        def add_section(title):
+            frm = ttk.LabelFrame(content, text=title, padding=8)
+            frm.pack(fill=tk.X, pady=(0, 10))
+            return frm
+
+        def add_var_row(parent, label_text, self_var_name, default_val, description="", row_idx=0):
+            """Add a variable row: label | current value (editable) | default | description."""
+            row = ttk.Frame(parent)
+            row.pack(fill=tk.X, pady=2)
+
+            ttk.Label(row, text=label_text, font=('Segoe UI', 14, 'bold'), width=24, anchor='w').pack(side=tk.LEFT, padx=(0, 5))
+
+            # Get current value from self
+            self_var = getattr(self, self_var_name, None)
+            if self_var is not None and hasattr(self_var, 'get'):
+                current = str(self_var.get())
+            else:
+                current = str(default_val)
+
+            entry_var = tk.StringVar(value=current)
+            ent = ttk.Entry(row, textvariable=entry_var, width=18, font=('Consolas', 13))
+            ent.pack(side=tk.LEFT, padx=2)
+
+            ttk.Label(row, text=f"(기본: {default_val})", font=('Segoe UI', 12), foreground='#94A3B8').pack(side=tk.LEFT, padx=5)
+
+            if description:
+                ttk.Label(row, text=description, font=('Segoe UI', 12), foreground='#64748B').pack(side=tk.LEFT, padx=5)
+
+            edit_vars[self_var_name] = (self_var, entry_var, default_val)
+
+        # ═══ Section 1: PSD 관련 초기값 ═══
+        sec1 = add_section("PSD 관련 초기값")
+        add_var_row(sec1, "Hurst 지수 (H)", "psd_H_var", "0.8", "자기 친화 프랙탈 지수")
+        add_var_row(sec1, "목표 h'rms (ξ)", "psd_xi_var", "1.3", "RMS 기울기 목표값")
+        add_var_row(sec1, "PSD q₀", "psd_q0_var", "500", "PSD 최소 파수 [1/m]")
+        add_var_row(sec1, "PSD q₁", "psd_q1_var", "1e5", "PSD 최대 파수 [1/m]")
+        add_var_row(sec1, "PSD C(q₀)", "psd_Cq0_var", "3.5e-13", "q₀에서의 PSD 값 [m⁴]")
+        add_var_row(sec1, "Points/decade", "points_per_decade_var", "20", "로그 빈당 데이터 수")
+
+        # ═══ Section 2: 계산 파라미터 ═══
+        sec2 = add_section("계산 파라미터 (Tab 3)")
+        add_var_row(sec2, "접촉 압력 σ₀ [MPa]", "sigma_0_var", "0.3", "공칭 접촉 압력")
+        add_var_row(sec2, "최소 속도 v_min [m/s]", "v_min_var", "0.00001", "슬라이딩 속도 최소")
+        add_var_row(sec2, "최대 속도 v_max [m/s]", "v_max_var", "1000", "슬라이딩 속도 최대")
+        add_var_row(sec2, "속도 분할 수", "n_velocity_var", "30", "로그 스케일 분할")
+        add_var_row(sec2, "온도 T [°C]", "temperature_var", "20", "계산 온도")
+        add_var_row(sec2, "푸아송 비 ν", "poisson_var", "0.49", "고무 ≈ 0.49~0.50")
+        add_var_row(sec2, "q_min [1/m]", "q_min_var", "2.00e-01", "적분 하한 파수")
+        add_var_row(sec2, "q_max [1/m]", "q_max_var", "1.0e+6", "적분 상한 파수")
+        add_var_row(sec2, "q 분할 수", "n_q_var", "100", "파수 그리드 수")
+        add_var_row(sec2, "φ 분할 수 (G(q))", "n_phi_gq_var", "36", "G(q) 각도 적분 분할")
+        add_var_row(sec2, "G 정규화 계수", "g_norm_factor_var", "1.5625", "G(q) 정규화")
+
+        # ═══ Section 3: h'rms/Strain ═══
+        sec3 = add_section("h'rms / Strain 설정 (Tab 4-5)")
+        add_var_row(sec3, "목표 h'rms (ξ)", "target_hrms_slope_var", "4.0520", "PSD 적분 목표값")
+        add_var_row(sec3, "입력 q₁ [1/m]", "input_q1_var", "1.0e+06", "상한 파수 직접 입력")
+        add_var_row(sec3, "Strain Factor (α)", "strain_factor_var", "0.5", "ε = α × ξ")
+
+        # ═══ Section 4: μ_visc 계산 설정 ═══
+        sec4 = add_section("μ_visc 계산 설정 (Tab 6)")
+        add_var_row(sec4, "γ (접촉 보정)", "gamma_var", "0.55", "S(q) 보정 계수")
+        add_var_row(sec4, "φ 분할 수 (μ)", "n_phi_var", "14", "μ 각도 적분 분할")
+        add_var_row(sec4, "μ 평활화 창", "smooth_window_var", "5", "Savitzky-Golay 창 크기")
+        add_var_row(sec4, "μ 계산 온도 [°C]", "mu_calc_temp_var", "20.0", "μ 계산 시 온도")
+        add_var_row(sec4, "고정 strain [%]", "fixed_strain_var", "1.0", "고정 strain 모드 값")
+        add_var_row(sec4, "Strain split [%]", "split_strain_var", "14.2", "f,g 분리 기준 strain")
+        add_var_row(sec4, "Extend strain [%]", "extend_strain_var", "40", "strain 외삽 상한")
+
+        # ═══ Section 5: DMA 관련 ═══
+        sec5 = add_section("DMA / 마스터 커브 설정")
+        add_var_row(sec5, "외삽 최소 주파수", "dma_extrap_fmin_var", "1e-2", "DMA 외삽 하한 [Hz]")
+        add_var_row(sec5, "외삽 최대 주파수", "dma_extrap_fmax_var", "1e12", "DMA 외삽 상한 [Hz]")
+        add_var_row(sec5, "T_ref [°C]", "mc_tref_var", "20.0", "마스터 커브 기준 온도")
+        add_var_row(sec5, "평활화 창 크기", "mc_smooth_window_var", "23", "마스터 커브 평활화")
+
+        # ═══ Section 6: 점탄성 설계 ═══
+        sec6 = add_section("점탄성 설계 (VE Advisor)")
+        add_var_row(sec6, "VE v_min [m/s]", "ve_v_min_var", "0.01", "속도 범위 최소")
+        add_var_row(sec6, "VE v_max [m/s]", "ve_v_max_var", "10.0", "속도 범위 최대")
+        add_var_row(sec6, "VE 속도 분할 수", "ve_n_v_var", "30", "속도 분할")
+        add_var_row(sec6, "VE 온도 [°C]", "ve_temp_var", "20.0", "설계 온도")
+        add_var_row(sec6, "VE σ₀ [MPa]", "ve_sigma_var", "0.3", "설계 압력")
+
+        # ═══ Buttons ═══
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(fill=tk.X)
+
+        def apply_initial_vars():
+            """모든 초기변수 일괄 적용."""
+            changed = 0
+            for var_name, (self_var, entry_var, default_val) in edit_vars.items():
+                new_val = entry_var.get().strip()
+                if self_var is not None and hasattr(self_var, 'set'):
+                    try:
+                        old_val = str(self_var.get())
+                        if old_val != new_val:
+                            self_var.set(new_val)
+                            changed += 1
+                    except Exception:
+                        pass
+            dialog.destroy()
+            self._show_status(f"초기변수 설정 적용 완료 ({changed}개 변경됨)", 'success')
+
+        def reset_all_defaults():
+            """모든 값을 기본값으로 초기화."""
+            for var_name, (self_var, entry_var, default_val) in edit_vars.items():
+                entry_var.set(str(default_val))
+
+        def export_vars():
+            """현재 설정을 JSON 파일로 내보내기."""
+            from tkinter import filedialog
+            filepath = filedialog.asksaveasfilename(
+                defaultextension=".json",
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+                title="초기변수 설정 내보내기"
+            )
+            if filepath:
+                data = {}
+                for var_name, (self_var, entry_var, default_val) in edit_vars.items():
+                    data[var_name] = entry_var.get()
+                with open(filepath, 'w', encoding='utf-8') as f:
+                    json.dump(data, f, indent=2, ensure_ascii=False)
+                self._show_status(f"초기변수 설정 내보내기 완료:\n{filepath}", 'success')
+
+        def import_vars():
+            """JSON 파일에서 설정 불러오기."""
+            from tkinter import filedialog
+            filepath = filedialog.askopenfilename(
+                filetypes=[("JSON files", "*.json"), ("All files", "*.*")],
+                title="초기변수 설정 불러오기"
+            )
+            if filepath:
+                try:
+                    with open(filepath, 'r', encoding='utf-8') as f:
+                        data = json.load(f)
+                    loaded = 0
+                    for var_name, val in data.items():
+                        if var_name in edit_vars:
+                            edit_vars[var_name][1].set(str(val))
+                            loaded += 1
+                    self._show_status(f"초기변수 {loaded}개 불러오기 완료", 'success')
+                except Exception as e:
+                    messagebox.showerror("오류", f"파일 불러오기 실패:\n{str(e)}")
+
+        ttk.Button(btn_frame, text="적용", command=apply_initial_vars, width=12).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="기본값 복원", command=reset_all_defaults, width=12).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=12).pack(side=tk.RIGHT, padx=5)
+        ttk.Button(btn_frame, text="내보내기", command=export_vars, width=12).pack(side=tk.LEFT, padx=5)
+        ttk.Button(btn_frame, text="불러오기", command=import_vars, width=12).pack(side=tk.LEFT, padx=5)
 
     def _show_about(self):
         """Show about dialog as a popup window."""
@@ -6888,6 +7097,10 @@ class PerssonModelGUI_V2:
 
         def add_equation(latex_str, fig_height=1.2, font_size=24):
             """Add a LaTeX equation rendered via matplotlib."""
+            # 적분 기호 등 위아래로 큰 수식이 잘리지 않도록 여유 확보
+            has_tall_symbol = any(s in latex_str for s in [r'\int', r'\sum', r'\prod', r'\frac', r'\left'])
+            if has_tall_symbol and fig_height < 1.4:
+                fig_height = max(fig_height, 1.4)
             fig = Figure(figsize=(8, fig_height), facecolor='white')
             ax = fig.add_subplot(111)
             ax.axis('off')
@@ -6895,10 +7108,10 @@ class PerssonModelGUI_V2:
                     fontsize=font_size, verticalalignment='center',
                     horizontalalignment='left', usetex=False,
                     math_fontfamily=math_fontfamily)
-            fig.subplots_adjust(left=0.02, right=0.98, top=0.88, bottom=0.12)
+            fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.05)
             eq_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             eq_canvas.draw()
-            eq_canvas.get_tk_widget().configure(height=int(fig_height * 80))
+            eq_canvas.get_tk_widget().configure(height=int(fig_height * 96))
             eq_canvas.get_tk_widget().pack(fill=tk.X, padx=20, pady=(8, 8))
 
         def add_separator():
@@ -6907,7 +7120,7 @@ class PerssonModelGUI_V2:
         def add_graph(plot_func, fig_height=3.5):
             """Add an illustrative matplotlib graph."""
             import numpy as np
-            fig = Figure(figsize=(5, fig_height), dpi=100, facecolor='#FAFBFC')
+            fig = Figure(figsize=(10, fig_height * 2), dpi=100, facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
@@ -6917,13 +7130,13 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=500)
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 2 * 90), width=950)
             graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
         title_frame = tk.Frame(scrollable_frame, bg='white', pady=10)
         title_frame.pack(fill=tk.X, padx=10)
-        tk.Label(title_frame, text='Persson 마찰 이론 - 계산 수식 정리',
+        tk.Label(title_frame, text='Persson 마찰 이론 - 핵심 개념의 이해',
                  bg='white', fg='#1B2A4A',
                  font=('Segoe UI', 28, 'bold')).pack(anchor='w', padx=10)
 
@@ -6948,7 +7161,7 @@ class PerssonModelGUI_V2:
                         label=f'q = {q_val:.0e} (v={v} m/s)')
             ax.set_xlabel(r'$\phi$ (degrees)', fontsize=16)
             ax.set_ylabel(r'$\omega$ (rad/s)', fontsize=16)
-            ax.legend(fontsize=14, loc='upper right')
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3)
             ax.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
             ax.set_title(r'$\omega = q \cdot v \cdot \cos\phi$ — 각도에 따른 진동수 변화', fontsize=16, pad=10)
@@ -6970,7 +7183,7 @@ class PerssonModelGUI_V2:
             ax.loglog(omega, E_loss, '--', linewidth=2.5, color='#DC2626', label="E'' (손실 탄성률)")
             ax.set_xlabel(r'$\omega$ (rad/s)', fontsize=16)
             ax.set_ylabel('E (Pa)', fontsize=16)
-            ax.legend(fontsize=14)
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3, which='both')
             ax.set_title("복소 탄성률 마스터 커브 (대표적 형상)", fontsize=16, pad=10)
         add_graph(_plot_master_curve)
@@ -7021,7 +7234,7 @@ class PerssonModelGUI_V2:
             ax.loglog(q, q3_Cq_norm, '--', linewidth=2.5, color='#DC2626', label=r'$q^3 \cdot C(q)$ (마찰 기여, 정규화)')
             ax.set_xlabel('q (1/m)', fontsize=16)
             ax.set_ylabel('Energy contribution', fontsize=16)
-            ax.legend(fontsize=14, loc='upper right')
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3, which='both')
             ax.set_title('Parseval: 높이 에너지 vs 마찰(경사도) 에너지 분포', fontsize=16, pad=10)
             ax.annotate(r'$\leftarrow$ 큰 파장 지배', xy=(1e3, q_Cq[50]*0.5), fontsize=13, color='#2563EB', fontweight='bold')
@@ -7183,10 +7396,17 @@ class PerssonModelGUI_V2:
         # ═══════════════════════════════════════════════════════
         add_section_title('3. 표면 거칠기 통계량: h_rms, h\'_rms, Strain')
 
-        add_text('A. RMS 높이 h_rms (표면 거칠기의 크기):', bold=True, pady=(8, 0))
+        add_text('★ 이 절의 모든 공식은 Parseval 정리의 직접적 결과입니다!', bold=True, font_size=19, fg='#DC2626', pady=(10, 2))
+        add_text('  Section 1에서 보았듯이 Parseval 정리는 "공간 도메인 에너지 = 주파수 도메인 에너지"를 보장합니다.', font_size=17, fg='#64748B')
+        add_text('  이 원리를 높이(h)와 기울기(h\')에 각각 적용하면 아래의 h_rms, h\'_rms 공식이 자연스럽게 도출됩니다.', font_size=17, fg='#64748B')
+
+        add_separator()
+        add_text('A. RMS 높이 h_rms (표면 거칠기의 크기) — Parseval 정리 적용 ①:', bold=True, pady=(8, 0))
+        add_text('  Parseval 정리에서 h(x) 자체의 에너지를 주파수 도메인으로 변환:', font_size=17, fg='#7C3AED')
         add_equation(
-            r'$h_{rms}^2(q) = 2\pi \int_{q_0}^{q} k\, C(k)\, dk$',
-            fig_height=1.2)
+            r'$h_{rms}^2 = \langle h^2 \rangle = 2\pi \int_{q_0}^{q} k\, C(k)\, dk$',
+            fig_height=1.4)
+        add_text('  여기서 피적분함수의 k는 2D 등방성 표면의 극좌표 Jacobian (dq_x dq_y → k dk dθ)', font_size=17, fg='#64748B')
         add_text('물리적 의미:', font_size=17, bold=True, fg='#1E293B')
         add_text('  h_rms는 표면 높이의 RMS(root mean square) 값으로, "표면이 평균으로부터 얼마나 위아래로 출렁이는가"', font_size=17, fg='#64748B')
         add_text('  피적분함수 k·C(k): 파수 k에서의 높이 기여분. 긴 파장(작은 q)의 거칠기가 h_rms에 주로 기여', font_size=17, fg='#64748B')
@@ -7207,13 +7427,33 @@ class PerssonModelGUI_V2:
         add_graph(_plot_hrms)
 
         add_separator()
-        add_text('B. RMS 기울기 h\'_rms (표면 경사의 크기):', bold=True, pady=(6, 0))
+        add_text('B. RMS 기울기 h\'_rms (표면 경사의 크기) — Parseval 정리 적용 ②:', bold=True, pady=(6, 0))
+        add_text('  이번에는 h(x)의 미분인 h\'(x) = dh/dx 에 Parseval 정리를 적용합니다.', font_size=17, fg='#7C3AED')
+
+        add_text('k³이 나타나는 수학적 기원 — 미분의 Fourier 변환:', bold=True, font_size=18, fg='#1E293B', pady=(12, 2))
+        add_text('  공간 도메인에서 미분은 Fourier 도메인에서 k 곱셈에 대응합니다:', font_size=17, fg='#64748B')
+        add_equation(
+            r"$h(x) \xrightarrow{\mathcal{F}} \tilde{h}(k) \quad \Longrightarrow \quad h'(x) = \frac{dh}{dx} \xrightarrow{\mathcal{F}} ik \cdot \tilde{h}(k)$",
+            fig_height=1.4)
+        add_text('  따라서 기울기의 파워 스펙트럼(PSD)은:', font_size=17, fg='#64748B')
+        add_equation(
+            r"$|\widetilde{h'}(k)|^2 = |ik \cdot \tilde{h}(k)|^2 = k^2 \cdot |\tilde{h}(k)|^2 = k^2 \cdot C(k)$",
+            fig_height=1.4)
+        add_text('  이 k²·C(k)에 Parseval 정리를 적용하면 (2D 극좌표 Jacobian k 포함):', font_size=17, fg='#64748B')
+        add_equation(
+            r"$h_{rms}^{\prime\,2} = \langle h'^2 \rangle = 2\pi \int_{q_0}^{q} k \cdot \underbrace{k^2 \cdot C(k)}_{\text{slope PSD}} \, dk = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$",
+            fig_height=1.6)
+        add_text('  정리: k³ = k(Jacobian) × k²(미분에서 유래)', bold=True, font_size=18, fg='#DC2626', pady=(4, 2))
+        add_text('    • k¹ : 2D 등방 표면의 극좌표 변환 Jacobian (면적 요소 k dk dθ 에서 나옴)', font_size=17, fg='#64748B')
+        add_text('    • k² : 공간 미분 d/dx → Fourier 도메인에서 ×ik → 파워 스펙트럼에서 ×k²', font_size=17, fg='#64748B')
+        add_text('    • 따라서 k³·C(k)는 "파수 k에서 표면 기울기가 전체 기울기 에너지에 기여하는 양"', font_size=17, fg='#64748B')
+
         add_equation(
             r"$h_{rms}^{\prime\,2}(q) = \xi^2(q) = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$",
-            fig_height=1.2)
+            fig_height=1.4)
         add_text('물리적 의미:', font_size=17, bold=True, fg='#1E293B')
         add_text('  h\'_rms (= ξ)는 표면 기울기의 RMS 값으로, "표면이 얼마나 가파르게 경사져 있는가"', font_size=17, fg='#64748B')
-        add_text('  피적분함수 k³·C(k): k³ 가중치로 인해 미세 요철(큰 q)일수록 기울기 기여가 매우 큼', font_size=17, fg='#64748B')
+        add_text('  k³ 가중치로 인해 미세 요철(큰 q)일수록 기울기 기여가 매우 큼', font_size=17, fg='#64748B')
         add_text('  → h_rms는 긴 파장이 지배, h\'_rms는 짧은 파장이 지배 (같은 PSD에서 완전히 다른 특성)', font_size=17, fg='#64748B')
         add_text('  단위: [무차원] (길이/길이 = 기울기)', font_size=17, fg='#64748B')
 
@@ -7228,6 +7468,111 @@ class PerssonModelGUI_V2:
             ax.annotate('짧은 파장(큰 q)에서\n계속 증가', xy=(1e6, 0.5),
                         fontsize=14, color='#DC2626', fontweight='bold')
         add_graph(_plot_hrms_slope)
+
+        # === h'_rms slope 예시: 1.3 vs 2.5 ===
+        add_separator()
+        add_text('h\'_rms(ξ) 값에 따른 표면 형상 비교 — ξ = 1.3 vs ξ = 2.5:', bold=True, font_size=18, fg='#7C3AED', pady=(10, 2))
+        add_text('  h\'_rms는 표면 기울기의 RMS이므로, 값이 클수록 표면이 더 가파르고 거칠다는 뜻입니다.', font_size=17, fg='#64748B')
+        add_text('  아래는 동일한 h_rms(높이)를 가지지만 h\'_rms가 다른 두 표면의 비교입니다.', font_size=17, fg='#64748B')
+
+        def _plot_hrms_slope_comparison(ax, np):
+            """h'_rms = 1.3 vs 2.5 표면 프로파일 비교"""
+            x = np.linspace(0, 0.01, 2000)  # 10mm 구간
+            np.random.seed(42)
+
+            def generate_surface(xi_target, H=0.8, q0=1e3, q1_max=1e8, n_modes=500):
+                """자기 친화 프랙탈 표면 생성: C(q) ~ q^{-(1+2H)}"""
+                h = np.zeros_like(x)
+                # q1을 조절하여 xi_target 달성
+                q1 = q1_max
+                qs = np.logspace(np.log10(q0), np.log10(q1), n_modes)
+                # C(q) = C0 * (q/q0)^{-(1+2H)}
+                C0 = 1e-12
+                amplitudes = np.sqrt(C0 * (qs / q0)**(-(1 + 2 * H)) * (qs[1] / qs[0] - 1) * qs)
+                phases = np.random.uniform(0, 2 * np.pi, n_modes)
+                for i, (q, amp, phi) in enumerate(zip(qs, amplitudes, phases)):
+                    h += amp * np.sin(q * x + phi)
+                # 현재 xi 계산
+                dh = np.gradient(h, x)
+                current_xi = np.sqrt(np.mean(dh**2))
+                # 스케일 조정하여 목표 xi 달성 (h_rms는 고정)
+                if current_xi > 0:
+                    h = h * (xi_target / current_xi)
+                return h
+
+            h_13 = generate_surface(1.3)
+            h_25 = generate_surface(2.5)
+
+            # 스케일 맞추기 (높이를 um 단위로)
+            h_13_um = h_13 * 1e6
+            h_25_um = h_25 * 1e6
+            x_mm = x * 1e3
+
+            # 0.5mm 구간만 확대 표시
+            mask = x_mm < 0.5
+            ax.plot(x_mm[mask], h_13_um[mask], '-', linewidth=1.8, color='#2563EB',
+                    label=r"$h'_{rms}$ = 1.3 (완만한 경사)")
+            ax.plot(x_mm[mask], h_25_um[mask] - 2 * np.std(h_25_um[mask]), '-', linewidth=1.8, color='#DC2626',
+                    label=r"$h'_{rms}$ = 2.5 (가파른 경사)")
+            ax.set_xlabel('위치 x (mm)', fontsize=16)
+            ax.set_ylabel('높이 h (μm)', fontsize=16)
+            ax.legend(fontsize=15, loc='upper right', framealpha=0.9)
+            ax.grid(True, alpha=0.3)
+            ax.set_title(r"표면 프로파일 비교: $h'_{rms}$ = 1.3 vs 2.5", fontsize=16, pad=10)
+            ax.annotate('완만 → 고무 변형 작음\n→ 마찰 기여 적음',
+                        xy=(0.15, np.mean(h_13_um[mask])), fontsize=13, color='#2563EB', fontweight='bold')
+            ax.annotate('가파름 → 고무 변형 큼\n→ 마찰 기여 큼',
+                        xy=(0.30, np.mean(h_25_um[mask]) - 2.5 * np.std(h_25_um[mask])),
+                        fontsize=13, color='#DC2626', fontweight='bold')
+        add_graph(_plot_hrms_slope_comparison, fig_height=4.0)
+
+        def _plot_slope_psd_comparison(ax, np):
+            """h'_rms = 1.3 vs 2.5 → PSD 형상 및 적분 비교"""
+            q = np.logspace(2, 8, 500)
+            H = 0.8
+            # 두 표면 모두 자기 친화 프랙탈이지만 q1 (고주파 컷오프)이 다름
+            C0 = 1e-12
+            C_q = C0 * (q / 1e3)**(-(1 + 2*H))
+
+            # 누적 k^3*C(k) 적분 → h'_rms^2
+            integrand = q**3 * C_q
+            dq = np.diff(q)
+            cumul = np.cumsum(0.5 * (integrand[:-1] + integrand[1:]) * dq) * 2 * np.pi
+            xi_cumul = np.sqrt(np.concatenate([[0], cumul]))
+
+            # q1_13: xi(q1_13) ≈ 1.3 에 해당하는 q1
+            idx_13 = np.searchsorted(xi_cumul, 1.3)
+            idx_25 = np.searchsorted(xi_cumul, 2.5)
+            q1_13 = q[min(idx_13, len(q)-1)]
+            q1_25 = q[min(idx_25, len(q)-1)]
+
+            ax.loglog(q, q**3 * C_q, '-', linewidth=2, color='#64748B', label=r"$k^3 C(k)$ (피적분함수)")
+            # 적분 영역 표시
+            mask_13 = q <= q1_13
+            mask_25 = q <= q1_25
+            ax.fill_between(q[mask_13], 0, (q**3 * C_q)[mask_13], alpha=0.25, color='#2563EB',
+                            label=r"$\xi$ = 1.3 적분 영역 (q₁ ≈ {:.0e})".format(q1_13))
+            ax.fill_between(q[mask_25], 0, (q**3 * C_q)[mask_25], alpha=0.15, color='#DC2626',
+                            label=r"$\xi$ = 2.5 적분 영역 (q₁ ≈ {:.0e})".format(q1_25))
+            ax.axvline(q1_13, color='#2563EB', linestyle='--', alpha=0.7)
+            ax.axvline(q1_25, color='#DC2626', linestyle='--', alpha=0.7)
+            ax.set_xlabel('q (1/m)', fontsize=16)
+            ax.set_ylabel(r'$k^3 C(k)$', fontsize=16)
+            ax.legend(fontsize=13, loc='best', framealpha=0.9)
+            ax.grid(True, alpha=0.3, which='both')
+            ax.set_title(r"$h'_{rms}$ 값에 따른 적분 범위 차이: q₁이 클수록 ξ 증가", fontsize=16, pad=10)
+            ax.annotate(r'$\xi$=1.3: 여기서 적분 멈춤',
+                        xy=(q1_13, 1e-5), fontsize=13, color='#2563EB', fontweight='bold',
+                        xytext=(q1_13*3, 1e-3), arrowprops=dict(arrowstyle='->', color='#2563EB'))
+            ax.annotate(r'$\xi$=2.5: 더 먼 q까지 적분',
+                        xy=(q1_25, 1e-7), fontsize=13, color='#DC2626', fontweight='bold',
+                        xytext=(q1_25*0.01, 1e-8), arrowprops=dict(arrowstyle='->', color='#DC2626'))
+        add_graph(_plot_slope_psd_comparison, fig_height=4.0)
+
+        add_text('해석:', font_size=17, bold=True, fg='#1E293B', pady=(6, 2))
+        add_text('  • h\'_rms = 1.3 : 적분 상한 q₁이 상대적으로 작음 → 나노 스케일 거칠기 기여 적음 → 완만한 표면', font_size=17, fg='#64748B')
+        add_text('  • h\'_rms = 2.5 : 적분 상한 q₁이 훨씬 큼 → 나노 스케일 거칠기까지 포함 → 가파른 표면', font_size=17, fg='#64748B')
+        add_text('  • 마찰에 미치는 영향: h\'_rms가 클수록 → 고무 변형(strain) 증가 → μ_visc 피적분함수에서 더 큰 기여', font_size=17, fg='#DC2626')
 
         add_separator()
         add_text('C. 국소 변형률 ε(q) — h\'_rms로부터 정의:', bold=True, pady=(6, 0))
@@ -7255,7 +7600,7 @@ class PerssonModelGUI_V2:
             ax.plot(eps, g_eps, '--', linewidth=2.5, color='#DC2626', label=r"g($\varepsilon$) — E'' 변화율")
             ax.set_xlabel(r'$\varepsilon$ (%)', fontsize=16)
             ax.set_ylabel('보정 계수', fontsize=16)
-            ax.legend(fontsize=14)
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3)
             ax.set_ylim(0, 1.5)
             ax.axhline(y=1, color='gray', linestyle=':', alpha=0.5)
@@ -7277,7 +7622,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -7760,7 +8105,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
         # Left panel for inputs (scrollable) - fixed width
-        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)  # Keep fixed width
 
@@ -7790,7 +8135,7 @@ class PerssonModelGUI_V2:
             lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all"))
         )
 
-        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 850) - 20)
         left_canvas.configure(yscrollcommand=left_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -12093,7 +12438,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls
-        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -12564,6 +12909,9 @@ class PerssonModelGUI_V2:
             lbl.pack(fill=tk.X, padx=padx, pady=pady, anchor='w')
 
         def add_equation(latex_str, fig_height=1.2, font_size=24):
+            has_tall_symbol = any(s in latex_str for s in [r'\int', r'\sum', r'\prod', r'\frac', r'\left'])
+            if has_tall_symbol and fig_height < 1.4:
+                fig_height = max(fig_height, 1.4)
             fig = Figure(figsize=(8, fig_height), facecolor='white')
             ax = fig.add_subplot(111)
             ax.axis('off')
@@ -12571,10 +12919,10 @@ class PerssonModelGUI_V2:
                     fontsize=font_size, verticalalignment='center',
                     horizontalalignment='left', usetex=False,
                     math_fontfamily=math_fontfamily)
-            fig.subplots_adjust(left=0.02, right=0.98, top=0.88, bottom=0.12)
+            fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.05)
             eq_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             eq_canvas.draw()
-            eq_canvas.get_tk_widget().configure(height=int(fig_height * 80))
+            eq_canvas.get_tk_widget().configure(height=int(fig_height * 96))
             eq_canvas.get_tk_widget().pack(fill=tk.X, padx=20, pady=(8, 8))
 
         def add_separator():
@@ -12583,7 +12931,7 @@ class PerssonModelGUI_V2:
         def add_graph(plot_func, fig_height=3.5):
             """Add an illustrative matplotlib graph."""
             import numpy as np
-            fig = Figure(figsize=(5, fig_height), dpi=100, facecolor='#FAFBFC')
+            fig = Figure(figsize=(10, fig_height * 2), dpi=100, facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
@@ -12593,7 +12941,7 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=500)
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 2 * 90), width=950)
             graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
@@ -12623,7 +12971,7 @@ class PerssonModelGUI_V2:
             ax.loglog(omega, E_loss, '--', linewidth=2.5, color='#DC2626', label="E'' (손실)")
             ax.set_xlabel(r'$\omega$ (rad/s)', fontsize=16)
             ax.set_ylabel('E (Pa)', fontsize=16)
-            ax.legend(fontsize=14)
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3, which='both')
             ax.set_title('DMA 마스터 커브 — 대표적 형상', fontsize=16, pad=10)
         add_graph(_plot_var_dma)
@@ -12657,7 +13005,7 @@ class PerssonModelGUI_V2:
             ax.plot(gamma, g_g, '--', linewidth=2.5, color='#DC2626', label=r"g($\gamma$) — E'' 변화")
             ax.set_xlabel(r'$\gamma$ (%)', fontsize=16)
             ax.set_ylabel('보정 계수', fontsize=16)
-            ax.legend(fontsize=14)
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3)
             ax.axhline(y=1, color='gray', linestyle=':', alpha=0.5)
             ax.set_title('Strain Sweep — Payne 효과', fontsize=16, pad=10)
@@ -12735,14 +13083,17 @@ class PerssonModelGUI_V2:
             ax.plot(G, S, '--', linewidth=2.5, color='#059669', label='S(q)')
             ax.set_xlabel('G(q)', fontsize=16)
             ax.set_ylabel('값', fontsize=16)
-            ax.legend(fontsize=14)
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3)
             ax.set_title('P(q)와 S(q) — G에 따른 변화', fontsize=16, pad=10)
         add_graph(_plot_var_PS)
 
         add_separator()
-        add_text('표면 거칠기 통계량:', bold=True, pady=(6, 0))
-        add_equation(r"$\xi^2(q) = h_{rms}^{\prime\,2}(q) = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$", fig_height=1.0)
+        add_text('표면 거칠기 통계량 (Parseval 정리 응용):', bold=True, pady=(6, 0))
+        add_text('  ★ 아래 공식들은 모두 Parseval 정리의 직접적 결과입니다.', font_size=17, fg='#DC2626')
+        add_text('  h(x)의 미분 h\'(x)에 Parseval 정리를 적용하면, Fourier 도메인에서 d/dx → ×ik 이므로', font_size=17, fg='#64748B')
+        add_text('  기울기 PSD = k² × C(k), 여기에 2D Jacobian k를 곱하면 피적분함수 k³·C(k)가 됩니다.', font_size=17, fg='#64748B')
+        add_equation(r"$\xi^2(q) = h_{rms}^{\prime\,2}(q) = 2\pi \int_{q_0}^{q} \underbrace{k^3}_{\substack{k^1(\text{Jacobian}) \\ \times\, k^2(\text{미분})}}\, C(k)\, dk$", fig_height=1.6)
         add_text('  \u03be(q) = h\'_rms(q) : 누적 RMS 기울기 (파수 q까지의 표면 경사)', font_size=17, fg='#64748B')
         add_equation(r'$\varepsilon(q) = \alpha \cdot \xi(q) \qquad (\alpha \approx 0.5)$', fig_height=0.9)
         add_text('  \u03b5(q) : 국소 변형률 — 거칠기에 의한 고무의 국소 변형 크기', font_size=17, fg='#64748B')
@@ -12755,7 +13106,7 @@ class PerssonModelGUI_V2:
             ax.loglog(q, eps, '--', linewidth=2.5, color='#7C3AED', label=r"$\varepsilon(q) = 0.5 \cdot \xi$")
             ax.set_xlabel('q (1/m)', fontsize=16)
             ax.set_ylabel('값', fontsize=16)
-            ax.legend(fontsize=14)
+            ax.legend(fontsize=14, loc='best', framealpha=0.9)
             ax.grid(True, alpha=0.3, which='both')
             ax.set_title(r"$\xi(q)$와 $\varepsilon(q)$ — 파수에 따른 변화", fontsize=16, pad=10)
         add_graph(_plot_var_xi_eps)
@@ -14219,7 +14570,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # ── Left panel (scrollable controls, 600px) ──
-        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 850))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -14234,7 +14585,7 @@ class PerssonModelGUI_V2:
 
         left_panel.bind("<Configure>",
                         lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all")))
-        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 850) - 20)
         left_canvas.configure(yscrollcommand=left_scroll.set)
 
         left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
