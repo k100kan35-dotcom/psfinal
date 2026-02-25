@@ -4060,7 +4060,7 @@ class PerssonModelGUI_V2:
 
         row += 1
         ttk.Label(input_frame, text="파수 포인트 수:").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.n_q_var = tk.StringVar(value="100")
+        self.n_q_var = tk.StringVar(value="36")
         ttk.Entry(input_frame, textvariable=self.n_q_var, width=15).grid(row=row, column=1, pady=5)
 
         # Phi integration points for G(q) calculation
@@ -4072,11 +4072,11 @@ class PerssonModelGUI_V2:
         # G 보정 계수 (Norm Factor)
         row += 1
         ttk.Label(input_frame, text="G 보정 계수 (Norm Factor):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.g_norm_factor_var = tk.StringVar(value="1.5625")
+        self.g_norm_factor_var = tk.StringVar(value="1.6667")
         norm_entry_frame = tk.Frame(input_frame, bg=self.COLORS['warning'], padx=1, pady=1)
         norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
         ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
-        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.5625",
+        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.6667",
                   font=('Segoe UI', 16), foreground='#64748B').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
         row += 1
 
@@ -6877,9 +6877,9 @@ class PerssonModelGUI_V2:
         add_var_row(sec2, "푸아송 비 ν", "poisson_var", "0.49", "고무 ≈ 0.49~0.50")
         add_var_row(sec2, "q_min [1/m]", "q_min_var", "2.00e-01", "적분 하한 파수")
         add_var_row(sec2, "q_max [1/m]", "q_max_var", "1.0e+6", "적분 상한 파수")
-        add_var_row(sec2, "q 분할 수", "n_q_var", "100", "파수 그리드 수")
+        add_var_row(sec2, "q 분할 수", "n_q_var", "36", "파수 그리드 수")
         add_var_row(sec2, "φ 분할 수 (G(q))", "n_phi_gq_var", "36", "G(q) 각도 적분 분할")
-        add_var_row(sec2, "G 정규화 계수", "g_norm_factor_var", "1.5625", "G(q) 정규화")
+        add_var_row(sec2, "G 정규화 계수", "g_norm_factor_var", "1.6667", "G(q) 정규화")
 
         # ═══ Section 3: h'rms/Strain ═══
         sec3 = add_section("h'rms / Strain 설정 (Tab 4-5)")
@@ -8401,7 +8401,7 @@ class PerssonModelGUI_V2:
         temp_frame.pack(fill=tk.X, pady=2)
 
         # Temperature input row (강조)
-        temp_row1_wrapper = tk.Frame(temp_frame, bg=self.COLORS['primary'], padx=1, pady=1)
+        temp_row1_wrapper = tk.Frame(temp_frame, bg=self.COLORS['primary'], padx=2, pady=2)
         temp_row1_wrapper.pack(fill=tk.X, pady=1)
         temp_row1 = ttk.Frame(temp_row1_wrapper)
         temp_row1.pack(fill=tk.X)
@@ -8412,7 +8412,7 @@ class PerssonModelGUI_V2:
         ttk.Label(temp_row1, text="°C", font=('Segoe UI', 17)).pack(side=tk.LEFT)
 
         # q1_max input row
-        q1_row_wrapper = tk.Frame(temp_frame, bg='#7C3AED', padx=1, pady=1)
+        q1_row_wrapper = tk.Frame(temp_frame, bg='#7C3AED', padx=2, pady=2)
         q1_row_wrapper.pack(fill=tk.X, pady=1)
         q1_row = ttk.Frame(q1_row_wrapper)
         q1_row.pack(fill=tk.X)
@@ -8423,7 +8423,7 @@ class PerssonModelGUI_V2:
         ttk.Label(q1_row, text="1/m", font=('Segoe UI', 17)).pack(side=tk.LEFT)
 
         # Load (sigma_0) input row
-        load_row_wrapper = tk.Frame(temp_frame, bg='#DC2626', padx=1, pady=1)
+        load_row_wrapper = tk.Frame(temp_frame, bg='#DC2626', padx=2, pady=2)
         load_row_wrapper.pack(fill=tk.X, pady=1)
         load_row = ttk.Frame(load_row_wrapper)
         load_row.pack(fill=tk.X)
