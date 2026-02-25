@@ -838,7 +838,7 @@ class PerssonModelGUI_V2:
             lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all"))
         )
 
-        left_canvas.create_window((0, 0), window=left_scrollable, anchor="nw")
+        left_canvas.create_window((0, 0), window=left_scrollable, anchor="nw", width=getattr(self, '_left_panel_width', 850) - 20)
         left_canvas.configure(yscrollcommand=left_scrollbar.set)
 
         left_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -5650,6 +5650,12 @@ class PerssonModelGUI_V2:
             self.calc_button.config(state='normal')
             self._show_status(f"G(q,v) calculated for {n_v} velocities and {n_q} wavenumbers", 'success')
 
+            # mu_visc 탭의 q1/하중 오버라이드 필드 초기값 설정
+            if hasattr(self, 'mu_q1_override_var'):
+                self.mu_q1_override_var.set(f"{q_max:.2e}")
+            if hasattr(self, 'mu_load_override_var'):
+                self.mu_load_override_var.set(f"{float(self.sigma_0_var.get())}")
+
             # G(q,v) 계산 완료 후 Tab 4의 h'rms slope 자동 계산
             try:
                 self._calculate_rms_slope()
@@ -8389,9 +8395,9 @@ class PerssonModelGUI_V2:
         ttk.Combobox(smooth_row, textvariable=self.smooth_window_var,
                      values=["3", "5", "7", "9", "11"], width=4, state="readonly", font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
 
-        # ===== Temperature Shift Section =====
+        # ===== Temperature, q1, Load Adjustment Section =====
         ttk.Separator(mu_settings_frame, orient='horizontal').pack(fill=tk.X, pady=3)
-        temp_frame = ttk.LabelFrame(mu_settings_frame, text="온도 시프트 (aT 적용)", padding=3)
+        temp_frame = ttk.LabelFrame(mu_settings_frame, text="온도, q1, 하중 조절", padding=3)
         temp_frame.pack(fill=tk.X, pady=2)
 
         # Temperature input row (강조)
@@ -8405,16 +8411,39 @@ class PerssonModelGUI_V2:
         self.mu_calc_temp_entry.pack(side=tk.LEFT, padx=2)
         ttk.Label(temp_row1, text="°C", font=('Segoe UI', 17)).pack(side=tk.LEFT)
 
+        # q1_max input row
+        q1_row_wrapper = tk.Frame(temp_frame, bg='#7C3AED', padx=1, pady=1)
+        q1_row_wrapper.pack(fill=tk.X, pady=1)
+        q1_row = ttk.Frame(q1_row_wrapper)
+        q1_row.pack(fill=tk.X)
+        ttk.Label(q1_row, text="q1 (q_max):", font=('Segoe UI', 17)).pack(side=tk.LEFT)
+        self.mu_q1_override_var = tk.StringVar(value="")
+        self.mu_q1_override_entry = ttk.Entry(q1_row, textvariable=self.mu_q1_override_var, width=10)
+        self.mu_q1_override_entry.pack(side=tk.LEFT, padx=2)
+        ttk.Label(q1_row, text="1/m", font=('Segoe UI', 17)).pack(side=tk.LEFT)
+
+        # Load (sigma_0) input row
+        load_row_wrapper = tk.Frame(temp_frame, bg='#DC2626', padx=1, pady=1)
+        load_row_wrapper.pack(fill=tk.X, pady=1)
+        load_row = ttk.Frame(load_row_wrapper)
+        load_row.pack(fill=tk.X)
+        ttk.Label(load_row, text="하중 σ₀:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
+        self.mu_load_override_var = tk.StringVar(value="")
+        self.mu_load_override_entry = ttk.Entry(load_row, textvariable=self.mu_load_override_var, width=8)
+        self.mu_load_override_entry.pack(side=tk.LEFT, padx=2)
+        ttk.Label(load_row, text="MPa", font=('Segoe UI', 17)).pack(side=tk.LEFT)
+
         # aT status display
         self.mu_aT_status_var = tk.StringVar(value="aT: 미로드 (Tref에서 계산)")
         ttk.Label(temp_frame, textvariable=self.mu_aT_status_var,
                   font=('Segoe UI', 17), foreground='#64748B').pack(anchor=tk.W)
 
-        # Temperature apply button
+        # Recalculate button
         temp_row2 = ttk.Frame(temp_frame)
         temp_row2.pack(fill=tk.X, pady=1)
-        ttk.Button(temp_row2, text="온도 적용 & G 재계산",
-                   command=self._apply_temperature_shift, width=20).pack(side=tk.LEFT)
+        self.mu_recalc_button = ttk.Button(temp_row2, text="재계산",
+                   command=self._apply_recalc_with_overrides, width=20)
+        self.mu_recalc_button.pack(side=tk.LEFT)
 
         # G calculation status
         self.g_calc_status_var = tk.StringVar(value="")
@@ -9039,6 +9068,43 @@ class PerssonModelGUI_V2:
 
         self.canvas_mu_visc.draw()
 
+    def _apply_recalc_with_overrides(self):
+        """Apply temperature shift, q1, and load overrides, then recalculate G(q,v)."""
+        try:
+            # Apply q1 override if user changed it
+            q1_str = self.mu_q1_override_var.get().strip()
+            if q1_str:
+                try:
+                    q1_val = float(q1_str)
+                    self.q_max_var.set(f"{q1_val:.2e}")
+                except ValueError:
+                    messagebox.showerror("오류", f"q1 값이 올바르지 않습니다: {q1_str}")
+                    return
+
+            # Apply load override if user changed it
+            load_str = self.mu_load_override_var.get().strip()
+            if load_str:
+                try:
+                    load_val = float(load_str)
+                    self.sigma_0_var.set(str(load_val))
+                except ValueError:
+                    messagebox.showerror("오류", f"하중 값이 올바르지 않습니다: {load_str}")
+                    return
+
+            # If aT data available → apply temperature shift + G recalculation
+            has_aT = (hasattr(self, 'persson_aT_interp') and self.persson_aT_interp is not None
+                      and hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None)
+            if has_aT:
+                self._apply_temperature_shift()
+            else:
+                # No aT data, but q1/load may have changed → just recalculate G
+                self._recalculate_G_with_temperature()
+
+        except Exception as e:
+            import traceback
+            messagebox.showerror("오류", f"재계산 실패:\n{str(e)}\n\n{traceback.format_exc()}")
+            self.g_calc_status_var.set("재계산 오류 발생")
+
     def _apply_temperature_shift(self):
         """Apply temperature shift to master curve using aT (and bT) and recalculate G."""
         try:
@@ -9303,13 +9369,11 @@ class PerssonModelGUI_V2:
             self._show_status("먼저 G(q,v) 계산을 실행하세요 (탭 3).", 'warning')
             return
 
-        # 자동 온도 시프트 & G 재계산 (aT 데이터가 있을 때)
-        if hasattr(self, 'persson_aT_interp') and self.persson_aT_interp is not None:
-            if hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None:
-                try:
-                    self._apply_temperature_shift()
-                except Exception as e_shift:
-                    print(f"Auto temperature shift skipped: {e_shift}")
+        # 자동 재계산: q1/하중 오버라이드 적용 + 온도 시프트 & G 재계산
+        try:
+            self._apply_recalc_with_overrides()
+        except Exception as e_recalc:
+            print(f"Auto recalculation skipped: {e_recalc}")
 
         try:
             self.status_var.set("μ_visc 계산 중...")
