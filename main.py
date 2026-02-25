@@ -1,5 +1,5 @@
 """
-Enhanced Main GUI for Persson Friction Model (v3.0)
+Enhanced Main GUI for NEXEN Rubber Friction Model Program (v3.0)
 ===================================================
 
 Work Instruction v3.0 Implementation:
@@ -222,7 +222,7 @@ class PerssonModelGUI_V2:
     def __init__(self, root):
         """Initialize enhanced GUI."""
         self.root = root
-        self.root.title("Persson Friction Model  v3.0")
+        self.root.title("NEXEN Rubber Friction Model Program  v3.0")
         self.root.geometry("1600x1000")
         self.root.configure(bg=self.COLORS['bg'])
         self.root.minsize(1200, 700)
@@ -572,7 +572,7 @@ class PerssonModelGUI_V2:
         header = tk.Frame(self.root, bg='#FFFFFF', height=48)
         header.pack(fill=tk.X, side=tk.TOP)
         header.pack_propagate(False)
-        tk.Label(header, text="Persson Friction Model",
+        tk.Label(header, text="NEXEN Rubber Friction Model Program",
                  bg='#FFFFFF', fg=self.COLORS['sidebar'],
                  font=('Segoe UI', 22, 'bold')).pack(side=tk.LEFT, padx=16)
         tk.Label(header, text="v3.0",
@@ -6747,7 +6747,7 @@ class PerssonModelGUI_V2:
         # Header
         header = tk.Frame(dialog, bg=C['sidebar'], padx=20, pady=15)
         header.pack(fill=tk.X)
-        tk.Label(header, text="Persson Friction Model",
+        tk.Label(header, text="NEXEN Rubber Friction Model Program",
                  bg=C['sidebar'], fg='white',
                  font=('Segoe UI', 20, 'bold')).pack(anchor=tk.W)
         tk.Label(header, text="v3.0",
@@ -6872,7 +6872,7 @@ class PerssonModelGUI_V2:
         def add_graph(plot_func, fig_height=3.5):
             """Add an illustrative matplotlib graph."""
             import numpy as np
-            fig = Figure(figsize=(12, fig_height), facecolor='#FAFBFC')
+            fig = Figure(figsize=(7, fig_height), dpi=100, facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
@@ -6882,8 +6882,8 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72))
-            graph_canvas.get_tk_widget().pack(fill=tk.X, padx=30, pady=(6, 14))
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=700)
+            graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
         title_frame = tk.Frame(scrollable_frame, bg='white', pady=10)
@@ -12493,7 +12493,7 @@ class PerssonModelGUI_V2:
         def add_graph(plot_func, fig_height=3.5):
             """Add an illustrative matplotlib graph."""
             import numpy as np
-            fig = Figure(figsize=(12, fig_height), facecolor='#FAFBFC')
+            fig = Figure(figsize=(7, fig_height), dpi=100, facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
@@ -12503,8 +12503,8 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72))
-            graph_canvas.get_tk_widget().pack(fill=tk.X, padx=30, pady=(6, 14))
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=700)
+            graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
         title_frame = tk.Frame(scrollable_frame, bg='white', pady=10)

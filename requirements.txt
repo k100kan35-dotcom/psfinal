@@ -1,4 +1,4 @@
-# Persson Friction Model Requirements
+# NEXEN Rubber Friction Model Program Requirements
 
 # Core numerical computing
 numpy>=1.20.0

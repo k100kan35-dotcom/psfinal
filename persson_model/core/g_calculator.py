@@ -1,5 +1,5 @@
 """
-G(q) Calculator for Persson Friction Model
+G(q) Calculator for NEXEN Rubber Friction Model Program
 ===========================================
 
 Implements the core G(q) calculation which represents the elastic energy

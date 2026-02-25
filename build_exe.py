@@ -199,7 +199,7 @@ def build():
         args.extend(['--add-data', f'strain.py{sep}.'])
 
     print("=" * 60)
-    print("  Persson Friction Model - EXE Build")
+    print("  NEXEN Rubber Friction Model Program - EXE Build")
     print("=" * 60)
     print(f"Python: {sys.version}")
     print(f"Platform: {sys.platform}")

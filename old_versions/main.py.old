@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Main entry point for Persson Friction Model application.
+Main entry point for NEXEN Rubber Friction Model Program application.
 """
 
 import sys

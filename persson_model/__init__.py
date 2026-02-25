@@ -1,5 +1,5 @@
 """
-Persson Friction Model
+NEXEN Rubber Friction Model Program
 ======================
 
 A Python implementation of Persson's contact mechanics and friction theory

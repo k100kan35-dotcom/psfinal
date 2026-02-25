@@ -1,5 +1,5 @@
 """
-Main GUI Window for Persson Friction Model
+Main GUI Window for NEXEN Rubber Friction Model Program
 ===========================================
 
 Provides interactive interface for:

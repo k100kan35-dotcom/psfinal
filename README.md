@@ -1,4 +1,4 @@
-# Persson 마찰 모델 (Persson Friction Model)
+# Persson 마찰 모델 (NEXEN Rubber Friction Model Program)
 
 Python 기반 Persson 접촉 역학 및 마찰 이론 구현
 
