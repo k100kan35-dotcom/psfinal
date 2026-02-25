@@ -13,6 +13,7 @@ mpl_hiddenimports = collect_submodules('matplotlib')
 project_datas = [
     ('persson_model', 'persson_model'),
     ('reference_data', 'reference_data'),
+    ('assets', 'assets'),
 ]
 if os.path.isdir('preset_data'):
     project_datas.append(('preset_data', 'preset_data'))
@@ -78,6 +79,7 @@ exe = EXE(
     a.datas,
     [],
     name='PerssonFrictionModel',
+    icon='assets/app_icon.ico' if os.path.isfile('assets/app_icon.ico') else None,
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,

@@ -227,6 +227,15 @@ class PerssonModelGUI_V2:
         self.root.configure(bg=self.COLORS['bg'])
         self.root.minsize(1200, 700)
 
+        # ── 앱 아이콘 설정 ──
+        try:
+            base_dir = getattr(sys, '_MEIPASS', os.path.dirname(os.path.abspath(__file__)))
+            icon_path = os.path.join(base_dir, 'assets', 'app_icon.ico')
+            if os.path.isfile(icon_path):
+                self.root.iconbitmap(icon_path)
+        except Exception:
+            pass
+
         # ── Apply modern theme ──
         self._setup_modern_theme()
 

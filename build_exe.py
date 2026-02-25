@@ -100,6 +100,9 @@ def build():
     exe_path = os.path.join('dist', exe_name)
     _kill_old_exe(exe_path)
 
+    # 아이콘 경로
+    icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'app_icon.ico')
+
     args = [
         'main.py',
         '--onefile',
@@ -182,12 +185,19 @@ def build():
         '--hidden-import', 'persson_model.utils.output',
     ]
 
+    # 아이콘 설정
+    if os.path.isfile(icon_path):
+        args.extend(['--icon', icon_path])
+
     # 제외 모듈 추가
     for exc in EXCLUDES + EXCLUDE_MPL + EXCLUDE_MISC:
         args.extend(['--exclude-module', exc])
 
     # ===== 데이터 디렉토리 포함 =====
     args.extend(['--add-data', f'persson_model{sep}persson_model'])
+
+    if os.path.isdir('assets'):
+        args.extend(['--add-data', f'assets{sep}assets'])
 
     if os.path.isdir('reference_data'):
         args.extend(['--add-data', f'reference_data{sep}reference_data'])
