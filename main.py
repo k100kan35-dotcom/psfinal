@@ -1216,7 +1216,7 @@ class PerssonModelGUI_V2:
         self.ax_psd_2d = self.fig_psd_profile.add_subplot(224)
         self.ax_psd_2d.set_title('2D Isotropic PSD C(q)', fontweight='bold', fontsize=15)
         self.ax_psd_2d.set_xlabel('Wavenumber q (1/m)', fontsize=13)
-        self.ax_psd_2d.set_ylabel('C(q) (m⁴)', fontsize=13)
+        self.ax_psd_2d.set_ylabel(r'C(q) (m$^4$)', fontsize=13)
         self.ax_psd_2d.set_xscale('log')
         self.ax_psd_2d.set_yscale('log')
         self.ax_psd_2d.grid(True, alpha=0.3, which='both')
@@ -2873,12 +2873,12 @@ class PerssonModelGUI_V2:
         has_bT = data.get('has_bT', False)
 
         # Plot log₁₀(aT) on primary axis
-        line1, = self.ax_mc_bT.plot(T, log_aT, 'bo-', linewidth=2, markersize=4, label='log₁₀(aT)')
+        line1, = self.ax_mc_bT.plot(T, log_aT, 'bo-', linewidth=2, markersize=4, label=r'log$_{10}$(aT)')
         self.ax_mc_bT.axhline(y=0, color='gray', linestyle='--', alpha=0.5)
         self.ax_mc_bT.axvline(x=T_ref, color='red', linestyle='--', alpha=0.5, label=f'Tref={T_ref:.0f}°C')
 
         self.ax_mc_bT.set_xlabel('온도 T (°C)', fontsize=13)
-        self.ax_mc_bT.set_ylabel('log₁₀(aT)', color='blue', fontsize=13)
+        self.ax_mc_bT.set_ylabel(r'log$_{10}$(aT)', color='blue', fontsize=13)
         self.ax_mc_bT.tick_params(axis='y', labelcolor='blue')
         self.ax_mc_bT.grid(True, alpha=0.3)
 
@@ -3022,7 +3022,7 @@ class PerssonModelGUI_V2:
             self.ax_psd_2d.clear()
             self.ax_psd_2d.loglog(q, C_q, 'b-', linewidth=2, label='C(q) 직접 로드')
             self.ax_psd_2d.set_xlabel('파수 q (1/m)', fontsize=13)
-            self.ax_psd_2d.set_ylabel('C(q) (m⁴)', fontsize=13)
+            self.ax_psd_2d.set_ylabel(r'C(q) (m$^4$)', fontsize=13)
             self.ax_psd_2d.set_title(f"★ PSD 직접 로드: {data['filename']}", fontweight='bold', fontsize=15)
             self.ax_psd_2d.legend(loc='upper right', fontsize=12)
             self.ax_psd_2d.grid(True, alpha=0.3, which='both')
@@ -4212,7 +4212,7 @@ class PerssonModelGUI_V2:
 
         # Initialize PSD(q) plot - top-left
         self.ax_psd_q.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=13)
-        self.ax_psd_q.set_ylabel('PSD C(q) (m⁴)', fontweight='bold', fontsize=13)
+        self.ax_psd_q.set_ylabel(r'PSD C(q) (m$^4$)', fontweight='bold', fontsize=13)
         self.ax_psd_q.set_xscale('log')
         self.ax_psd_q.set_yscale('log')
         self.ax_psd_q.grid(True, alpha=0.3)
@@ -4240,10 +4240,10 @@ class PerssonModelGUI_V2:
 
         # Initialize contact area live plot - bottom-right
         self.ax_contact_live.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=13)
-        self.ax_contact_live.set_ylabel('A(q)/A₀', fontweight='bold', fontsize=13)
+        self.ax_contact_live.set_ylabel(r'A(q)/A$_0$', fontweight='bold', fontsize=13)
         self.ax_contact_live.set_xscale('log')
         self.ax_contact_live.grid(True, alpha=0.3)
-        self.ax_contact_live.set_title('접촉 면적비 A(q)/A₀ 변화', fontweight='bold', fontsize=15)
+        self.ax_contact_live.set_title(r'접촉 면적비 A(q)/A$_0$ 변화', fontweight='bold', fontsize=15)
         self.ax_contact_live.text(0.5, 0.5, '계산 대기 중...',
                                   transform=self.ax_contact_live.transAxes,
                                   ha='center', va='center', fontsize=16,
@@ -5367,14 +5367,14 @@ class PerssonModelGUI_V2:
                         q0_psd = self.psd_model.q0
                         if q_plot_min < q0_psd:
                             self.ax_psd_q.axvspan(q_plot_min, q0_psd, alpha=0.10, facecolor='#F59E0B',
-                                                 label=f'플래토 (q<q₀)')
+                                                 label=r'플래토 (q<q$_0$)')
                             self.ax_psd_q.axvline(x=q0_psd, color='#F59E0B', linestyle='--', linewidth=1.2, alpha=0.6)
 
                     # Integration range shading
                     self.ax_psd_q.axvspan(q_min, q_max, alpha=0.08, facecolor='#06B6D4',
                                          edgecolor='#0891B2', linewidth=1.5, label='적분 q 범위')
                     self.ax_psd_q.set_xlabel('파수 q (1/m)', fontweight='bold')
-                    self.ax_psd_q.set_ylabel('C(q) (m⁴)', fontweight='bold')
+                    self.ax_psd_q.set_ylabel(r'C(q) (m$^4$)', fontweight='bold')
                     self.ax_psd_q.set_xscale('log'); self.ax_psd_q.set_yscale('log')
                     self.ax_psd_q.grid(True, alpha=0.25, linewidth=0.5)
                     self.ax_psd_q.legend(loc='upper right', fontsize=12)
@@ -5408,10 +5408,10 @@ class PerssonModelGUI_V2:
 
                 # BOTTOM-RIGHT: Contact area placeholder
                 self.ax_contact_live.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=13)
-                self.ax_contact_live.set_ylabel('A(q)/A₀', fontweight='bold', fontsize=13)
+                self.ax_contact_live.set_ylabel(r'A(q)/A$_0$', fontweight='bold', fontsize=13)
                 self.ax_contact_live.set_xscale('log')
                 self.ax_contact_live.grid(True, alpha=0.25, linewidth=0.5)
-                self.ax_contact_live.set_title('접촉 면적비 A(q)/A₀ 변화', fontweight='bold', fontsize=15)
+                self.ax_contact_live.set_title(r'접촉 면적비 A(q)/A$_0$ 변화', fontweight='bold', fontsize=15)
                 self.ax_contact_live.text(0.5, 0.5, '적분 시작 대기 중 …',
                                           transform=self.ax_contact_live.transAxes,
                                           ha='center', va='center', fontsize=16,
@@ -5531,10 +5531,10 @@ class PerssonModelGUI_V2:
                         if not _placeholder_cleared['contact']:
                             self.ax_contact_live.clear()
                             self.ax_contact_live.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=13)
-                            self.ax_contact_live.set_ylabel('A(q)/A₀', fontweight='bold', fontsize=13)
+                            self.ax_contact_live.set_ylabel(r'A(q)/A$_0$', fontweight='bold', fontsize=13)
                             self.ax_contact_live.set_xscale('log')
                             self.ax_contact_live.grid(True, alpha=0.25, linewidth=0.5)
-                            self.ax_contact_live.set_title('접촉 면적비 A(q)/A₀ 변화', fontweight='bold', fontsize=15)
+                            self.ax_contact_live.set_title(r'접촉 면적비 A(q)/A$_0$ 변화', fontweight='bold', fontsize=15)
                             _placeholder_cleared['contact'] = True
 
                         # Fade previous curves
@@ -5886,7 +5886,7 @@ class PerssonModelGUI_V2:
                           color=color, linewidth=1.5, label=f'v={v_val:.4f} m/s', alpha=0.8)
 
             ax5.set_xlabel('파수 q (1/m)', fontweight='bold', fontsize=LABEL_FONT, labelpad=3)
-            ax5.set_ylabel('각도 적분 ∫dφ|E/(1-ν²)σ0|²', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
+            ax5.set_ylabel(r'각도 적분 $\int d\phi\,|E/(1-\nu^2)\sigma_0|^2$', fontweight='bold', fontsize=LABEL_FONT, rotation=90, labelpad=5)
             ax5.set_title('(e) 내부 적분: 상대적 강성비', fontweight='bold', fontsize=TITLE_FONT, pad=TITLE_PAD)
             ax5.legend(fontsize=LEGEND_FONT, ncol=2)
             ax5.grid(True, alpha=0.3)
@@ -7198,7 +7198,7 @@ class PerssonModelGUI_V2:
         self.ax_psd_ref = self.fig_rms.add_subplot(224)
         self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold', fontsize=15)
         self.ax_psd_ref.set_xlabel('파수 q (1/m)', fontsize=13)
-        self.ax_psd_ref.set_ylabel('C(q) (m⁴)', fontsize=13)
+        self.ax_psd_ref.set_ylabel(r'C(q) (m$^4$)', fontsize=13)
         self.ax_psd_ref.set_xscale('log')
         self.ax_psd_ref.set_yscale('log')
         self.ax_psd_ref.grid(True, alpha=0.3)
@@ -7400,7 +7400,7 @@ class PerssonModelGUI_V2:
             self.ax_psd_ref.loglog(q[valid_C], C_q[valid_C], 'k-', linewidth=1.5)
         self.ax_psd_ref.set_title('PSD C(q) (참조)', fontweight='bold', fontsize=15)
         self.ax_psd_ref.set_xlabel('파수 q (1/m)', fontsize=13)
-        self.ax_psd_ref.set_ylabel('C(q) (m⁴)', fontsize=13)
+        self.ax_psd_ref.set_ylabel(r'C(q) (m$^4$)', fontsize=13)
         self.ax_psd_ref.grid(True, alpha=0.3)
 
         self.fig_rms.subplots_adjust(left=0.14, right=0.95, top=0.94, bottom=0.10, hspace=0.42, wspace=0.38)
@@ -11957,25 +11957,25 @@ class PerssonModelGUI_V2:
 
         # Top-left: Angle integrand |E(qv cosφ)|² vs φ
         self.ax_angle_integrand = self.fig_integrand.add_subplot(221)
-        self.ax_angle_integrand.set_title('G 각도 피적분함수: |E(qv cosφ)|² vs φ', fontweight='bold', fontsize=14)
-        self.ax_angle_integrand.set_xlabel('φ (rad)', fontsize=13)
-        self.ax_angle_integrand.set_ylabel('|E(ω)/((1-ν²)sigma_0)|²', fontsize=12)
+        self.ax_angle_integrand.set_title(r'G 각도 피적분함수: $|E(qv\cos\phi)|^2$ vs $\phi$', fontweight='bold', fontsize=14)
+        self.ax_angle_integrand.set_xlabel(r'$\phi$ (rad)', fontsize=13)
+        self.ax_angle_integrand.set_ylabel(r'$|E(\omega)/((1-\nu^2)\sigma_0)|^2$', fontsize=12)
         self.ax_angle_integrand.grid(True, alpha=0.3)
 
         # Top-right: G(q) integrand vs q
         self.ax_q_integrand = self.fig_integrand.add_subplot(222)
-        self.ax_q_integrand.set_title('G(q) 피적분함수: q³C(q)×(각도적분) vs q', fontweight='bold', fontsize=14)
+        self.ax_q_integrand.set_title(r'G(q) 피적분함수: $q^3 C(q) \times$ (각도적분) vs q', fontweight='bold', fontsize=14)
         self.ax_q_integrand.set_xlabel('q (1/m)', fontsize=13)
-        self.ax_q_integrand.set_ylabel('q³C(q)×∫|E|²dφ', fontsize=13)
+        self.ax_q_integrand.set_ylabel(r'$q^3 C(q) \times \int|E|^2 d\phi$', fontsize=13)
         self.ax_q_integrand.set_xscale('log')
         self.ax_q_integrand.set_yscale('log')
         self.ax_q_integrand.grid(True, alpha=0.3)
 
         # Bottom-left: μ_visc integrand vs φ (Im[E] × cosφ)
         self.ax_mu_integrand = self.fig_integrand.add_subplot(223)
-        self.ax_mu_integrand.set_title('μ_visc 각도 피적분함수: cosφ × Im[E] vs φ', fontweight='bold', fontsize=14)
-        self.ax_mu_integrand.set_xlabel('φ (rad)', fontsize=13)
-        self.ax_mu_integrand.set_ylabel('cosφ × E\'\'/((1-ν²)sigma_0)', fontsize=12)
+        self.ax_mu_integrand.set_title(r'$\mu_{visc}$ 각도 피적분함수: $\cos\phi \times \mathrm{Im}[E]$ vs $\phi$', fontweight='bold', fontsize=14)
+        self.ax_mu_integrand.set_xlabel(r'$\phi$ (rad)', fontsize=13)
+        self.ax_mu_integrand.set_ylabel(r"$\cos\phi \times E''/((1-\nu^2)\sigma_0)$", fontsize=12)
         self.ax_mu_integrand.grid(True, alpha=0.3)
 
         # Bottom-right: Frequency range vs velocity
@@ -12037,21 +12037,21 @@ class PerssonModelGUI_V2:
             self.ax_freq_range.clear()
 
             # Set up axes labels and titles again
-            self.ax_angle_integrand.set_title('G 각도 피적분함수: |E(qv cosφ)|² vs φ', fontweight='bold', fontsize=14)
-            self.ax_angle_integrand.set_xlabel('φ (rad)', fontsize=13)
-            self.ax_angle_integrand.set_ylabel('|E(ω)/((1-ν²)sigma_0)|²', fontsize=12)
+            self.ax_angle_integrand.set_title(r'G 각도 피적분함수: $|E(qv\cos\phi)|^2$ vs $\phi$', fontweight='bold', fontsize=14)
+            self.ax_angle_integrand.set_xlabel(r'$\phi$ (rad)', fontsize=13)
+            self.ax_angle_integrand.set_ylabel(r'$|E(\omega)/((1-\nu^2)\sigma_0)|^2$', fontsize=12)
             self.ax_angle_integrand.grid(True, alpha=0.3)
 
-            self.ax_q_integrand.set_title('G(q) 피적분함수: q³C(q)×(각도적분) vs q', fontweight='bold', fontsize=14)
+            self.ax_q_integrand.set_title(r'G(q) 피적분함수: $q^3 C(q) \times$ (각도적분) vs q', fontweight='bold', fontsize=14)
             self.ax_q_integrand.set_xlabel('q (1/m)', fontsize=13)
-            self.ax_q_integrand.set_ylabel('q³C(q)×∫|E|²dφ', fontsize=13)
+            self.ax_q_integrand.set_ylabel(r'$q^3 C(q) \times \int|E|^2 d\phi$', fontsize=13)
             self.ax_q_integrand.set_xscale('log')
             self.ax_q_integrand.set_yscale('log')
             self.ax_q_integrand.grid(True, alpha=0.3)
 
-            self.ax_mu_integrand.set_title('μ_visc 각도 피적분함수: cosφ × Im[E] vs φ', fontweight='bold', fontsize=14)
-            self.ax_mu_integrand.set_xlabel('φ (rad)', fontsize=13)
-            self.ax_mu_integrand.set_ylabel('cosφ × E\'\'/((1-ν²)sigma_0)', fontsize=12)
+            self.ax_mu_integrand.set_title(r'$\mu_{visc}$ 각도 피적분함수: $\cos\phi \times \mathrm{Im}[E]$ vs $\phi$', fontweight='bold', fontsize=14)
+            self.ax_mu_integrand.set_xlabel(r'$\phi$ (rad)', fontsize=13)
+            self.ax_mu_integrand.set_ylabel(r"$\cos\phi \times E''/((1-\nu^2)\sigma_0)$", fontsize=12)
             self.ax_mu_integrand.grid(True, alpha=0.3)
 
             self.ax_freq_range.set_title('속도별 주파수 스캔 범위', fontweight='bold', fontsize=14)
@@ -14030,7 +14030,9 @@ class PerssonModelGUI_V2:
             ax.set_title(title, fontweight='bold', fontsize=13)
             ax.grid(True, alpha=0.3)
 
-        self.fig_ve_advisor.tight_layout()
+        # GridSpec already handles spacing via hspace/wspace, so skip tight_layout
+        # to avoid "Axes not compatible with tight_layout" warning
+        self.fig_ve_advisor.subplots_adjust(left=0.08, right=0.97, top=0.95, bottom=0.08)
 
         self.canvas_ve_advisor = FigureCanvasTkAgg(self.fig_ve_advisor, plot_frame)
         self.canvas_ve_advisor.draw()
@@ -14637,7 +14639,7 @@ class PerssonModelGUI_V2:
             ax.set_title("E''(T) @10 Hz", fontweight='bold', fontsize=13)
         ax.grid(True, alpha=0.3)
 
-        self.fig_ve_advisor.tight_layout()
+        self.fig_ve_advisor.subplots_adjust(left=0.08, right=0.97, top=0.95, bottom=0.08)
         self.canvas_ve_advisor.draw()
 
 
