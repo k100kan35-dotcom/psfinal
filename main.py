@@ -568,17 +568,6 @@ class PerssonModelGUI_V2:
     def _create_main_layout(self):
         """Create main application layout with tabs."""
 
-        # ── Header bar ──
-        header = tk.Frame(self.root, bg='#FFFFFF', height=48)
-        header.pack(fill=tk.X, side=tk.TOP)
-        header.pack_propagate(False)
-        tk.Label(header, text="NEXEN Rubber Friction Model Program",
-                 bg='#FFFFFF', fg=self.COLORS['sidebar'],
-                 font=('Segoe UI', 22, 'bold')).pack(side=tk.LEFT, padx=16)
-        tk.Label(header, text="v3.0",
-                 bg='#FFFFFF', fg=self.COLORS['text_secondary'],
-                 font=('Segoe UI', 17)).pack(side=tk.LEFT, padx=(0, 8))
-
         # ── Load company logo (for left panel footers) ──
         self._logo_image = None
         try:
@@ -596,9 +585,6 @@ class PerssonModelGUI_V2:
                 self._logo_image = _logo_full.subsample(_scale, _scale)
         except Exception:
             pass
-
-        # Header bottom border
-        tk.Frame(self.root, bg=self.COLORS['border'], height=1).pack(fill=tk.X, side=tk.TOP)
 
         # ── Activity Log Panel (작업 로그) ──
         self._create_log_panel()
@@ -4613,7 +4599,7 @@ class PerssonModelGUI_V2:
     def _create_log_panel(self):
         """Create an activity log panel at the top of the main window."""
         C = self.COLORS
-        log_container = tk.Frame(self.root, bg=C['sidebar'], height=120)
+        log_container = tk.Frame(self.root, bg=C['sidebar'], height=170)
         log_container.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4, 0))
         log_container.pack_propagate(False)
 
@@ -4635,7 +4621,7 @@ class PerssonModelGUI_V2:
                 toggle_btn.config(text="\u25BC")
                 self._log_expanded = False
             else:
-                log_container.config(height=120)
+                log_container.config(height=170)
                 toggle_btn.config(text="\u25B2")
                 self._log_expanded = True
 
