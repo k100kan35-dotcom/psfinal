@@ -1,16 +1,16 @@
-; Persson Friction Model - Inno Setup Installer Script
-; ====================================================
+; NEXEN Rubber Friction Modelling Program - Inno Setup Installer Script
+; =====================================================================
 ; Usage:
 ;   1. Build with PyInstaller first: python build_exe.py --onedir
 ;   2. Compile with Inno Setup: iscc installer.iss
 ;
 ; Download Inno Setup: https://jrsoftware.org/issetup.php
 
-#define MyAppName "Persson Friction Model"
+#define MyAppName "NEXEN Rubber Friction Modelling Program"
 #define MyAppVersion "1.1.0"
-#define MyAppPublisher "Persson Modelling Team"
-#define MyAppExeName "PerssonFrictionModel.exe"
-#define MyAppDescription "Persson Contact Mechanics and Friction Theory"
+#define MyAppPublisher "NEXEN TIRE - Material Research Team"
+#define MyAppExeName "NexenRubberFriction.exe"
+#define MyAppDescription "NEXEN Rubber Friction Modelling Program based on Persson Theory"
 
 [Setup]
 ; Unique App ID (GUID) - Do not change this value
@@ -20,13 +20,13 @@ AppVersion={#MyAppVersion}
 AppVerName={#MyAppName} {#MyAppVersion}
 AppPublisher={#MyAppPublisher}
 AppComments={#MyAppDescription}
-DefaultDirName={autopf}\PerssonFrictionModel
+DefaultDirName={autopf}\NexenRubberFriction
 DefaultGroupName={#MyAppName}
 ; Installer wizard settings
 AllowNoIcons=yes
 ; Output installer file settings
 OutputDir=installer_output
-OutputBaseFilename=PerssonFrictionModel_v{#MyAppVersion}_Setup
+OutputBaseFilename=NexenRubberFriction_v{#MyAppVersion}_Setup
 ; Compression (LZMA2 max)
 Compression=lzma2/ultra64
 SolidCompression=yes
@@ -40,6 +40,9 @@ ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 ; UI settings
 WizardStyle=modern
+; Application icon
+SetupIconFile=assets\app_icon.ico
+UninstallDisplayIcon={app}\{#MyAppExeName}
 ; Close running app during install
 CloseApplications=yes
 RestartApplications=no
@@ -56,14 +59,14 @@ Name: "quicklaunchicon"; Description: "{cm:CreateQuickLaunchIcon}"; GroupDescrip
 
 [Files]
 ; Include entire PyInstaller onedir output
-Source: "dist\PerssonFrictionModel\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\NexenRubberFriction\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 ; Start Menu shortcuts
-Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Comment: "{#MyAppDescription}"
+Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Comment: "{#MyAppDescription}"
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 ; Desktop shortcut
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Comment: "{#MyAppDescription}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; IconFilename: "{app}\{#MyAppExeName}"; Tasks: desktopicon; Comment: "{#MyAppDescription}"
 
 [Run]
 ; Option to launch after install

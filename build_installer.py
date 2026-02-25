@@ -25,7 +25,7 @@ import glob
 # =====================================================================
 # 설정
 # =====================================================================
-APP_NAME = "PerssonFrictionModel"
+APP_NAME = "NexenRubberFriction"
 APP_VERSION = "1.1.0"
 MAIN_SCRIPT = "main.py"
 ISS_FILE = "installer.iss"
@@ -162,6 +162,7 @@ def step1_pyinstaller():
         '--noconfirm',
         '--noconsole',
         '--log-level', 'WARN',
+        '--icon=assets/app_icon.ico',
 
         # matplotlib 데이터 번들
         '--collect-data', 'matplotlib',
@@ -177,6 +178,9 @@ def step1_pyinstaller():
         args.extend(['--exclude-module', exc])
 
     # 데이터 디렉토리 포함
+    if os.path.isdir('assets'):
+        args.extend(['--add-data', f'assets{sep}assets'])
+
     args.extend(['--add-data', f'persson_model{sep}persson_model'])
 
     if os.path.isdir('reference_data'):
@@ -332,7 +336,7 @@ def main():
     print("    1. Inno Setup 6 설치: https://jrsoftware.org/issetup.php")
     print(f"    2. 명령 프롬프트에서: iscc {ISS_FILE}")
     print(f"    3. 또는 Inno Setup GUI에서 {ISS_FILE}을 열어 컴파일")
-    print(f"    4. 결과물: {OUTPUT_DIR}/PerssonFrictionModel_v{APP_VERSION}_Setup.exe")
+    print(f"    4. 결과물: {OUTPUT_DIR}/NexenRubberFriction_v{APP_VERSION}_Setup.exe")
     print("=" * 60)
 
 

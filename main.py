@@ -222,7 +222,7 @@ class PerssonModelGUI_V2:
     def __init__(self, root):
         """Initialize enhanced GUI."""
         self.root = root
-        self.root.title("Persson Friction Model  v3.0")
+        self.root.title("NEXEN Rubber Friction Modelling Program  v3.0")
         self.root.geometry("1600x1000")
         self.root.configure(bg=self.COLORS['bg'])
         self.root.minsize(1200, 700)
@@ -572,9 +572,9 @@ class PerssonModelGUI_V2:
         header = tk.Frame(self.root, bg='#FFFFFF', height=48)
         header.pack(fill=tk.X, side=tk.TOP)
         header.pack_propagate(False)
-        tk.Label(header, text="Persson Friction Model",
+        tk.Label(header, text="NEXEN Rubber Friction Modelling Program",
                  bg='#FFFFFF', fg=self.COLORS['sidebar'],
-                 font=('Segoe UI', 22, 'bold')).pack(side=tk.LEFT, padx=16)
+                 font=('Segoe UI', 20, 'bold')).pack(side=tk.LEFT, padx=16)
         tk.Label(header, text="v3.0",
                  bg='#FFFFFF', fg=self.COLORS['text_secondary'],
                  font=('Segoe UI', 17)).pack(side=tk.LEFT, padx=(0, 8))
@@ -6747,12 +6747,12 @@ class PerssonModelGUI_V2:
         # Header
         header = tk.Frame(dialog, bg=C['sidebar'], padx=20, pady=15)
         header.pack(fill=tk.X)
-        tk.Label(header, text="Persson Friction Model",
+        tk.Label(header, text="NEXEN Rubber Friction Modelling Program",
                  bg=C['sidebar'], fg='white',
-                 font=('Segoe UI', 20, 'bold')).pack(anchor=tk.W)
-        tk.Label(header, text="v3.0",
+                 font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
+        tk.Label(header, text="v3.0  |  Based on Persson Contact Mechanics Theory",
                  bg=C['sidebar'], fg='#94A3B8',
-                 font=('Segoe UI', 14)).pack(anchor=tk.W)
+                 font=('Segoe UI', 12)).pack(anchor=tk.W)
 
         # Content
         content = tk.Frame(dialog, bg='white', padx=25, pady=20)
