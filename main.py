@@ -828,7 +828,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=600)
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -2109,7 +2109,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel container (fixed width) with scrollable canvas
-        left_container = ttk.Frame(main_container, width=600)
+        left_container = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_container.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_container.pack_propagate(False)
 
@@ -2134,7 +2134,7 @@ class PerssonModelGUI_V2:
         left_frame.bind("<Configure>", _configure_scroll)
 
         # Create window inside canvas
-        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=580)
+        canvas_window = mc_canvas.create_window((0, 0), window=left_frame, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
         mc_canvas.configure(yscrollcommand=mc_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -3907,7 +3907,7 @@ class PerssonModelGUI_V2:
         main_container.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         # Left panel for inputs (fixed width, scrollable)
-        left_frame = ttk.Frame(main_container, width=600)
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -3944,7 +3944,7 @@ class PerssonModelGUI_V2:
             lambda e: param_canvas.configure(scrollregion=param_canvas.bbox("all"))
         )
 
-        param_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=580)
+        param_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
         param_canvas.configure(yscrollcommand=param_scrollbar.set)
 
         param_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -6317,39 +6317,13 @@ class PerssonModelGUI_V2:
                 ("\n..." if len(saved_files) > 10 else ""), 'success')
 
     def _show_help(self):
-        """Show help dialog."""
-        help_text = """
-Persson Friction Calculator v2.1 - User Guide
-
-1. Input Data Verification Tab:
-   - Check that E', E'', tan(δ) and C(q) are correctly loaded
-   - Verify master curve and PSD before calculation
-
-2. Calculation Setup Tab:
-   - Set pressure, velocity range (log scale: 0.0001~10 m/s)
-   - Configure q range and number of points
-   - Click "Run G(q,v) Calculation"
-
-3. G(q,v) Results Tab:
-   - View multi-velocity G(q) curves
-   - Analyze G(q,v) heatmap
-   - Check contact area P(q,v)
-
-4. Friction Analysis Tab:
-   - Velocity-dependent friction coefficient
-   - Contact area ratio analysis
-        """
-        self._show_status(help_text, 'success')
-
-    def _open_layout_settings(self):
-        """Open global layout settings control panel."""
+        """Show help dialog as a popup window."""
         dialog = tk.Toplevel(self.root)
-        dialog.title("레이아웃 설정")
+        dialog.title("사용자 가이드")
         dialog.resizable(True, True)
         dialog.transient(self.root)
-        dialog.grab_set()
 
-        dlg_w, dlg_h = 600, 700
+        dlg_w, dlg_h = 750, 850
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - dlg_h) // 2
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
@@ -6359,12 +6333,195 @@ Persson Friction Calculator v2.1 - User Guide
         # Title
         title_frame = tk.Frame(dialog, bg=C['sidebar'], padx=12, pady=8)
         title_frame.pack(fill=tk.X)
+        tk.Label(title_frame, text="Persson 마찰 모델 v3.0 — 사용자 가이드",
+                 bg=C['sidebar'], fg='white',
+                 font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
+
+        # Scrollable text content
+        text_frame = ttk.Frame(dialog)
+        text_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+        text_scroll = ttk.Scrollbar(text_frame, orient=tk.VERTICAL)
+        text_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+
+        text_widget = tk.Text(text_frame, wrap=tk.WORD, font=('Segoe UI', 14),
+                              bg='white', relief='flat', borderwidth=0,
+                              yscrollcommand=text_scroll.set, spacing1=2, spacing3=2)
+        text_widget.pack(fill=tk.BOTH, expand=True)
+        text_scroll.config(command=text_widget.yview)
+
+        # Configure text tags for formatting
+        text_widget.tag_configure('title', font=('Segoe UI', 16, 'bold'), foreground='#1B2A4A',
+                                  spacing1=10, spacing3=4)
+        text_widget.tag_configure('section', font=('Segoe UI', 15, 'bold'), foreground='#7C3AED',
+                                  spacing1=12, spacing3=4)
+        text_widget.tag_configure('body', font=('Segoe UI', 14), foreground='#1E293B',
+                                  spacing1=1, spacing3=1, lmargin1=15, lmargin2=15)
+        text_widget.tag_configure('indent', font=('Segoe UI', 13), foreground='#64748B',
+                                  lmargin1=30, lmargin2=30, spacing1=1, spacing3=1)
+        text_widget.tag_configure('note', font=('Segoe UI', 13, 'italic'), foreground='#DC2626',
+                                  lmargin1=15, lmargin2=15, spacing1=2, spacing3=2)
+
+        def add(text, tag='body'):
+            text_widget.insert(tk.END, text + '\n', tag)
+
+        add('프로그램 개요', 'title')
+        add('Persson 점탄성 마찰 이론에 기반하여 고무-바닥 접촉의 마찰 계수(μ_visc)를 계산하는 프로그램입니다.')
+        add('DMA 마스터 커브(재료 물성)와 PSD(표면 거칠기) 데이터를 입력하면,')
+        add('G(q,v) → P(q) → μ_visc를 단계적으로 계산합니다.')
+        add('')
+
+        add('탭 1: PSD 생성', 'section')
+        add('표면 프로파일 데이터(.txt)로부터 PSD C(q)를 계산합니다.')
+        add('  • 프로파일 데이터 로드 후 "PSD 계산" 클릭', 'indent')
+        add('  • 생성된 PSD를 검증 후 "PSD 확정 → 계산에 사용" 클릭', 'indent')
+        add('  • 또는 기존 PSD 파일을 직접 로드할 수도 있습니다', 'indent')
+        add('')
+
+        add('탭 2: 마스터 커브', 'section')
+        add('DMA 데이터로부터 마스터 커브를 생성하고, 시프트 인자(aT)를 확인합니다.')
+        add('  • DMA 데이터(.txt): 주파수, E\', E\'\', 온도 데이터 포함', 'indent')
+        add('  • 기준 온도(T_ref)를 설정하고 WLF/Arrhenius 시프트 적용', 'indent')
+        add('  • 마스터 커브가 부드럽게 연결되는지 확인', 'indent')
+        add('')
+
+        add('탭 3: 계산 설정', 'section')
+        add('G(q,v) 계산에 필요한 파라미터를 설정합니다.')
+        add('  • σ₀: 공칭 접촉 압력 [Pa] — 하중/면적', 'indent')
+        add('  • 속도 범위: 0.0001 ~ 10 m/s (로그 스케일)', 'indent')
+        add('  • q 범위: PSD 적분에 사용할 파수 범위', 'indent')
+        add('  • 설정 완료 후 "G(q,v) 계산 실행" 클릭', 'indent')
+        add('')
+
+        add('탭 4: G(q,v) 결과', 'section')
+        add('계산된 G(q,v) 결과를 시각화합니다.')
+        add('  • G(q) 곡선: 각 속도별 누적 탄성 에너지', 'indent')
+        add('  • G(q,v) 히트맵: 파수-속도 평면에서의 G 분포', 'indent')
+        add('  • P(q,v) 접촉 면적: 실접촉 면적 비율', 'indent')
+        add('')
+
+        add('탭 5: h\'rms / Strain', 'section')
+        add('표면 거칠기의 RMS 기울기와 국소 변형률(strain)을 계산합니다.')
+        add('  • h\'_rms(q): 파수까지의 누적 RMS 기울기', 'indent')
+        add('  • ε(q) = α × h\'_rms: 국소 변형률 (비선형 보정에 필요)', 'indent')
+        add('')
+
+        add('탭 6: μ_visc 계산', 'section')
+        add('최종 점탄성 마찰 계수를 계산합니다.')
+        add('  • Strain Sweep 데이터로 f(ε), g(ε) 비선형 보정 가능', 'indent')
+        add('  • 선형/비선형 모드 비교 지원', 'indent')
+        add('  • 속도-마찰계수 곡선 (μ vs v) 출력', 'indent')
+        add('')
+
+        add('탭 7: 점탄성 설계', 'section')
+        add('재료 설계 가이드라인을 제공합니다.')
+        add('  • 주파수 감도 분석 W(f)', 'indent')
+        add('  • 마찰 기여 주파수 대역 식별', 'indent')
+        add('')
+
+        add('탭 8: Strain Map', 'section')
+        add('파수-속도 평면에서의 strain 분포를 히트맵으로 시각화합니다.')
+        add('')
+
+        add('탭 9: 피적분함수', 'section')
+        add('G(q) 및 μ_visc 적분의 피적분함수(integrand)를 시각화하여 어떤 파수 대역이 계산에 가장 큰 기여를 하는지 분석합니다.')
+        add('')
+
+        add('탭 10-11: 수식 정리 / 변수 관계', 'section')
+        add('이론 수식과 변수 관계를 참조할 수 있는 레퍼런스 탭입니다.')
+        add('')
+
+        add('탭 12: 디버그', 'section')
+        add('계산 중간값과 진단 정보를 확인할 수 있습니다.')
+        add('')
+
+        add('탭 13: 영향 인자', 'section')
+        add('마찰 계수에 영향을 미치는 주요 인자들의 감도 분석입니다.')
+        add('')
+
+        add('일반 사용 팁', 'section')
+        add('  • File > Load DMA Data: DMA 마스터 커브 데이터 로드', 'indent')
+        add('  • File > Save Results: 계산 결과를 CSV로 저장', 'indent')
+        add('  • File > Graph Data Export: 그래프 데이터를 내보내기', 'indent')
+        add('  • Settings > 레이아웃 설정: 글꼴 크기, 패널 폭, 창 크기 조절', 'indent')
+        add('  • 각 탭 상단의 도구 모음에서 주요 동작 버튼을 사용하세요', 'indent')
+        add('')
+
+        add('※ 계산 순서: 탭 1~3 → 탭 4 (G 계산) → 탭 5 (h\'rms) → 탭 6 (μ_visc)', 'note')
+
+        text_widget.config(state='disabled')
+
+        # Close button
+        btn_frame = ttk.Frame(dialog, padding=10)
+        btn_frame.pack(fill=tk.X)
+        ttk.Button(btn_frame, text="닫기", command=dialog.destroy, width=12).pack(side=tk.RIGHT, padx=5)
+
+    def _apply_panel_width_recursive(self, widget, new_width):
+        """Recursively find and resize left panel frames in a tab."""
+        try:
+            # Check if this is a direct child Frame with pack_propagate(False)
+            # which indicates it's a fixed-width left panel
+            info = widget.pack_info() if hasattr(widget, 'pack_info') else None
+            if info and info.get('side') == 'left' and not info.get('expand'):
+                # Check if this frame has pack_propagate disabled (fixed-width panel)
+                if isinstance(widget, (ttk.Frame, tk.Frame)):
+                    try:
+                        current_w = widget.cget('width')
+                        if current_w and 300 < int(current_w) < 1200:
+                            widget.configure(width=new_width)
+                    except (tk.TclError, ValueError):
+                        pass
+        except (tk.TclError, AttributeError):
+            pass
+
+        # Recurse into children
+        try:
+            for child in widget.winfo_children():
+                self._apply_panel_width_recursive(child, new_width)
+        except (tk.TclError, AttributeError):
+            pass
+
+    def _open_layout_settings(self):
+        """Open global layout settings control panel."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("레이아웃 설정")
+        dialog.resizable(True, True)
+        dialog.transient(self.root)
+        dialog.grab_set()
+
+        dlg_w, dlg_h = 700, 850
+        x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
+        y = self.root.winfo_y() + max(0, (self.root.winfo_height() - dlg_h) // 2)
+        dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
+        dialog.minsize(600, 700)
+
+        C = self.COLORS
+
+        # Title
+        title_frame = tk.Frame(dialog, bg=C['sidebar'], padx=12, pady=8)
+        title_frame.pack(fill=tk.X)
         tk.Label(title_frame, text="레이아웃 제어판", bg=C['sidebar'], fg='white',
                  font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
 
-        # Scrollable content
-        content_frame = ttk.Frame(dialog, padding=15)
-        content_frame.pack(fill=tk.BOTH, expand=True)
+        # Scrollable content area to fit all settings
+        outer_frame = ttk.Frame(dialog)
+        outer_frame.pack(fill=tk.BOTH, expand=True)
+
+        settings_canvas = tk.Canvas(outer_frame, highlightthickness=0)
+        settings_scrollbar = ttk.Scrollbar(outer_frame, orient=tk.VERTICAL, command=settings_canvas.yview)
+        content_frame = ttk.Frame(settings_canvas, padding=15)
+
+        content_frame.bind("<Configure>",
+                           lambda e: settings_canvas.configure(scrollregion=settings_canvas.bbox("all")))
+        _settings_cw = settings_canvas.create_window((0, 0), window=content_frame, anchor="nw")
+        settings_canvas.configure(yscrollcommand=settings_scrollbar.set)
+
+        def _on_settings_canvas_configure(event):
+            settings_canvas.itemconfig(_settings_cw, width=event.width)
+        settings_canvas.bind('<Configure>', _on_settings_canvas_configure)
+
+        settings_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        settings_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
         # ── Section 1: Font Settings ──
         font_frame = ttk.LabelFrame(content_frame, text="글꼴 설정", padding=10)
@@ -6533,9 +6690,14 @@ Persson Friction Calculator v2.1 - User Guide
                 'figure.titlesize': self.PLOT_FONTS['suptitle'],
             }
 
-            # 4. Update left panel width
+            # 4. Update left panel width and apply to existing frames
             new_panel_w = panel_width_var.get()
             self._left_panel_width = new_panel_w
+
+            # Apply width to all existing left panel frames in notebook tabs
+            for tab_id in self.notebook.tabs():
+                tab_widget = self.notebook.nametowidget(tab_id)
+                self._apply_panel_width_recursive(tab_widget, new_panel_w)
 
             # 5. Update window size
             new_win_w = win_w_var.get()
@@ -6568,21 +6730,58 @@ Persson Friction Calculator v2.1 - User Guide
         ttk.Button(btn_frame, text="취소", command=dialog.destroy, width=12).pack(side=tk.RIGHT, padx=5)
 
     def _show_about(self):
-        """Show about dialog."""
-        about_text = """
-Persson Friction Calculator v2.1
+        """Show about dialog as a popup window."""
+        dialog = tk.Toplevel(self.root)
+        dialog.title("About")
+        dialog.resizable(False, False)
+        dialog.transient(self.root)
+        dialog.grab_set()
 
-Work Instruction v2.1 Implementation:
-- Velocity range: 0.0001~10 m/s (log scale)
-- G(q,v) 2D matrix calculation
-- Multi-velocity plotting
-- Input data verification
+        dlg_w, dlg_h = 480, 420
+        x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - dlg_h) // 2
+        dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
 
-Based on:
-Persson, B.N.J. (2001, 2006)
-Rubber friction theory
-        """
-        self._show_status(about_text, 'success')
+        C = self.COLORS
+
+        # Header
+        header = tk.Frame(dialog, bg=C['sidebar'], padx=20, pady=15)
+        header.pack(fill=tk.X)
+        tk.Label(header, text="Persson Friction Model",
+                 bg=C['sidebar'], fg='white',
+                 font=('Segoe UI', 20, 'bold')).pack(anchor=tk.W)
+        tk.Label(header, text="v3.0",
+                 bg=C['sidebar'], fg='#94A3B8',
+                 font=('Segoe UI', 14)).pack(anchor=tk.W)
+
+        # Content
+        content = tk.Frame(dialog, bg='white', padx=25, pady=20)
+        content.pack(fill=tk.BOTH, expand=True)
+
+        def add_label(text, size=14, bold=False, fg='#1E293B', pady=(0, 2)):
+            weight = 'bold' if bold else 'normal'
+            tk.Label(content, text=text, bg='white', fg=fg,
+                     font=('Segoe UI', size, weight),
+                     anchor='w', justify=tk.LEFT).pack(anchor='w', pady=pady)
+
+        add_label('이론적 기반', size=15, bold=True, fg='#7C3AED', pady=(5, 4))
+        add_label('Persson, B.N.J. (2001, 2006)')
+        add_label('Rubber friction and contact mechanics theory')
+        add_label('')
+
+        add_label('개발', size=15, bold=True, fg='#7C3AED', pady=(5, 4))
+        add_label('NEXENTIRE Material Research Team')
+        add_label('Baekhwan Kim (김백환)')
+        add_label('')
+
+        add_label('빌드 일자', size=15, bold=True, fg='#7C3AED', pady=(5, 4))
+        add_label('2026.02.25')
+
+        # Separator + Close button
+        tk.Frame(dialog, bg='#CBD5E1', height=1).pack(fill=tk.X)
+        btn_frame = tk.Frame(dialog, bg='white', padx=20, pady=10)
+        btn_frame.pack(fill=tk.X)
+        ttk.Button(btn_frame, text="닫기", command=dialog.destroy, width=12).pack(side=tk.RIGHT)
 
     def _create_equations_tab(self, parent):
         """Create equations reference tab - single unified scrollable layout with Cambria Math."""
@@ -6832,7 +7031,7 @@ Rubber friction theory
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls (fixed width)
-        left_frame = ttk.Frame(main_container, width=600)
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -7315,7 +7514,7 @@ Rubber friction theory
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=2)
 
         # Left panel for inputs (scrollable) - fixed width
-        left_frame = ttk.Frame(main_container, width=600)
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)  # Keep fixed width
 
@@ -7345,7 +7544,7 @@ Rubber friction theory
             lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all"))
         )
 
-        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=580)
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
         left_canvas.configure(yscrollcommand=left_scrollbar.set)
 
         # Pack scrollbar and canvas
@@ -11648,7 +11847,7 @@ Rubber friction theory
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # Left panel for controls
-        left_frame = ttk.Frame(main_container, width=600)
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -13667,7 +13866,7 @@ Rubber friction theory
         main_container.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
 
         # ── Left panel (scrollable controls, 600px) ──
-        left_frame = ttk.Frame(main_container, width=600)
+        left_frame = ttk.Frame(main_container, width=getattr(self, '_left_panel_width', 600))
         left_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
         left_frame.pack_propagate(False)
 
@@ -13682,7 +13881,7 @@ Rubber friction theory
 
         left_panel.bind("<Configure>",
                         lambda e: left_canvas.configure(scrollregion=left_canvas.bbox("all")))
-        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=580)
+        left_canvas.create_window((0, 0), window=left_panel, anchor="nw", width=getattr(self, '_left_panel_width', 600) - 20)
         left_canvas.configure(yscrollcommand=left_scroll.set)
 
         left_canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
