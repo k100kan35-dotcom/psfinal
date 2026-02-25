@@ -1,6 +1,7 @@
 """
 Persson 마찰 모델 - Windows EXE 빌드 스크립트
 Windows에서 실행: python build_exe.py
+설치 파일용 빌드: python build_exe.py --onedir
 사전 설치: pip install pyinstaller numpy scipy matplotlib pandas
 """
 import PyInstaller.__main__
@@ -93,16 +94,24 @@ def _kill_old_exe(exe_path):
 
 
 def build():
+    # --onedir 옵션 확인 (설치 파일 빌드용)
+    use_onedir = '--onedir' in sys.argv
+
     sep = ';' if sys.platform == 'win32' else ':'
 
     # ===== 빌드 전 기존 EXE 정리 (OneDrive 잠금 방지) =====
     exe_name = 'PerssonFrictionModel.exe' if sys.platform == 'win32' else 'PerssonFrictionModel'
-    exe_path = os.path.join('dist', exe_name)
+    if use_onedir:
+        exe_path = os.path.join('dist', 'PerssonFrictionModel', exe_name)
+    else:
+        exe_path = os.path.join('dist', exe_name)
     _kill_old_exe(exe_path)
+
+    pack_mode = '--onedir' if use_onedir else '--onefile'
 
     args = [
         'main.py',
-        '--onefile',
+        pack_mode,
         '--name=PerssonFrictionModel',
         '--clean',
         '--noconfirm',
@@ -200,6 +209,7 @@ def build():
 
     print("=" * 60)
     print("  Persson Friction Model - EXE Build")
+    print(f"  Mode: {'onedir (for installer)' if use_onedir else 'onefile (standalone)'}")
     print("=" * 60)
     print(f"Python: {sys.version}")
     print(f"Platform: {sys.platform}")
