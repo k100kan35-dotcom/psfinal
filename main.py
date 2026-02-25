@@ -7433,15 +7433,16 @@ class PerssonModelGUI_V2:
         add_text('k³이 나타나는 수학적 기원 — 미분의 Fourier 변환:', bold=True, font_size=18, fg='#1E293B', pady=(12, 2))
         add_text('  공간 도메인에서 미분은 Fourier 도메인에서 k 곱셈에 대응합니다:', font_size=17, fg='#64748B')
         add_equation(
-            r"$h(x) \xrightarrow{\mathcal{F}} \tilde{h}(k) \quad \Longrightarrow \quad h'(x) = \frac{dh}{dx} \xrightarrow{\mathcal{F}} ik \cdot \tilde{h}(k)$",
-            fig_height=1.4)
+            r"$h(x) \;\stackrel{\mathcal{F}}{\longrightarrow}\; \tilde{h}(k) \;\;\Longrightarrow\;\; h'(x) = \frac{dh}{dx} \;\stackrel{\mathcal{F}}{\longrightarrow}\; ik \cdot \tilde{h}(k)$",
+            fig_height=1.8)
         add_text('  따라서 기울기의 파워 스펙트럼(PSD)은:', font_size=17, fg='#64748B')
         add_equation(
-            r"$|\widetilde{h'}(k)|^2 = |ik \cdot \tilde{h}(k)|^2 = k^2 \cdot |\tilde{h}(k)|^2 = k^2 \cdot C(k)$",
+            r"$|ik \cdot \tilde{h}(k)|^2 \;=\; k^2 \cdot |\tilde{h}(k)|^2 \;=\; k^2 \cdot C(k)$",
             fig_height=1.4)
         add_text('  이 k²·C(k)에 Parseval 정리를 적용하면 (2D 극좌표 Jacobian k 포함):', font_size=17, fg='#64748B')
+        add_text('  피적분함수 분해:  k³ = k(2D Jacobian) × k²(미분에서 유래)', font_size=17, bold=True, fg='#7C3AED')
         add_equation(
-            r"$h_{rms}^{\prime\,2} = \langle h'^2 \rangle = 2\pi \int_{q_0}^{q} k \cdot \underbrace{k^2 \cdot C(k)}_{\text{slope PSD}} \, dk = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$",
+            r"$h_{rms}^{\prime\,2} = \langle h'^2 \rangle = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$",
             fig_height=1.6)
         add_text('  정리: k³ = k(Jacobian) × k²(미분에서 유래)', bold=True, font_size=18, fg='#DC2626', pady=(4, 2))
         add_text('    • k¹ : 2D 등방 표면의 극좌표 변환 Jacobian (면적 요소 k dk dθ 에서 나옴)', font_size=17, fg='#64748B')
@@ -13093,7 +13094,7 @@ class PerssonModelGUI_V2:
         add_text('  ★ 아래 공식들은 모두 Parseval 정리의 직접적 결과입니다.', font_size=17, fg='#DC2626')
         add_text('  h(x)의 미분 h\'(x)에 Parseval 정리를 적용하면, Fourier 도메인에서 d/dx → ×ik 이므로', font_size=17, fg='#64748B')
         add_text('  기울기 PSD = k² × C(k), 여기에 2D Jacobian k를 곱하면 피적분함수 k³·C(k)가 됩니다.', font_size=17, fg='#64748B')
-        add_equation(r"$\xi^2(q) = h_{rms}^{\prime\,2}(q) = 2\pi \int_{q_0}^{q} \underbrace{k^3}_{\substack{k^1(\text{Jacobian}) \\ \times\, k^2(\text{미분})}}\, C(k)\, dk$", fig_height=1.6)
+        add_equation(r"$\xi^2(q) = h_{rms}^{\prime\,2}(q) = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk \quad (k^3 = k^1_{Jac.} \times k^2_{d/dx})$", fig_height=1.6)
         add_text('  \u03be(q) = h\'_rms(q) : 누적 RMS 기울기 (파수 q까지의 표면 경사)', font_size=17, fg='#64748B')
         add_equation(r'$\varepsilon(q) = \alpha \cdot \xi(q) \qquad (\alpha \approx 0.5)$', fig_height=0.9)
         add_text('  \u03b5(q) : 국소 변형률 — 거칠기에 의한 고무의 국소 변형 크기', font_size=17, fg='#64748B')
