@@ -3328,25 +3328,53 @@ class PerssonModelGUI_V2:
 
     def _use_persson_master_curve_for_calc(self):
         """Use loaded Persson master curve for friction calculation."""
+        # Check material_persson first
         if not hasattr(self, 'material_persson') or self.material_persson is None:
-            self._show_status("먼저 Persson 정품 마스터 커브를 로드하세요.", 'warning')
-            return
+            # Fallback: try to create from persson_master_curve data directly
+            if hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None:
+                try:
+                    from persson_model.utils.data_loader import create_material_from_dma
+                    data = self.persson_master_curve
+                    self.material_persson = create_material_from_dma(
+                        omega=data['omega'],
+                        E_storage=data['E_storage'],
+                        E_loss=data['E_loss'],
+                        material_name=f"Persson ({data.get('filename', 'unknown')})",
+                        reference_temp=20.0
+                    )
+                except Exception as e:
+                    self._show_status(f"마스터 커브 material 생성 실패: {e}", 'warning')
+                    return
+            else:
+                self._show_status("먼저 Persson 정품 마스터 커브를 로드하세요.", 'warning')
+                return
 
-        # Replace current material with Persson material
-        self.material = self.material_persson
-        self.material_source = f"Persson 정품: {self.persson_master_curve['filename']}"
-        self.tab1_finalized = True
+        try:
+            # Replace current material with Persson material
+            self.material = self.material_persson
+            self.tab1_finalized = True
 
-        # Update displays
-        data = self.persson_master_curve
-        tan_delta_avg = np.mean(data['E_loss'] / data['E_storage'])
+            # Update displays with safe access
+            if hasattr(self, 'persson_master_curve') and self.persson_master_curve is not None:
+                data = self.persson_master_curve
+                filename = data.get('filename', 'unknown')
+                self.material_source = f"Persson 정품: {filename}"
+                tan_delta_avg = np.mean(data['E_loss'] / data['E_storage'])
+                self._show_status(f"Persson 정품 마스터 커브가 계산에 사용됩니다.\n\n"
+                    f"파일: {filename}\n"
+                    f"tan δ 평균: {tan_delta_avg:.3f}\n\n"
+                    f"Tab 3, Tab 5에서 이 데이터로 μ_visc 계산이 가능합니다.", 'success')
+            else:
+                self.material_source = "Persson 정품 마스터 커브"
+                self._show_status("Persson 정품 마스터 커브가 계산에 사용됩니다.\n\n"
+                    "Tab 3, Tab 5에서 이 데이터로 μ_visc 계산이 가능합니다.", 'success')
 
-        self._show_status(f"Persson 정품 마스터 커브가 계산에 사용됩니다.\n\n"
-            f"파일: {data['filename']}\n"
-            f"tan δ 평균: {tan_delta_avg:.3f}\n\n"
-            f"Tab 3, Tab 5에서 이 데이터로 μ_visc 계산이 가능합니다.", 'success')
+            self.status_var.set("Persson 정품 마스터 커브 → 계산용 확정")
 
-        self.status_var.set("Persson 정품 마스터 커브 → 계산용 확정")
+        except Exception as e:
+            import traceback
+            self._show_status(f"마스터 커브 확정 중 오류:\n{str(e)}", 'warning')
+            traceback.print_exc()
 
     def _generate_master_curve(self):
         """Generate master curve using TTS."""
@@ -6460,6 +6488,24 @@ class PerssonModelGUI_V2:
         except (tk.TclError, AttributeError):
             pass
 
+        # Also update Canvas internal window widths
+        try:
+            if isinstance(widget, tk.Canvas):
+                # Find all windows created inside this canvas and update their width
+                for item_id in widget.find_all():
+                    item_type = widget.type(item_id)
+                    if item_type == 'window':
+                        try:
+                            current_cw = widget.itemcget(item_id, 'width')
+                            if current_cw:
+                                cw_val = int(float(current_cw))
+                                if 200 < cw_val < 1200:
+                                    widget.itemconfigure(item_id, width=new_width - 20)
+                        except (tk.TclError, ValueError):
+                            pass
+        except (tk.TclError, AttributeError):
+            pass
+
         # Recurse into children
         try:
             for child in widget.winfo_children():
@@ -6685,6 +6731,9 @@ class PerssonModelGUI_V2:
                 tab_widget = self.notebook.nametowidget(tab_id)
                 self._apply_panel_width_recursive(tab_widget, new_panel_w)
 
+            # Force geometry recalculation
+            self.root.update_idletasks()
+
             # 5. Update window size
             new_win_w = win_w_var.get()
             new_win_h = win_h_var.get()
@@ -6839,7 +6888,7 @@ class PerssonModelGUI_V2:
 
         def add_equation(latex_str, fig_height=1.2, font_size=24):
             """Add a LaTeX equation rendered via matplotlib."""
-            fig = Figure(figsize=(14, fig_height), facecolor='white')
+            fig = Figure(figsize=(8, fig_height), facecolor='white')
             ax = fig.add_subplot(111)
             ax.axis('off')
             ax.text(0.02, 0.5, latex_str, transform=ax.transAxes,
@@ -6858,7 +6907,7 @@ class PerssonModelGUI_V2:
         def add_graph(plot_func, fig_height=3.5):
             """Add an illustrative matplotlib graph."""
             import numpy as np
-            fig = Figure(figsize=(7, fig_height), dpi=100, facecolor='#FAFBFC')
+            fig = Figure(figsize=(5, fig_height), dpi=100, facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
@@ -6868,7 +6917,7 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=700)
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=500)
             graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
@@ -6927,9 +6976,64 @@ class PerssonModelGUI_V2:
         add_graph(_plot_master_curve)
 
         # ═══════════════════════════════════════════════════════
-        # Section 1: G(q) 함수와 접촉 면적
+        # Section 1: Parseval 정리와 PSD
         # ═══════════════════════════════════════════════════════
-        add_section_title('1. G(q) 함수 — 거칠기에 의한 탄성 에너지 적분')
+        add_section_title('1. Parseval 정리 — PSD를 이해하는 핵심 열쇠')
+
+        add_text('왜 Parseval 정리가 중요한가?', bold=True, font_size=17, fg='#7C3AED', pady=(8, 0))
+        add_text('  Persson 마찰 모델의 핵심은 표면 거칠기를 "파장별로 분해"하여 각 스케일의 기여를 계산하는 것입니다.', font_size=17, fg='#64748B')
+        add_text('  이 분해가 수학적으로 정당한 이유가 바로 Parseval 정리입니다.', font_size=17, fg='#64748B')
+
+        add_text('핵심 원리: 공간 도메인 에너지 = 주파수 도메인 에너지', bold=True, font_size=17, fg='#1E293B', pady=(10, 0))
+        add_equation(
+            r'$\int_{-\infty}^{\infty} |h(x)|^2 \, dx \;=\; \int_{-\infty}^{\infty} |\tilde{h}(q)|^2 \, dq$',
+            fig_height=1.0)
+        add_text('  좌변: 공간 도메인에서 직접 계산한 표면 높이의 총 "에너지" (평균 제곱 거칠기)', font_size=17, fg='#64748B')
+        add_text('  우변: 주파수 도메인(Fourier 변환)에서 계산한 총 "에너지"', font_size=17, fg='#64748B')
+        add_text('  → Fourier 변환은 에너지를 만들지도, 잃지도 않는다. 같은 에너지를 다른 "언어"로 표현할 뿐!', font_size=17, fg='#DC2626')
+
+        add_text('직관적 비유 — 오케스트라:', bold=True, font_size=17, fg='#1E293B', pady=(10, 0))
+        add_text('  콘서트홀에서 오케스트라가 연주합니다. 총 소리 에너지를 하나로 측정할 수 있습니다 (공간 도메인).', font_size=17, fg='#64748B')
+        add_text('  또는 바이올린 몇 dB, 첼로 몇 dB, 트럼펫 몇 dB... 악기별(주파수별)로 에너지를 분해할 수 있습니다 (주파수 도메인).', font_size=17, fg='#64748B')
+        add_text('  Parseval 정리: 악기별 에너지를 모두 더하면 = 총 소리 에너지와 정확히 같다!', font_size=17, fg='#DC2626')
+
+        add_text('표면 거칠기에서의 Parseval 정리:', bold=True, font_size=17, fg='#1E293B', pady=(10, 0))
+        add_text('  2D 등방성 표면의 경우, 평균 제곱 거칠기 <h²>와 PSD C(q)의 관계:', font_size=17, fg='#64748B')
+        add_equation(
+            r'$\langle h^2 \rangle = 2\pi \int_{0}^{\infty} q \; C(q) \; dq$',
+            fig_height=1.0)
+        add_text('  C(q) = PSD : "파수 q 근처의 거칠기 성분이 전체 에너지(평균 제곱 거칠기)에 기여하는 양"', font_size=17, fg='#64748B')
+        add_text('  즉, PSD는 에너지의 주파수별 가계부이다!', font_size=17, fg='#DC2626')
+
+        add_text('Persson 모델과의 연결:', bold=True, font_size=17, fg='#7C3AED', pady=(10, 0))
+        add_text('  ① 멀티스케일 분해의 정당성: Parseval 정리가 보장하므로, q₀→q₁→q₂ 순서로 점진적으로 거칠기를 추가해도 총 에너지가 보존됨', font_size=17, fg='#64748B')
+        add_text('  ② 마찰에 기여하는 것은 "높이의 에너지"가 아니라 "경사도(slope)의 에너지": q²C(q)', font_size=17, fg='#64748B')
+        add_text('  ③ 이것이 G(q) 적분에서 q³C(q)가 등장하는 이유 (q²은 slope의 PSD, q는 2D Jacobian)', font_size=17, fg='#64748B')
+        add_text('  → 자기 친화 프랙탈 표면에서 Hurst 지수 H < 0.5이면, 나노스케일 거칠기가 마찰을 지배!', font_size=17, fg='#DC2626')
+
+        def _plot_parseval(ax, np):
+            q = np.logspace(2, 8, 500)
+            C_q = 1e-18 * (q / 1e2)**(-2.6)
+            q_Cq = q * C_q
+            ax.loglog(q, q_Cq, '-', linewidth=2.5, color='#2563EB', label=r'$q \cdot C(q)$ (높이 에너지 기여)')
+            q3_Cq = q**3 * C_q
+            q3_Cq_norm = q3_Cq / q3_Cq.max() * q_Cq.max()
+            ax.loglog(q, q3_Cq_norm, '--', linewidth=2.5, color='#DC2626', label=r'$q^3 \cdot C(q)$ (마찰 기여, 정규화)')
+            ax.set_xlabel('q (1/m)', fontsize=16)
+            ax.set_ylabel('Energy contribution', fontsize=16)
+            ax.legend(fontsize=14, loc='upper right')
+            ax.grid(True, alpha=0.3, which='both')
+            ax.set_title('Parseval: 높이 에너지 vs 마찰(경사도) 에너지 분포', fontsize=16, pad=10)
+            ax.annotate(r'$\leftarrow$ 큰 파장 지배', xy=(1e3, q_Cq[50]*0.5), fontsize=13, color='#2563EB', fontweight='bold')
+            ax.annotate(r'미세 스케일 지배 $\rightarrow$', xy=(1e6, q3_Cq_norm[400]*1.5), fontsize=13, color='#DC2626', fontweight='bold')
+        add_graph(_plot_parseval)
+
+        add_separator()
+
+        # ═══════════════════════════════════════════════════════
+        # Section 2: G(q) 함수와 접촉 면적
+        # ═══════════════════════════════════════════════════════
+        add_section_title('2. G(q) 함수 — 거칠기에 의한 탄성 에너지 적분')
 
         add_text('A. 파워 스펙트럼 적분함수 G(q):', bold=True, pady=(8, 0))
         add_equation(
@@ -7077,7 +7181,7 @@ class PerssonModelGUI_V2:
         # ═══════════════════════════════════════════════════════
         # Section 2: h_rms, h'_rms (RMS slope), Strain
         # ═══════════════════════════════════════════════════════
-        add_section_title('2. 표면 거칠기 통계량: h_rms, h\'_rms, Strain')
+        add_section_title('3. 표면 거칠기 통계량: h_rms, h\'_rms, Strain')
 
         add_text('A. RMS 높이 h_rms (표면 거칠기의 크기):', bold=True, pady=(8, 0))
         add_equation(
@@ -12460,7 +12564,7 @@ class PerssonModelGUI_V2:
             lbl.pack(fill=tk.X, padx=padx, pady=pady, anchor='w')
 
         def add_equation(latex_str, fig_height=1.2, font_size=24):
-            fig = Figure(figsize=(14, fig_height), facecolor='white')
+            fig = Figure(figsize=(8, fig_height), facecolor='white')
             ax = fig.add_subplot(111)
             ax.axis('off')
             ax.text(0.02, 0.5, latex_str, transform=ax.transAxes,
@@ -12479,7 +12583,7 @@ class PerssonModelGUI_V2:
         def add_graph(plot_func, fig_height=3.5):
             """Add an illustrative matplotlib graph."""
             import numpy as np
-            fig = Figure(figsize=(7, fig_height), dpi=100, facecolor='#FAFBFC')
+            fig = Figure(figsize=(5, fig_height), dpi=100, facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
@@ -12489,7 +12593,7 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=700)
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72), width=500)
             graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
