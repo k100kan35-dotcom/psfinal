@@ -7541,7 +7541,7 @@ Rubber friction theory
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.60")
+        self.gamma_var = tk.StringVar(value="0.55")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="14")
