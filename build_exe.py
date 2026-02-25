@@ -100,9 +100,9 @@ def build():
     sep = ';' if sys.platform == 'win32' else ':'
 
     # ===== 빌드 전 기존 EXE 정리 (OneDrive 잠금 방지) =====
-    exe_name = 'PerssonFrictionModel.exe' if sys.platform == 'win32' else 'PerssonFrictionModel'
+    exe_name = 'NexenRubberFriction.exe' if sys.platform == 'win32' else 'NexenRubberFriction'
     if use_onedir:
-        exe_path = os.path.join('dist', 'PerssonFrictionModel', exe_name)
+        exe_path = os.path.join('dist', 'NexenRubberFriction', exe_name)
     else:
         exe_path = os.path.join('dist', exe_name)
     _kill_old_exe(exe_path)
@@ -112,10 +112,11 @@ def build():
     args = [
         'main.py',
         pack_mode,
-        '--name=PerssonFrictionModel',
+        '--name=NexenRubberFriction',
         '--clean',
         '--noconfirm',
         '--noconsole',
+        '--icon=assets/app_icon.ico',
         '--log-level', 'WARN',
 
         # ===== matplotlib 폰트/데이터 번들 =====
@@ -195,6 +196,9 @@ def build():
         args.extend(['--exclude-module', exc])
 
     # ===== 데이터 디렉토리 포함 =====
+    if os.path.isdir('assets'):
+        args.extend(['--add-data', f'assets{sep}assets'])
+
     args.extend(['--add-data', f'persson_model{sep}persson_model'])
 
     if os.path.isdir('reference_data'):
@@ -207,7 +211,7 @@ def build():
         args.extend(['--add-data', f'strain.py{sep}.'])
 
     print("=" * 60)
-    print("  Persson Friction Model - EXE Build")
+    print("  NEXEN Rubber Friction Modelling Program - EXE Build")
     print(f"  Mode: {'onedir (for installer)' if use_onedir else 'onefile (standalone)'}")
     print("=" * 60)
     print(f"Python: {sys.version}")
