@@ -6684,99 +6684,140 @@ Rubber friction theory
 
         add_text('주파수 (고무가 느끼는 진동수):', font_size=15, bold=True, pady=(6, 0))
         add_equation(r'$\omega = q \cdot v \cdot \cos\phi$', fig_height=0.6, font_size=18)
-        add_text('  (응력 분포 계산 등 각도 적분 없는 경우: \u03c9 = q \u00b7 v)', font_size=14, fg='#64748B')
+        add_text('  q : 파수(wavenumber) — 표면 거칠기의 공간 진동수. 값이 클수록 더 미세한 요철을 의미', font_size=14, fg='#64748B')
+        add_text('  v : 슬라이딩 속도 — 고무가 바닥 위를 미끄러지는 속도 [m/s]', font_size=14, fg='#64748B')
+        add_text('  \u03c6 : 슬라이딩 방향과 파수 벡터 사이의 각도 (0~2\u03c0)', font_size=14, fg='#64748B')
+        add_text('  \u03c9 : 고무가 표면 요철을 타고 넘으며 느끼는 진동 주파수. q가 클수록(미세 요철), v가 빠를수록 \u03c9 증가', font_size=14, fg='#64748B')
 
         add_text('유효 탄성률 (평면 변형 상태):', font_size=15, bold=True, pady=(8, 0))
         add_equation(r'$E^*(\omega) = \frac{E(\omega)}{1-\nu^2}$', fig_height=0.7, font_size=18)
-        add_text('  (E(\u03c9)는 DMA 데이터에서 보간한 복소 탄성률 크기)', font_size=14, fg='#64748B')
+        add_text('  E(\u03c9) = E\'(\u03c9) + iE\'\'(\u03c9) : DMA 실험에서 측정한 복소 탄성률', font_size=14, fg='#64748B')
+        add_text('    E\'(\u03c9) : 저장 탄성률 — 탄성 에너지를 저장하는 능력 (스프링 성분)', font_size=14, fg='#64748B')
+        add_text('    E\'\'(\u03c9) : 손실 탄성률 — 에너지를 열로 소산하는 능력 (댐퍼 성분, 마찰의 원인)', font_size=14, fg='#64748B')
+        add_text('  \u03bd : 푸아송 비 — 고무를 누를 때 옆으로 퍼지는 정도 (고무 \u2248 0.5, 거의 비압축성)', font_size=14, fg='#64748B')
+        add_text('  (1-\u03bd\u00b2) 보정: 표면 접촉은 3차원 구속 상태이므로 단축 탄성률보다 더 뻣뻣하게 보정', font_size=14, fg='#64748B')
 
         # ═══════════════════════════════════════════════════════
-        # Section 1: 마찰 및 접촉 면적 계산용
+        # Section 1: G(q) 함수와 접촉 면적
         # ═══════════════════════════════════════════════════════
-        add_section_title('1. 마찰 및 접촉 면적 계산용 (무차원, \u03c3\u2080 포함)')
+        add_section_title('1. G(q) 함수 — 거칠기에 의한 탄성 에너지 적분')
 
-        add_text('A. 면적 계산용 파워 스펙트럼 적분함수 G_area(q):', font_size=15, bold=True, pady=(6, 0))
+        add_text('A. 파워 스펙트럼 적분함수 G(q):', font_size=15, bold=True, pady=(6, 0))
         add_equation(
-            r'$G_{area}(q) = \frac{1}{8} \int_{q_0}^{q} dq^{\prime}\, (q^{\prime})^3\, C(q^{\prime})'
+            r'$G(q) = \frac{1}{8} \int_{q_0}^{q} dq^{\prime}\, (q^{\prime})^3\, C(q^{\prime})'
             r' \int_{0}^{2\pi} d\phi\, \left| \frac{E(q^{\prime}v\cos\phi)}{(1-\nu^2)\sigma_0} \right|^2$',
             fig_height=0.9, font_size=17)
-        add_text('  변수: E는 cos\u03c6에 따라 주파수가 변하므로 각도 적분 내부에서 업데이트', font_size=14, fg='#64748B')
-        add_text('  단위: 무차원 (dimensionless) | 물리적 의미: 거칠기에 의한 고무 변형 정도', font_size=14, fg='#64748B')
+        add_text('물리적 의미:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  G(q)는 "파수 q₀부터 q까지의 거칠기 성분이 고무를 변형시키며 저장하는 탄성 에너지의 누적량"', font_size=14, fg='#64748B')
+        add_text('  → G(q)가 크면: 고무가 요철을 따라가기 어려워 접촉 면적이 줄어듦', font_size=14, fg='#64748B')
+        add_text('  → G(q)가 작으면: 고무가 요철에 잘 밀착하여 접촉 면적이 넓음', font_size=14, fg='#64748B')
+        add_text('각 변수의 역할:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  q\'³ C(q\') : 파수 q\'에서의 거칠기 기여분. q\'³은 미세 요철일수록 기울기 기여가 큰 것을 반영', font_size=14, fg='#64748B')
+        add_text('  |E/(σ₀(1-ν²))|² : 탄성률 대비 압력의 비율. 고무가 뻣뻣할수록(E↑) 변형 에너지가 커지고, 압력이 클수록(σ₀↑) 상대적으로 줄어듦', font_size=14, fg='#64748B')
+        add_text('  단위: 무차원 (σ₀로 나누었으므로)', font_size=14, fg='#64748B')
 
         add_separator()
+
+        # ── 각도 적분의 물리적 의미 ──
+        add_text('각도 적분 ∫₀²π dφ 의 물리적 의미:', font_size=15, bold=True, fg='#7C3AED', pady=(6, 0))
+        add_text('  실제 표면 거칠기는 2차원(x,y 평면)에 분포하지만, 슬라이딩은 한 방향(예: x축)으로 일어남', font_size=14, fg='#64748B')
+        add_text('  → 파수 벡터 q = (qₓ, qᵧ)를 극좌표로 표현하면: qₓ = q·cos\u03c6, qᵧ = q·sin\u03c6', font_size=14, fg='#64748B')
+        add_text('  → 슬라이딩 방향(x축)과 각도 \u03c6를 이루는 요철이 고무에 주는 진동 주파수는 \u03c9 = q·v·cos\u03c6', font_size=14, fg='#64748B')
+        add_text('  → \u03c6 = 0° (슬라이딩 방향과 평행): 고무가 요철을 정면으로 타넘어 → 주파수 최대', font_size=14, fg='#64748B')
+        add_text('  → \u03c6 = 90° (슬라이딩 방향과 수직): 고무가 요철과 나란히 미끄러져 → 주파수 0 (기여 없음)', font_size=14, fg='#64748B')
+        add_text('  → 0~2\u03c0 적분 = 모든 방향의 요철 기여를 합산 (2D 표면의 등방 거칠기를 완전하게 반영)', font_size=14, fg='#64748B')
+
+        add_separator()
+
+        # ── P(q) = erf(...) 설명 ──
         add_text('B. 실접촉 면적 비율 P(q):', font_size=15, bold=True, pady=(4, 0))
         add_equation(
-            r'$\frac{A(q)}{A_0} = P(q) \approx \mathrm{erf}\!\left( \frac{1}{2\sqrt{G_{area}(q)}} \right)$',
+            r'$\frac{A(q)}{A_0} = P(q) \approx \mathrm{erf}\!\left( \frac{1}{2\sqrt{G(q)}} \right)$',
             fig_height=0.9, font_size=18)
-        add_text('  물리적 의미: 배율 q에서 고무가 바닥과 닿아있는 면적 비율 (0 \u2264 P \u2264 1)', font_size=14, fg='#64748B')
+        add_text('물리적 의미: 배율 q에서 바닥과 실제로 닿아있는 면적의 비율 (0 ≤ P ≤ 1)', font_size=14, fg='#64748B')
+
+        add_text('erf(x) 함수란?', font_size=15, bold=True, fg='#7C3AED', pady=(8, 0))
+        add_text('  erf(x)는 오차 함수(error function)로, 가우시안 분포의 누적 확률을 나타냄:', font_size=14, fg='#64748B')
+        add_equation(
+            r'$\mathrm{erf}(x) = \frac{2}{\sqrt{\pi}} \int_{0}^{x} e^{-t^2}\, dt$',
+            fig_height=0.8, font_size=18)
+        add_text('  x = 0 → erf(0) = 0  |  x → ∞ → erf(∞) = 1  |  S자 형태로 0에서 1까지 증가', font_size=14, fg='#64748B')
+        add_text('  직관: "가우시안 분포에서 평균 ± x 범위 안에 포함되는 비율"', font_size=14, fg='#64748B')
+
+        add_text('왜 A/A₀ = erf(1/(2√G)) 인가?', font_size=15, bold=True, fg='#7C3AED', pady=(8, 0))
+        add_text('  Persson 이론에서 접촉 응력 σ는 가우시안 분포를 따름 (평균=σ₀, 분산∝G)', font_size=14, fg='#64748B')
+        add_text('  실접촉 = 응력이 0보다 큰 영역 → σ > 0 인 확률을 적분', font_size=14, fg='#64748B')
+        add_text('  가우시안의 σ > 0 누적확률을 계산하면 자연스럽게 erf 함수가 나옴:', font_size=14, fg='#64748B')
+        add_equation(
+            r'$P(q) = \int_{0}^{\infty} P(\sigma, q)\, d\sigma = \mathrm{erf}\!\left(\frac{\sigma_0}{2\sqrt{G(q)}\,\sigma_0}\right)'
+            r' = \mathrm{erf}\!\left(\frac{1}{2\sqrt{G(q)}}\right)$',
+            fig_height=0.9, font_size=17)
+        add_text('  G(q) 작을 때: 분포가 좁음 → 거의 모든 점이 σ>0 → P ≈ 1 (완전 접촉)', font_size=14, fg='#64748B')
+        add_text('  G(q) 클 때: 분포가 넓음 → σ<0인 영역 증가 → P → 0 (접촉 감소)', font_size=14, fg='#64748B')
 
         add_separator()
-        add_text('C. 점탄성 마찰 계수 \u03bc_visc:', font_size=15, bold=True, pady=(4, 0))
+
+        # ── μ_visc ──
+        add_text('C. 점탄성 마찰 계수 μ_visc:', font_size=15, bold=True, pady=(4, 0))
         add_equation(
             r'$\mu_{visc} \approx \frac{1}{2} \int_{q_0}^{q_1} dq\, q^3 C(q)\, S(q)\, P(q)'
             r' \int_{0}^{2\pi} d\phi\, \cos\phi\, \mathrm{Im}\!\left( \frac{E(qv\cos\phi)}{(1-\nu^2)\sigma_0} \right)$',
             fig_height=0.9, font_size=17)
-        add_text('  물리적 의미: 에너지 손실에 의한 마찰 계수 (접촉 면적 P(q)가 가중치)', font_size=14, fg='#64748B')
+        add_text('물리적 의미:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  고무가 거친 바닥 위를 미끄러질 때, 각 파수의 요철이 고무를 변형시키며 소산하는 에너지의 총합', font_size=14, fg='#64748B')
+        add_text('각 항의 역할:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  q³C(q) : 파수 q에서의 거칠기 기울기 기여 (미세 요철일수록 기울기가 가파름)', font_size=14, fg='#64748B')
+        add_text('  P(q) : 실접촉 면적 비율 — 닿아있는 면적만 마찰에 기여', font_size=14, fg='#64748B')
+        add_text('  S(q) : 대변형 보정 — 접촉 면적이 줄어드는 효과를 보정', font_size=14, fg='#64748B')
+        add_text('  Im[E(ω)] : 손실 탄성률 — 에너지 소산 (열로 변환)의 크기. 이것이 마찰력의 직접 원인', font_size=14, fg='#64748B')
+        add_text('  cos\u03c6 : 슬라이딩 방향 성분만 마찰력에 기여 (수직 방향 요철은 마찰에 기여 안 함)', font_size=14, fg='#64748B')
 
-        add_text('보정 계수 S(q) (대변형 시 접촉 면적 감소 보정):', font_size=15, bold=True, pady=(8, 0))
+        add_text('보정 계수 S(q):', font_size=15, bold=True, pady=(8, 0))
         add_equation(r'$S(q) = \gamma + (1-\gamma)\,P^2(q) \qquad (\gamma \approx 0.5)$', fig_height=0.6, font_size=18)
+        add_text('  접촉 면적이 줄어들면 비접촉 영역의 고무도 변형에 참여 → 이를 보정하는 계수', font_size=14, fg='#64748B')
 
         # ═══════════════════════════════════════════════════════
-        # Section 2: 응력 분포 계산용
+        # Section 2: h_rms, h'_rms (RMS slope), Strain
         # ═══════════════════════════════════════════════════════
-        add_section_title('2. 응력 분포 계산용 (Pa\u00b2 단위, \u03c3\u2080 없음, 각도 적분 없음)')
+        add_section_title('2. 표면 거칠기 통계량: h_rms, h\'_rms, Strain')
 
-        add_text('A. 응력 분산 함수 G_stress(q):', font_size=15, bold=True, pady=(6, 0))
+        add_text('A. RMS 높이 h_rms (표면 거칠기의 크기):', font_size=15, bold=True, pady=(6, 0))
         add_equation(
-            r'$G_{stress}(q) = \frac{\pi}{4} \int_{q_0}^{q} dq^{\prime}\, (q^{\prime})^3\, C(q^{\prime})'
-            r'\, \left| \frac{E(q^{\prime}v)}{1-\nu^2} \right|^2$',
-            fig_height=0.9, font_size=18)
-        add_text('  주의: 각도 적분 없음! \u03c3\u2080가 분모에 없음!', font_size=14, fg='#DC2626', bold=True)
-        add_text('  단위: Pa\u00b2 (압력의 제곱) | 물리적 의미: 접촉 압력 분포의 분산 (variance)', font_size=14, fg='#64748B')
+            r'$h_{rms}^2(q) = 2\pi \int_{q_0}^{q} k\, C(k)\, dk$',
+            fig_height=0.8, font_size=18)
+        add_text('물리적 의미:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  h_rms는 표면 높이의 RMS(root mean square) 값으로, "표면이 평균으로부터 얼마나 위아래로 출렁이는가"', font_size=14, fg='#64748B')
+        add_text('  피적분함수 k·C(k): 파수 k에서의 높이 기여분. 긴 파장(작은 q)의 거칠기가 h_rms에 주로 기여', font_size=14, fg='#64748B')
+        add_text('  단위: [m] (미터)', font_size=14, fg='#64748B')
 
         add_separator()
-        add_text('B. 국소 응력 확률 분포 P(\u03c3, q):', font_size=15, bold=True, pady=(4, 0))
+        add_text('B. RMS 기울기 h\'_rms (표면 경사의 크기):', font_size=15, bold=True, pady=(4, 0))
         add_equation(
-            r'$P(\sigma, q) = \frac{1}{\sqrt{4\pi G_{stress}}} '
-            r'\left[ \exp\!\left( -\frac{(\sigma - \sigma_0)^2}{4\,G_{stress}} \right)'
-            r' - \exp\!\left( -\frac{(\sigma + \sigma_0)^2}{4\,G_{stress}} \right) \right]$',
-            fig_height=1.0, font_size=17)
-        add_text('  \u03c3: 국소 접촉 응력 | \u03c3\u2080: 명목 압력 (평균 압력, 분포의 중심)', font_size=14, fg='#64748B')
-        add_text('  핵심: 피크 위치 = \u03c3\u2080 (속도 무관), G_stress \u2191 \u2192 분포 넓어짐, \u03c3\u21920 \u2192 P\u21920', font_size=14, fg='#64748B')
+            r"$h_{rms}^{\prime\,2}(q) = \xi^2(q) = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$",
+            fig_height=0.8, font_size=18)
+        add_text('물리적 의미:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  h\'_rms (= ξ)는 표면 기울기의 RMS 값으로, "표면이 얼마나 가파르게 경사져 있는가"', font_size=14, fg='#64748B')
+        add_text('  피적분함수 k³·C(k): k³ 가중치로 인해 미세 요철(큰 q)일수록 기울기 기여가 매우 큼', font_size=14, fg='#64748B')
+        add_text('  → h_rms는 긴 파장이 지배, h\'_rms는 짧은 파장이 지배 (같은 PSD에서 완전히 다른 특성)', font_size=14, fg='#64748B')
+        add_text('  단위: [무차원] (길이/길이 = 기울기)', font_size=14, fg='#64748B')
 
-        # ═══════════════════════════════════════════════════════
-        # Section 3: 핵심 비교 G_area vs G_stress
-        # ═══════════════════════════════════════════════════════
-        add_section_title('핵심 비교: G_area vs G_stress', bg_color='#7C3AED')
-
-        # Comparison table rendered as tkinter widgets (matplotlib mathtext doesn't support \begin{array})
-        table_frame = tk.Frame(scrollable_frame, bg='white', padx=20, pady=6)
-        table_frame.pack(fill=tk.X, padx=10)
-        table_data = [
-            ('항목',        'G_area(q,v)',              'G_stress(q,v)'),
-            ('단위',        '무차원',                    'Pa²'),
-            ('각도 적분',   '있음 (∫₀²π dφ)',           '없음'),
-            ('탄성률 항',   '|E/((1-ν²)σ₀)|²',         '|E/(1-ν²)|²'),
-            ('주파수',      'ω = qv·cosφ',              'ω = qv'),
-            ('용도',        'P(q), μ 계산',             'P(σ) 계산'),
-        ]
-        for col_idx, header in enumerate(['항목', 'G_area(q,v)', 'G_stress(q,v)']):
-            lbl = tk.Label(table_frame, text=header, bg='#1B2A4A', fg='white',
-                           font=('Segoe UI', 13, 'bold'), padx=10, pady=5, anchor='center')
-            lbl.grid(row=0, column=col_idx, sticky='nsew', padx=1, pady=1)
-        for row_idx, (item, val_area, val_stress) in enumerate(table_data[1:], start=1):
-            bg = '#F1F5F9' if row_idx % 2 == 0 else 'white'
-            for col_idx, val in enumerate([item, val_area, val_stress]):
-                weight = 'bold' if col_idx == 0 else 'normal'
-                lbl = tk.Label(table_frame, text=val, bg=bg, fg='#1E293B',
-                               font=('Segoe UI', 13, weight), padx=10, pady=4, anchor='center')
-                lbl.grid(row=row_idx, column=col_idx, sticky='nsew', padx=1, pady=1)
-        for col_idx in range(3):
-            table_frame.columnconfigure(col_idx, weight=1)
-
-        add_text('주의: 같은 이름 "G"를 사용하지만 완전히 다른 물리량!', font_size=15, fg='#DC2626', bold=True)
-        add_text('  G_area: "얼마나 띄엄띄엄 닿는가" (접촉의 불균일성)', font_size=14, fg='#64748B')
-        add_text('  G_stress: "압력이 얼마나 들쭉날쭉한가" (응력의 분산)', font_size=14, fg='#64748B')
+        add_separator()
+        add_text('C. 국소 변형률 ε(q) — h\'_rms로부터 정의:', font_size=15, bold=True, pady=(4, 0))
+        add_equation(
+            r"$\varepsilon(q) = \alpha \cdot h_{rms}^{\prime}(q) = \alpha \cdot \xi(q)$",
+            fig_height=0.7, font_size=18)
+        add_text('물리적 의미:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  고무가 거친 표면 요철을 따라 변형될 때, 접촉점 부근에서 고무가 받는 국소 변형률(strain)', font_size=14, fg='#64748B')
+        add_text('  표면 기울기(h\'_rms)가 가파를수록 → 고무가 요철을 감싸기 위해 더 크게 변형 → ε 증가', font_size=14, fg='#64748B')
+        add_text('  α : 비례 상수 (Persson 이론에서 α ≈ 0.5)', font_size=14, fg='#64748B')
+        add_text('  비선형 보정에서의 역할:', font_size=14, bold=True, fg='#1E293B')
+        add_text('  → ε(q)이 크면 고무의 Payne 효과(대변형 연화)가 발생', font_size=14, fg='#64748B')
+        add_text('  → Strain Sweep 데이터에서 f(ε), g(ε) 함수를 구해 탄성률을 보정:', font_size=14, fg='#64748B')
+        add_equation(
+            r"$E'_{eff}(\omega) = E'(\omega) \times f(\varepsilon), \qquad E''_{eff}(\omega) = E''(\omega) \times g(\varepsilon)$",
+            fig_height=0.7, font_size=17)
+        add_text('  f(ε) ≤ 1 : 변형이 커지면 저장 탄성률 감소 (고무가 연화)', font_size=14, fg='#64748B')
+        add_text('  g(ε) : 변형이 커지면 손실 탄성률이 먼저 증가했다 감소 (에너지 소산 패턴 변화)', font_size=14, fg='#64748B')
 
         # Bottom padding for scroll
         tk.Frame(scrollable_frame, bg='white', height=80).pack(fill=tk.X)
@@ -12015,16 +12056,17 @@ Rubber friction theory
             self.integrand_calc_btn.config(state='normal')
 
     def _create_variables_tab(self, parent):
-        """Create variable relationship explanation tab - compact, no wasted space."""
+        """Create variable relationship explanation tab - matching 수식 정리 tab style."""
         # Toolbar
         self._create_panel_toolbar(parent)
 
-        # Main scrollable frame - use canvas+scrollbar for full scrolling
-        canvas = tk.Canvas(parent, highlightthickness=0)
+        # Single scrollable canvas (same structure as equations tab)
+        canvas = tk.Canvas(parent, bg='white', highlightthickness=0)
         scrollbar = ttk.Scrollbar(parent, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        scrollable_frame = tk.Frame(canvas, bg='white')
 
         canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
 
         def _on_canvas_configure(event):
             canvas.itemconfig(canvas_window, width=event.width)
@@ -12057,80 +12099,192 @@ Rubber friction theory
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
 
-        # Content text with variable relationships - use Text widget that fills available space
-        content = """
-\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-                     PERSSON \ub9c8\ucc30 \uc774\ub860 \ubcc0\uc218 \uad00\uacc4\ub3c4
-\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+        # --- Helper functions (same as equations tab) ---
+        from matplotlib.figure import Figure
+        from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-\u30101. \uc785\ub825 \ub370\uc774\ud130\u3011
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-  DMA \ub370\uc774\ud130 (\uc7ac\ub8cc \ubb3c\uc131)
-  \u251c\u2500 \u03c9 (\uac01\uc9c4\ub3d9\uc218, rad/s)
-  \u251c\u2500 E'(\u03c9) : \uc800\uc7a5 \ud0c4\uc131\ub960 [Pa]
-  \u251c\u2500 E''(\u03c9) : \uc190\uc2e4 \ud0c4\uc131\ub960 [Pa]
-  \u2514\u2500 tan(\u03b4) = E''/E' : \uc190\uc2e4 \ud0c4\uc820\ud2b8
+        math_fontfamily = 'cm'  # Computer Modern (built-in, best LaTeX look)
 
-  PSD \ub370\uc774\ud130 (\ud45c\uba74 \uac70\uce60\uae30)
-  \u251c\u2500 q (\ud30c\uc218, 1/m)
-  \u2514\u2500 C(q) : \ud30c\uc6cc \uc2a4\ud399\ud2b8\ub7fc \ubc00\ub3c4 [m\u2074]
+        def add_section_title(title_text, bg_color='#1B2A4A', fg_color='white'):
+            frame = tk.Frame(scrollable_frame, bg=bg_color, padx=12, pady=8)
+            frame.pack(fill=tk.X, padx=10, pady=(12, 2))
+            tk.Label(frame, text=title_text, bg=bg_color, fg=fg_color,
+                     font=('Segoe UI', 18, 'bold')).pack(anchor=tk.W)
 
-  Strain Sweep \ub370\uc774\ud130 (\ube44\uc120\ud615 \ubcf4\uc815\uc6a9, \uc120\ud0dd)
-  \u251c\u2500 \u03b3 (strain, %)
-  \u251c\u2500 f(\u03b3) = E'(\u03b3)/E'(0) : \uc800\uc7a5 \ud0c4\uc131\ub960 \uac10\uc18c\uc728
-  \u2514\u2500 g(\u03b3) = E''(\u03b3)/E''(0) : \uc190\uc2e4 \ud0c4\uc131\ub960 \uac10\uc18c\uc728 (Payne \ud6a8\uacfc)
+        def add_text(text, font_size=15, fg='#1E293B', bold=False, padx=20, pady=2):
+            weight = 'bold' if bold else 'normal'
+            lbl = tk.Label(scrollable_frame, text=text, bg='white', fg=fg,
+                           font=('Segoe UI', font_size, weight),
+                           justify=tk.LEFT, anchor='w', wraplength=1200)
+            lbl.pack(fill=tk.X, padx=padx, pady=pady, anchor='w')
 
-\u30102. \uacc4\uc0b0 \ud30c\ub77c\ubbf8\ud130\u3011
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-  \u03c3\u2080 : \uacf5\uce6d \uc811\ucd09 \uc555\ub825 [Pa]  |  v : \uc2ac\ub77c\uc774\ub529 \uc18d\ub3c4 [m/s]
-  T  : \uc628\ub3c4 [\u00b0C]           |  \u03bd : \ud478\uc544\uc1a1 \ube44 (0.5)
-  \u03b3  : \uc811\ucd09 \ubcf4\uc815 \uc778\uc790 (0.5)  |  q\u2080~q\u2081 : PSD \uc801\ubd84 \ubc94\uc704
+        def add_equation(latex_str, fig_height=0.8, font_size=18):
+            fig = Figure(figsize=(11, fig_height), facecolor='white')
+            ax = fig.add_subplot(111)
+            ax.axis('off')
+            ax.text(0.02, 0.5, latex_str, transform=ax.transAxes,
+                    fontsize=font_size, verticalalignment='center',
+                    horizontalalignment='left', usetex=False,
+                    math_fontfamily=math_fontfamily)
+            fig.subplots_adjust(left=0.02, right=0.98, top=0.95, bottom=0.05)
+            eq_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
+            eq_canvas.draw()
+            eq_canvas.get_tk_widget().configure(height=int(fig_height * 72))
+            eq_canvas.get_tk_widget().pack(fill=tk.X, padx=20, pady=1)
 
-\u30103. \uc911\uac04 \uacc4\uc0b0 \ubcc0\uc218\u3011
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-  G(q) \uacc4\uc0b0:
-    E*(\u03c9) = E'(\u03c9) + i\u00b7E''(\u03c9)  |  \u03c9 = q\u00b7v\u00b7cos(\u03c6)
-    G(q) = (\u03c0/4)\u00d7(E*/(\u03c3\u2080(1-\u03bd\u00b2)))\u00b2 \u00d7 \u222b[q\u2080\u2192q] k\u00b3 C(k) \u222b cos\u00b2\u03c6 d\u03c6 dk
-    [\ube44\uc120\ud615] E'_eff = E'\u00d7f(\u03b5), E''_eff = E''\u00d7g(\u03b5)
+        def add_separator():
+            tk.Frame(scrollable_frame, bg='#CBD5E1', height=1).pack(fill=tk.X, padx=10, pady=6)
 
-  P(q) = erf(1/(2\u221aG(q)))    (G\u21920: P\u21921, G\u2192\u221e: P\u21920)
-  S(q) = \u03b3 + (1-\u03b3)\u00d7P(q)\u00b2
-  \u03be\u00b2(q) = 2\u03c0 \u222b[q\u2080\u2192q] k\u00b3 C(k) dk  |  \u03b5(q) = factor\u00d7\u03be(q)
+        # === Title ===
+        title_frame = tk.Frame(scrollable_frame, bg='white', pady=10)
+        title_frame.pack(fill=tk.X, padx=10)
+        tk.Label(title_frame, text='Persson 마찰 이론 - 변수 관계도',
+                 bg='white', fg='#1B2A4A',
+                 font=('Segoe UI', 22, 'bold')).pack(anchor='w', padx=10)
 
-\u30104. \ucd5c\uc885 \ucd9c\ub825: \u03bc_visc\u3011
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-  \u03bc_visc = (1/2) \u00d7 \u222b q\u00b3 C(q) P(q) S(q) \u222b cos\u03c6 \u00d7 Im[E(qv\u00b7cos\u03c6)]/((1-\u03bd\u00b2)\u03c3\u2080) d\u03c6 dq
+        # ═══════════════════════════════════════════════════════
+        # Section 1: 입력 데이터
+        # ═══════════════════════════════════════════════════════
+        add_section_title('1. 입력 데이터')
 
-  [\uc120\ud615] G, P, S \u2190 Tab 3 \uae30\ubc18  |  Im[E] = Im[E_linear]
-  [\ube44\uc120\ud615] E_eff \uc0ac\uc6a9, G\u00b7P\u00b7S \uc7ac\uacc4\uc0b0, Im[E_eff] = Im[E]\u00d7g(\u03b5)
+        add_text('DMA 데이터 (재료 물성) — 고무의 점탄성 특성:', font_size=15, bold=True, pady=(6, 0))
+        add_equation(r"$E(\omega) = E'(\omega) + i\,E''(\omega)$", fig_height=0.6, font_size=18)
+        add_text('  \u03c9 : 각진동수 [rad/s] — 고무에 가해지는 진동의 빠르기', font_size=14, fg='#64748B')
+        add_text('  E\'(\u03c9) : 저장 탄성률 [Pa] — 탄성 에너지를 저장하는 능력 (스프링 성분)', font_size=14, fg='#64748B')
+        add_text('  E\'\'(\u03c9) : 손실 탄성률 [Pa] — 에너지를 열로 소산하는 능력 (댐퍼 성분)', font_size=14, fg='#64748B')
+        add_text('  tan(\u03b4) = E\'\'/E\' : 손실 탄젠트 — E\'에 대한 E\'\'의 비율, 에너지 소산 효율의 척도', font_size=14, fg='#64748B')
 
-\u30105. \ub370\uc774\ud130 \ud750\ub984\ub3c4\u3011
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-  DMA + PSD \u2192 Tab1(\uac80\uc99d) \u2192 Tab2(\uc124\uc815) \u2192 Tab3(G,P \uacc4\uc0b0)
-  \u2192 Tab4(h'rms, \u03b5) \u2192 Tab5(\u03bc_visc \uacc4\uc0b0)
-  Strain Sweep \u2192 f(\u03b5), g(\u03b5) \u2192 \ube44\uc120\ud615 \ubcf4\uc815
+        add_separator()
+        add_text('PSD 데이터 (표면 거칠기) — 바닥면의 요철 특성:', font_size=15, bold=True, pady=(4, 0))
+        add_text('  q : 파수 [1/m] — 거칠기의 공간 진동수 (q = 2\u03c0/\u03bb, \u03bb = 파장)', font_size=14, fg='#64748B')
+        add_text('  C(q) : 파워 스펙트럼 밀도 [m\u2074] — 파수 q에서의 거칠기 진폭의 제곱', font_size=14, fg='#64748B')
 
-\u30106. \ub2e8\uc704 \uc815\ub9ac\u3011
-\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501
-  q [1/m]  C(q) [m\u2074]  E',E'' [Pa]  \u03c3\u2080 [Pa]  v [m/s]
-  \u03c9 [rad/s]  G(q) [\ubb34\ucc28\uc6d0]  P(q) [0~1]  S(q) [\ubb34\ucc28\uc6d0]
-  \u03be(q) [\ubb34\ucc28\uc6d0]  \u03b5(q) [0~1]  \u03bc_visc [\ubb34\ucc28\uc6d0]
-"""
+        add_separator()
+        add_text('Strain Sweep 데이터 (비선형 보정용, 선택):', font_size=15, bold=True, pady=(4, 0))
+        add_text('  \u03b3 : strain [%] — 변형률 진폭', font_size=14, fg='#64748B')
+        add_text('  f(\u03b3) = E\'(\u03b3)/E\'(0) : 저장 탄성률 감소율 (대변형 → f < 1)', font_size=14, fg='#64748B')
+        add_text('  g(\u03b3) = E\'\'(\u03b3)/E\'\'(0) : 손실 탄성률 변화율 (Payne 효과)', font_size=14, fg='#64748B')
 
-        text_widget = tk.Text(scrollable_frame, wrap=tk.NONE, font=('Consolas', 15),
-                              bg='white', relief='flat', borderwidth=0)
-        text_widget.insert(tk.END, content.strip())
-        text_widget.config(state='disabled')
-        text_widget.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # ═══════════════════════════════════════════════════════
+        # Section 2: 계산 파라미터
+        # ═══════════════════════════════════════════════════════
+        add_section_title('2. 계산 파라미터')
 
-        # Add horizontal scrollbar for wide content
-        h_scroll = ttk.Scrollbar(scrollable_frame, orient=tk.HORIZONTAL, command=text_widget.xview)
-        text_widget.configure(xscrollcommand=h_scroll.set)
-        h_scroll.pack(fill=tk.X, padx=10)
+        # Parameters table
+        param_frame = tk.Frame(scrollable_frame, bg='white', padx=20, pady=6)
+        param_frame.pack(fill=tk.X, padx=10)
+        param_data = [
+            ('\u03c3\u2080', '공칭 접촉 압력 [Pa]', '하중/면적. 고무가 바닥을 누르는 평균 압력'),
+            ('v', '슬라이딩 속도 [m/s]', '고무가 바닥 위를 미끄러지는 속도'),
+            ('T', '온도 [\u00b0C]', 'DMA 마스터 커브의 시프트 인자에 영향'),
+            ('\u03bd', '푸아송 비', '고무 \u2248 0.5 (거의 비압축성)'),
+            ('\u03b3', '접촉 보정 인자', '\u2248 0.5, S(q) 계산에 사용'),
+            ('q\u2080 ~ q\u2081', 'PSD 적분 범위 [1/m]', '고려하는 거칠기 파수의 최소~최대'),
+        ]
+        for col_idx, header in enumerate(['기호', '의미', '설명']):
+            lbl = tk.Label(param_frame, text=header, bg='#1B2A4A', fg='white',
+                           font=('Segoe UI', 13, 'bold'), padx=10, pady=5, anchor='center')
+            lbl.grid(row=0, column=col_idx, sticky='nsew', padx=1, pady=1)
+        for row_idx, (sym, meaning, desc) in enumerate(param_data, start=1):
+            bg = '#F1F5F9' if row_idx % 2 == 0 else 'white'
+            for col_idx, val in enumerate([sym, meaning, desc]):
+                weight = 'bold' if col_idx == 0 else 'normal'
+                lbl = tk.Label(param_frame, text=val, bg=bg, fg='#1E293B',
+                               font=('Segoe UI', 13, weight), padx=10, pady=4, anchor='w')
+                lbl.grid(row=row_idx, column=col_idx, sticky='nsew', padx=1, pady=1)
+        param_frame.columnconfigure(0, weight=1)
+        param_frame.columnconfigure(1, weight=2)
+        param_frame.columnconfigure(2, weight=3)
 
-        # Calculate needed height based on content lines
-        line_count = content.strip().count('\n') + 1
-        text_widget.configure(height=line_count + 2)
+        # ═══════════════════════════════════════════════════════
+        # Section 3: 중간 계산 변수
+        # ═══════════════════════════════════════════════════════
+        add_section_title('3. 중간 계산 변수')
+
+        add_text('G(q) 계산 과정:', font_size=15, bold=True, pady=(6, 0))
+        add_equation(r"$E^*(\omega) = E'(\omega) + i\,E''(\omega), \qquad \omega = q \cdot v \cdot \cos\phi$", fig_height=0.6, font_size=17)
+        add_equation(
+            r'$G(q) = \frac{1}{8} \int_{q_0}^{q} dq^{\prime}\, (q^{\prime})^3\, C(q^{\prime})'
+            r' \int_{0}^{2\pi} d\phi\, \left| \frac{E^*(q^{\prime}v\cos\phi)}{(1-\nu^2)\sigma_0} \right|^2$',
+            fig_height=0.9, font_size=17)
+        add_text('  [비선형 보정 시]', font_size=14, bold=True, fg='#64748B')
+        add_equation(r"$E'_{eff} = E' \times f(\varepsilon), \qquad E''_{eff} = E'' \times g(\varepsilon)$", fig_height=0.6, font_size=17)
+
+        add_separator()
+        add_text('접촉 면적 P(q)와 보정 계수 S(q):', font_size=15, bold=True, pady=(4, 0))
+        add_equation(r'$P(q) = \mathrm{erf}\!\left(\frac{1}{2\sqrt{G(q)}}\right)$', fig_height=0.7, font_size=18)
+        add_text('  G \u2192 0 : P \u2192 1 (완전 접촉)  |  G \u2192 \u221e : P \u2192 0 (접촉 없음)', font_size=14, fg='#64748B')
+        add_equation(r'$S(q) = \gamma + (1-\gamma) \cdot P^2(q)$', fig_height=0.6, font_size=18)
+
+        add_separator()
+        add_text('표면 거칠기 통계량:', font_size=15, bold=True, pady=(4, 0))
+        add_equation(r"$\xi^2(q) = h_{rms}^{\prime\,2}(q) = 2\pi \int_{q_0}^{q} k^3\, C(k)\, dk$", fig_height=0.7, font_size=18)
+        add_text('  \u03be(q) = h\'_rms(q) : 누적 RMS 기울기 (파수 q까지의 표면 경사)', font_size=14, fg='#64748B')
+        add_equation(r'$\varepsilon(q) = \alpha \cdot \xi(q) \qquad (\alpha \approx 0.5)$', fig_height=0.6, font_size=18)
+        add_text('  \u03b5(q) : 국소 변형률 — 거칠기에 의한 고무의 국소 변형 크기', font_size=14, fg='#64748B')
+
+        # ═══════════════════════════════════════════════════════
+        # Section 4: 최종 출력
+        # ═══════════════════════════════════════════════════════
+        add_section_title('4. 최종 출력: \u03bc_visc')
+
+        add_equation(
+            r'$\mu_{visc} = \frac{1}{2} \int_{q_0}^{q_1} dq\, q^3 C(q)\, P(q)\, S(q)'
+            r' \int_{0}^{2\pi} d\phi\, \cos\phi\, \frac{\mathrm{Im}[E(qv\cos\phi)]}{(1-\nu^2)\sigma_0}$',
+            fig_height=0.9, font_size=17)
+        add_text('  [선형] G, P, S 계산 → Im[E] = Im[E_linear]', font_size=14, fg='#64748B')
+        add_text('  [비선형] E_eff 사용, G\u00b7P\u00b7S 재계산, Im[E_eff] = Im[E] \u00d7 g(\u03b5)', font_size=14, fg='#64748B')
+
+        # ═══════════════════════════════════════════════════════
+        # Section 5: 데이터 흐름도
+        # ═══════════════════════════════════════════════════════
+        add_section_title('5. 데이터 흐름도', bg_color='#7C3AED')
+
+        add_text('DMA + PSD → Tab1(검증) → Tab2(설정) → Tab3(G, P 계산)', font_size=15, bold=True, pady=(6, 0))
+        add_text('→ Tab4(h\'_rms, \u03b5 계산) → Tab5(\u03bc_visc 계산)', font_size=15, bold=True, pady=(0, 2))
+        add_text('Strain Sweep → f(\u03b5), g(\u03b5) 함수 → 비선형 보정에 반영', font_size=15, bold=True, pady=(0, 6))
+
+        # ═══════════════════════════════════════════════════════
+        # Section 6: 단위 정리
+        # ═══════════════════════════════════════════════════════
+        add_section_title('6. 단위 정리')
+
+        unit_frame = tk.Frame(scrollable_frame, bg='white', padx=20, pady=6)
+        unit_frame.pack(fill=tk.X, padx=10)
+        unit_data = [
+            ('q', '[1/m]', '파수'),
+            ('C(q)', '[m\u2074]', '파워 스펙트럼 밀도'),
+            ("E', E''", '[Pa]', '저장/손실 탄성률'),
+            ('\u03c3\u2080', '[Pa]', '공칭 접촉 압력'),
+            ('v', '[m/s]', '슬라이딩 속도'),
+            ('\u03c9', '[rad/s]', '각진동수'),
+            ('G(q)', '[무차원]', '탄성 에너지 적분'),
+            ('P(q)', '[0~1]', '실접촉 면적 비율'),
+            ('S(q)', '[무차원]', '접촉 보정 계수'),
+            ('h_rms', '[m]', 'RMS 높이'),
+            ("h'_rms = \u03be", '[무차원]', 'RMS 기울기'),
+            ('\u03b5(q)', '[0~1]', '국소 변형률'),
+            ('\u03bc_visc', '[무차원]', '점탄성 마찰 계수'),
+        ]
+        for col_idx, header in enumerate(['기호', '단위', '의미']):
+            lbl = tk.Label(unit_frame, text=header, bg='#1B2A4A', fg='white',
+                           font=('Segoe UI', 13, 'bold'), padx=10, pady=5, anchor='center')
+            lbl.grid(row=0, column=col_idx, sticky='nsew', padx=1, pady=1)
+        for row_idx, (sym, unit, meaning) in enumerate(unit_data, start=1):
+            bg = '#F1F5F9' if row_idx % 2 == 0 else 'white'
+            for col_idx, val in enumerate([sym, unit, meaning]):
+                weight = 'bold' if col_idx == 0 else 'normal'
+                lbl = tk.Label(unit_frame, text=val, bg=bg, fg='#1E293B',
+                               font=('Segoe UI', 13, weight), padx=10, pady=4, anchor='center')
+                lbl.grid(row=row_idx, column=col_idx, sticky='nsew', padx=1, pady=1)
+        for col_idx in range(3):
+            unit_frame.columnconfigure(col_idx, weight=1)
+
+        # Bottom padding for scroll
+        tk.Frame(scrollable_frame, bg='white', height=80).pack(fill=tk.X)
+
+        # Force scrollregion update after all widgets are added
+        self.root.after(100, _update_scrollregion)
 
     def _create_debug_tab(self, parent):
         """Create debug log tab for monitoring calculation values."""
