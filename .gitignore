@@ -46,6 +46,12 @@ output/
 .ipynb_checkpoints/
 *.ipynb
 
+# Installer output
+installer_output/
+
+# PyInstaller
+*.spec.bak
+
 # Testing
 .pytest_cache/
 .coverage
