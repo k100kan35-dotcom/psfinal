@@ -81,7 +81,7 @@ HIDDEN_IMPORTS = [
     # stdlib
     'platform', 'tempfile', 'csv', 're',
     # importlib
-    'importlib_resources', 'importlib_resources.trees',
+    'importlib_resources',
     # jaraco
     'pkg_resources', 'jaraco', 'jaraco.text',
     'jaraco.functools', 'jaraco.context',

@@ -163,7 +163,6 @@ def build():
 
         # ===== hidden imports: importlib_resources =====
         '--hidden-import', 'importlib_resources',
-        '--hidden-import', 'importlib_resources.trees',
 
         # ===== pkg_resources / jaraco 의존성 =====
         # jaraco는 namespace package → hidden-import만 사용
