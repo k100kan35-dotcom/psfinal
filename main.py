@@ -148,10 +148,11 @@ def _natural_cubic_spline_eval(x: np.ndarray, y: np.ndarray, m: np.ndarray, xq: 
 
 
 def _spline_interp(x: np.ndarray, y: np.ndarray, xq: np.ndarray):
-    """PCHIP 보간 (overshoot 방지). 범위 밖은 NaN."""
-    from scipy.interpolate import PchipInterpolator
-    pchip = PchipInterpolator(x, y, extrapolate=False)
-    return pchip(xq)
+    """Akima 보간 (cubic spline급 매끄러움 + overshoot 억제). 범위 밖은 NaN."""
+    from scipy.interpolate import Akima1DInterpolator
+    akima = Akima1DInterpolator(x, y)
+    akima.extrapolate = False
+    return akima(xq)
 
 
 def _logspace_points(x_start: float, x_end: float, n: int):
