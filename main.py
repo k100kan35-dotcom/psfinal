@@ -45,7 +45,7 @@ warnings.filterwarnings('ignore', category=UserWarning, module='matplotlib')
 matplotlib.rcParams.update({
     'axes.unicode_minus': False,       # ASCII 마이너스 (유니코드 − 깨짐 방지)
     'text.usetex': False,              # LaTeX 비활성화
-    'mathtext.fontset': 'cm',  # 수식 폰트: Computer Modern (LaTeX 스타일, Cambria Math 유사)
+    'mathtext.fontset': 'dejavusans',  # PyInstaller 호환: DejaVu Sans (내장 폰트, 지수 음수 깨짐 방지)
     'font.size': 14,
     'axes.titlesize': 15,
     'axes.labelsize': 13,
@@ -275,6 +275,22 @@ def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
 try:
     import matplotlib.font_manager as fm
     import platform
+
+    # Frozen exe: mathtext 폰트 캐시 강제 초기화 (지수 음수 깨짐 방지)
+    if getattr(sys, 'frozen', False):
+        # matplotlib 폰트 캐시를 무효화하여 내장 DejaVu 폰트가 확실히 로드되게 함
+        _cache_dir = matplotlib.get_cachedir()
+        if _cache_dir and os.path.isdir(_cache_dir):
+            for _cf in os.listdir(_cache_dir):
+                if _cf.startswith('fontlist') and _cf.endswith('.json'):
+                    try:
+                        os.remove(os.path.join(_cache_dir, _cf))
+                    except Exception:
+                        pass
+        try:
+            fm._load_fontmanager(try_read_cache=False)
+        except Exception:
+            pass
 
     # Frozen exe: 시스템 폰트 디렉토리에서 직접 등록 (캐시 우회)
     if getattr(sys, 'frozen', False):
@@ -6860,7 +6876,7 @@ class PerssonModelGUI_V2:
         ttk.Label(row7, text="수식 폰트:", width=15).pack(side=tk.LEFT)
         math_font_var = tk.StringVar(value=matplotlib.rcParams.get('mathtext.fontset', 'dejavusans'))
         math_combo = ttk.Combobox(row7, textvariable=math_font_var, width=20,
-                                   values=['cm', 'stix', 'stixsans', 'dejavusans', 'dejavuserif'])
+                                   values=['dejavusans', 'dejavuserif', 'stix', 'stixsans', 'cm'])
         math_combo.pack(side=tk.LEFT, padx=5)
         ttk.Label(row7, text="(cm=Cambria Math \uc2a4\ud0c0\uc77c)", font=('Segoe UI', 13),
                   foreground='#64748B').pack(side=tk.LEFT, padx=3)
@@ -7295,7 +7311,7 @@ class PerssonModelGUI_V2:
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
         # Use Cambria Math for mathtext (good LaTeX rendering)
-        math_fontfamily = 'cm'  # Computer Modern (built-in, best LaTeX look)
+        math_fontfamily = 'dejavusans'  # PyInstaller 호환 (cm은 exe에서 깨짐)
 
         def add_section_title(title_text, bg_color='#1B2A4A', fg_color='white'):
             """Add a colored section header."""
@@ -13199,7 +13215,7 @@ class PerssonModelGUI_V2:
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-        math_fontfamily = 'cm'  # Computer Modern (built-in, best LaTeX look)
+        math_fontfamily = 'dejavusans'  # PyInstaller 호환 (cm은 exe에서 깨짐)
 
         def add_section_title(title_text, bg_color='#1B2A4A', fg_color='white'):
             frame = tk.Frame(scrollable_frame, bg=bg_color, padx=15, pady=12)
