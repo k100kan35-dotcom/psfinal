@@ -190,6 +190,9 @@ class PerssonModelGUI_V2:
         'highlight':    '#DBEAFE',   # 강조 배경 (연한 블루)
     }
 
+    # Font sizes designed for 96 DPI (100% scaling, 1600×1000 window).
+    # On high-DPI displays, the Tk scaling factor is reset in main() so that
+    # these point sizes render at the same physical size on every machine.
     FONTS = {
         'heading':   ('Segoe UI', 22, 'bold'),
         'subheading':('Segoe UI', 20, 'bold'),
@@ -226,6 +229,9 @@ class PerssonModelGUI_V2:
         self.root.geometry("1600x1000")
         self.root.configure(bg=self.COLORS['bg'])
         self.root.minsize(1200, 700)
+
+        # Store DPI scale for any component that needs it
+        self._dpi_scale = _get_system_dpi_scale()
 
         # ── Apply modern theme ──
         self._setup_modern_theme()
@@ -309,13 +315,15 @@ class PerssonModelGUI_V2:
 
         # ── Override Tk default fonts (affects all Entry/Combobox field text) ──
         import tkinter.font as tkfont
+        _body_size = F['body'][1]
+        _mono_size = F['mono'][1]
         for fname in ('TkDefaultFont', 'TkTextFont', 'TkFixedFont'):
             try:
                 f = tkfont.nametofont(fname)
                 if fname == 'TkFixedFont':
-                    f.configure(family='Consolas', size=17)
+                    f.configure(family='Consolas', size=_mono_size)
                 else:
-                    f.configure(family='Segoe UI', size=17)
+                    f.configure(family='Segoe UI', size=_body_size)
             except Exception:
                 pass
 
@@ -14906,16 +14914,72 @@ class PerssonModelGUI_V2:
         self.canvas_ve_advisor.draw()
 
 
-def main():
-    """Run the enhanced application."""
-    root = tk.Tk()
+def _enable_dpi_awareness():
+    """Enable High-DPI awareness BEFORE any window is created (Windows 10+).
 
-    # ── High-DPI awareness (Windows 10+) ──
+    SetProcessDpiAwareness must be called before tk.Tk() or any GUI element
+    is instantiated.  Value 1 = System DPI Aware, 2 = Per-Monitor DPI Aware.
+    We use Per-Monitor V2 first (most accurate), falling back to System-aware.
+    """
+    if sys.platform != 'win32':
+        return
     try:
         from ctypes import windll
-        windll.shcore.SetProcessDpiAwareness(1)
+        # Try Per-Monitor V2 awareness (Windows 10 1703+)
+        try:
+            windll.shcore.SetProcessDpiAwareness(2)
+        except Exception:
+            # Fallback to System DPI Aware
+            try:
+                windll.shcore.SetProcessDpiAwareness(1)
+            except Exception:
+                # Legacy fallback (Windows Vista+)
+                windll.user32.SetProcessDPIAware()
     except Exception:
         pass
+
+
+def _get_system_dpi_scale():
+    """Return the Windows display scaling factor (e.g. 1.0, 1.25, 1.5, 2.0).
+
+    Must be called AFTER _enable_dpi_awareness() and AFTER tk.Tk().
+    """
+    scale = 1.0
+    if sys.platform != 'win32':
+        return scale
+    try:
+        from ctypes import windll
+        # GetDpiForSystem requires Windows 10 1607+
+        try:
+            dpi = windll.user32.GetDpiForSystem()
+        except Exception:
+            # Fallback: use device caps
+            hdc = windll.user32.GetDC(0)
+            dpi = windll.gdi32.GetDeviceCaps(hdc, 88)  # LOGPIXELSX
+            windll.user32.ReleaseDC(0, hdc)
+        scale = dpi / 96.0
+    except Exception:
+        pass
+    return scale
+
+
+def main():
+    """Run the enhanced application."""
+    # ── DPI awareness MUST be set BEFORE creating any window ──
+    _enable_dpi_awareness()
+
+    root = tk.Tk()
+
+    # ── Detect system DPI scaling and adjust Tk scaling factor ──
+    dpi_scale = _get_system_dpi_scale()
+    # Tk internally uses a scaling factor (default ~1.33 on 96 DPI).
+    # When the OS scale > 1.0, we need to compensate so that hardcoded
+    # font sizes do not get double-scaled by both Windows and Tk.
+    if dpi_scale > 1.05:
+        # Reset Tk scaling to neutralise the OS-level magnification.
+        # Default Tk scaling at 96 DPI ≈ 1.333;  at 144 DPI (150%) the OS
+        # already enlarges everything, so we keep Tk at the 96-DPI baseline.
+        root.tk.call('tk', 'scaling', 96.0 / 72.0)   # = 1.333 (96 DPI base)
 
     app = PerssonModelGUI_V2(root)
     root.mainloop()
