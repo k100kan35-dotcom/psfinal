@@ -148,8 +148,8 @@ def _natural_cubic_spline_eval(x: np.ndarray, y: np.ndarray, m: np.ndarray, xq: 
 
 
 def _spline_interp(x: np.ndarray, y: np.ndarray, xq: np.ndarray):
-    """선형 보간. 범위 밖은 NaN."""
-    return np.interp(xq, x, y, left=np.nan, right=np.nan)
+    """선형 보간 + 외삽. 범위 밖은 양끝 값으로 외삽(clamp)."""
+    return np.interp(xq, x, y)
 
 
 def _logspace_points(x_start: float, x_end: float, n: int):
