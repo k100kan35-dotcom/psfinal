@@ -8629,6 +8629,12 @@ class PerssonModelGUI_V2:
         self.n_phi_var = tk.StringVar(value="14")
         ttk.Entry(integ_row, textvariable=self.n_phi_var, width=5).pack(side=tk.LEFT, padx=2)
 
+        # S(q) P exponent selection: P^1 or P^2
+        ttk.Label(integ_row, text="  S(q):", font=('Segoe UI', 17)).pack(side=tk.LEFT, padx=(8, 0))
+        self.s_q_p_exponent_var = tk.IntVar(value=1)  # 기본 P^1
+        ttk.Radiobutton(integ_row, text="P¹", variable=self.s_q_p_exponent_var, value=1).pack(side=tk.LEFT, padx=2)
+        ttk.Radiobutton(integ_row, text="P²", variable=self.s_q_p_exponent_var, value=2).pack(side=tk.LEFT, padx=2)
+
         # Smoothing in single row
         smooth_row = ttk.Frame(mu_settings_frame)
         smooth_row.pack(fill=tk.X, pady=1)
@@ -9658,6 +9664,7 @@ class PerssonModelGUI_V2:
             poisson = float(self.poisson_var.get())
             gamma = float(self.gamma_var.get())
             n_phi = int(self.n_phi_var.get())
+            p_exponent = self.s_q_p_exponent_var.get()  # 1 or 2
             use_fg = self.use_fg_correction_var.get()
             strain_est_method = self.strain_est_method_var.get()
             fixed_strain = float(self.fixed_strain_var.get()) / 100.0  # Convert % to fraction
@@ -9883,7 +9890,8 @@ class PerssonModelGUI_V2:
                 gamma=gamma,
                 n_angle_points=n_phi,
                 g_interpolator=g_interp,
-                strain_estimate=fixed_strain
+                strain_estimate=fixed_strain,
+                p_exponent=p_exponent
             )
 
             # Calculate mu_visc for all velocities
@@ -10227,15 +10235,14 @@ class PerssonModelGUI_V2:
             # Calculate and display A/A0 gap with reference data
             self._update_area_gap_display(v, P_qmax_array)
 
-            # Color based on nonlinear correction
+            # 계산 결과는 항상 파란색, 참조는 항상 빨간색
             if use_nonlinear:
                 label_str = 'A/A0 - 비선형 G(q)'
-                color = 'r'
                 title_suffix = ' (f,g 보정 적용)'
             else:
                 label_str = 'A/A0 - 선형 G(q)'
-                color = 'b'
                 title_suffix = ''
+            color = 'b'  # 계산 결과는 항상 파란색
 
             # Plot A/A0 = P(q_max)
             self.ax_mu_cumulative.semilogx(v, P_qmax_array, f'{color}-', linewidth=2,
@@ -11162,7 +11169,10 @@ class PerssonModelGUI_V2:
 
             # Format display: show gaps at 10^-4, 10^-2, 10^0
             gap_strs = [f"v={v_:.0e}: {g:+.1f}%" for v_, g in gaps]
-            self.area_gap_var.set(f"A/A0 Gap: " + ", ".join(gap_strs))
+            gap_msg = f"A/A0 Gap: " + ", ".join(gap_strs)
+            self.area_gap_var.set(gap_msg)
+            # 상태바에도 표시
+            self.status_var.set(gap_msg)
 
         except Exception as e:
             print(f"[DEBUG] A/A0 gap 계산 오류: {e}")
@@ -13896,7 +13906,8 @@ class PerssonModelGUI_V2:
             P_test = erf(1.0 / (2.0 * np.sqrt(G_test)))
         else:
             P_test = 1.0
-        S_test = gamma + (1 - gamma) * P_test**2
+        _p_exp = self.s_q_p_exponent_var.get() if hasattr(self, 's_q_p_exponent_var') else 1
+        S_test = gamma + (1 - gamma) * P_test**_p_exp
 
         q3_test = test_q**3
         qCPS_test = q3_test * C_q_test * P_test * S_test
@@ -15161,6 +15172,7 @@ class PerssonModelGUI_V2:
             goal = self.ve_goal_var.get()
             poisson = float(self.poisson_var.get())
             gamma = float(self.gamma_var.get())
+            p_exponent = self.s_q_p_exponent_var.get() if hasattr(self, 's_q_p_exponent_var') else 1
 
             velocities = np.logspace(np.log10(v_min), np.log10(v_max), n_v)
 
@@ -15208,7 +15220,7 @@ class PerssonModelGUI_V2:
                     G_val = max(G_interp_list[iq](np.log10(v_val)), 1e-20)
 
                     P_val = erf(1.0 / (2.0 * np.sqrt(G_val)))
-                    S_val = gamma + (1 - gamma) * P_val**2
+                    S_val = gamma + (1 - gamma) * P_val**p_exponent
                     qCPS = q**3 * Cq * P_val * S_val
 
                     for ip in range(n_phi):
@@ -15235,7 +15247,7 @@ class PerssonModelGUI_V2:
 
                 mu_current[iv] = self._compute_mu_for_velocity(
                     v_val, q_arr, C_q, G_interp_list, temperature,
-                    sigma_0, poisson, gamma, n_phi)
+                    sigma_0, poisson, gamma, n_phi, p_exponent=p_exponent)
 
             self.ve_progress_var.set(75)
             self.root.update()
@@ -15279,7 +15291,7 @@ class PerssonModelGUI_V2:
                 mu_suggested[iv] = self._compute_mu_for_velocity(
                     v_val, q_arr, C_q, G_interp_list, temperature,
                     sigma_0, poisson, gamma, n_phi,
-                    loss_func_override=suggested_loss_func)
+                    loss_func_override=suggested_loss_func, p_exponent=p_exponent)
 
             self.ve_progress_var.set(90)
             self.root.update()
@@ -15494,7 +15506,7 @@ class PerssonModelGUI_V2:
 
     def _compute_mu_for_velocity(self, v_val, q_arr, C_q, G_interp_list,
                                   temperature, sigma_0, poisson, gamma, n_phi,
-                                  loss_func_override=None):
+                                  loss_func_override=None, p_exponent=1):
         """Compute mu_visc for a single velocity using simplified Persson integral."""
         import numpy as np
         from scipy.special import erf
@@ -15513,7 +15525,7 @@ class PerssonModelGUI_V2:
             G_val = max(G_interp_list[iq](np.log10(v_val)), 1e-20)
 
             P_val = erf(1.0 / (2.0 * np.sqrt(G_val)))
-            S_val = gamma + (1 - gamma) * P_val**2
+            S_val = gamma + (1 - gamma) * P_val**p_exponent
             qCPS = q**3 * Cq * P_val * S_val
 
             angle_integrand = np.zeros(n_phi)

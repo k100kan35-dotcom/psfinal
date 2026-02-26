@@ -123,7 +123,8 @@ class FrictionCalculator:
         gamma: float = 0.6,
         n_angle_points: int = 72,
         g_interpolator: Optional[Callable[[float], float]] = None,
-        strain_estimate: float = 0.01
+        strain_estimate: float = 0.01,
+        p_exponent: int = 1
     ):
         """
         Initialize friction calculator.
@@ -151,6 +152,8 @@ class FrictionCalculator:
             Function g(strain) for nonlinear correction
         strain_estimate : float, optional
             Default strain estimate for nonlinear correction (default: 0.01 = 1%)
+        p_exponent : int, optional
+            Exponent for P in S(q) = gamma + (1-gamma)*P^p_exponent (default: 1)
         """
         self.psd_func = psd_func
         self.loss_modulus_func = loss_modulus_func
@@ -162,6 +165,7 @@ class FrictionCalculator:
         self.n_angle_points = n_angle_points
         self.g_interpolator = g_interpolator
         self.strain_estimate = strain_estimate
+        self.p_exponent = p_exponent
 
         # Precompute constant factor: 1 / ((1 - nu^2) * sigma0)
         self.prefactor = 1.0 / ((1 - poisson_ratio**2) * sigma_0)
@@ -208,7 +212,7 @@ class FrictionCalculator:
         """
         Calculate contact correction factor S(q) from P(q).
 
-        S(q) = gamma + (1 - gamma) * P(q)^2
+        S(q) = gamma + (1 - gamma) * P(q)^p_exponent
 
         Parameters
         ----------
@@ -221,7 +225,7 @@ class FrictionCalculator:
             S(q) contact correction factor
         """
         P = np.asarray(P)
-        return self.gamma + (1 - self.gamma) * P**2
+        return self.gamma + (1 - self.gamma) * P**self.p_exponent
 
     def _angle_integral_friction(
         self,
@@ -579,7 +583,8 @@ def calculate_mu_visc_simple(
     gamma: float = 0.6,
     n_phi: int = 72,
     g_interpolator: Optional[Callable[[float], float]] = None,
-    strain: float = 0.01
+    strain: float = 0.01,
+    p_exponent: int = 1
 ) -> Tuple[float, dict]:
     """
     Simplified function to calculate mu_visc without class instantiation.
@@ -638,8 +643,8 @@ def calculate_mu_visc_simple(
         arg = np.minimum(1.0 / (2.0 * sqrt_G), 10.0)
         P_array[valid_mask] = erf(arg)
 
-    # Calculate S(q) from P(q): S = gamma + (1-gamma)*P²
-    S_array = gamma + (1 - gamma) * P_array**2
+    # Calculate S(q) from P(q): S = gamma + (1-gamma)*P^p_exponent
+    S_array = gamma + (1 - gamma) * P_array**p_exponent
 
     # Angle array - use symmetry: integrate 0 to pi/2 and multiply by 4
     phi = np.linspace(0, np.pi / 2, n_phi)
