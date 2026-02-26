@@ -1,5 +1,5 @@
 """
-Enhanced Main GUI for NEXEN Rubber Friction Model Program (v3.0)
+Enhanced Main GUI for NEXEN Rubber Friction Model Program (v3.1)
 ===================================================
 
 Work Instruction v3.0 Implementation:
