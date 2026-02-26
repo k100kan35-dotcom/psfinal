@@ -8956,9 +8956,10 @@ class PerssonModelGUI_V2:
             frac1 = (np.log10(s1) - np.log10(global_min)) / total_range if global_min < s1 else 0
             frac2 = (np.log10(s2) - np.log10(s1)) / total_range if s1 < s2 else 0
             frac3 = (np.log10(global_max) - np.log10(s2)) / total_range if s2 < global_max else 0
-            n1 = max(int(n_final * frac1), 3) if frac1 > 0 else 0
-            n2 = max(int(n_final * frac2), 3) if frac2 > 0 else 0
-            n3 = max(n_final - n1 - n2, 3) if frac3 > 0 else 0
+            min_per_zone = max(int(n_final * 0.15), 8)  # 최소 15% 또는 8개
+            n1 = max(int(n_final * frac1), min_per_zone) if frac1 > 0 else 0
+            n2 = max(int(n_final * frac2), min_per_zone) if frac2 > 0 else 0
+            n3 = max(int(n_final * frac3), min_per_zone) if frac3 > 0 else 0
 
             def _zone_avg(grid, temps_list):
                 """주어진 그리드에서 온도 목록의 f,g 평균 계산."""
@@ -9160,30 +9161,35 @@ class PerssonModelGUI_V2:
                     z2_mask = s >= sp1
                     z3_mask = np.zeros_like(s, dtype=bool)
 
-                # Zone1: 전체 온도 (원형 마커)
+                # Zone별 온도 수
+                n_t1 = len(self.piecewise_result.get('temps_A', []))
+                n_t2 = len(self.piecewise_result.get('temps_B', []))
+                n_t3 = len(self.piecewise_result.get('temps_C', []))
+
+                # Zone1: 전체 온도 — 파란/빨간 (원형 마커)
                 if np.any(z1_mask):
-                    self.ax_fg_curves.plot(s[z1_mask], f_final[z1_mask], 'b-o',
-                                           linewidth=2.5, markersize=4,
-                                           label=f'f Z1 전체T ({np.sum(z1_mask)}pts)')
-                    self.ax_fg_curves.plot(s[z1_mask], g_final[z1_mask], 'r-o',
-                                           linewidth=2.5, markersize=4,
-                                           label=f'g Z1 전체T ({np.sum(z1_mask)}pts)')
-                # Zone2: 고온 (사각형 마커)
+                    self.ax_fg_curves.plot(s[z1_mask], f_final[z1_mask], '-o',
+                                           color='#1E40AF', linewidth=2.5, markersize=3,
+                                           label=f'f Z1 전체 ({n_t1}T)')
+                    self.ax_fg_curves.plot(s[z1_mask], g_final[z1_mask], '-o',
+                                           color='#DC2626', linewidth=2.5, markersize=3,
+                                           label=f'g Z1 전체 ({n_t1}T)')
+                # Zone2: 고온 — 녹색/주황 (사각형 마커)
                 if np.any(z2_mask):
-                    self.ax_fg_curves.plot(s[z2_mask], f_final[z2_mask], 'b-s',
-                                           linewidth=2.5, markersize=4,
-                                           label=f'f Z2 고온T ({np.sum(z2_mask)}pts)')
-                    self.ax_fg_curves.plot(s[z2_mask], g_final[z2_mask], 'r-s',
-                                           linewidth=2.5, markersize=4,
-                                           label=f'g Z2 고온T ({np.sum(z2_mask)}pts)')
-                # Zone3: 최고온 (삼각형 마커)
+                    self.ax_fg_curves.plot(s[z2_mask], f_final[z2_mask], '-s',
+                                           color='#059669', linewidth=2.5, markersize=4,
+                                           label=f'f Z2 고온 ({n_t2}T)')
+                    self.ax_fg_curves.plot(s[z2_mask], g_final[z2_mask], '-s',
+                                           color='#D97706', linewidth=2.5, markersize=4,
+                                           label=f'g Z2 고온 ({n_t2}T)')
+                # Zone3: 최고온 — 보라/분홍 (삼각형 마커)
                 if np.any(z3_mask):
-                    self.ax_fg_curves.plot(s[z3_mask], f_final[z3_mask], 'b-^',
-                                           linewidth=2.5, markersize=4,
-                                           label=f'f Z3 최고온T ({np.sum(z3_mask)}pts)')
-                    self.ax_fg_curves.plot(s[z3_mask], g_final[z3_mask], 'r-^',
-                                           linewidth=2.5, markersize=4,
-                                           label=f'g Z3 최고온T ({np.sum(z3_mask)}pts)')
+                    self.ax_fg_curves.plot(s[z3_mask], f_final[z3_mask], '-^',
+                                           color='#7C3AED', linewidth=2.5, markersize=4,
+                                           label=f'f Z3 최고온 ({n_t3}T)')
+                    self.ax_fg_curves.plot(s[z3_mask], g_final[z3_mask], '-^',
+                                           color='#DB2777', linewidth=2.5, markersize=4,
+                                           label=f'g Z3 최고온 ({n_t3}T)')
 
                 # Split 수직선
                 self.ax_fg_curves.axvline(x=sp1, color='gray', linestyle='--',
