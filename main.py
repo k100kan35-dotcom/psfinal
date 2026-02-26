@@ -158,9 +158,12 @@ def _logspace_points(x_start: float, x_end: float, n: int):
     return 10 ** np.linspace(np.log10(x_start), np.log10(x_end), n)
 
 
-def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
+def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     """
     fgnew 로직: 각 온도의 f,g를 개별 스플라인 보간 → 공통 그리드에서 평균 → log-spaced 출력.
+
+    데이터 수집 후 strain을 /100하여 fraction 스케일로 변환한 뒤 보간을 진행한다.
+    보간 범위는 전체 데이터의 min~max strain(fraction)으로 자동 결정된다.
 
     Parameters
     ----------
@@ -168,8 +171,6 @@ def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
         {temperature: {'strain': array, 'f': array, 'g': array, ...}}
     selected_temps : list
         사용할 온도 목록
-    start_strain : float
-        시작 strain (이 값 미만은 제외)
     n_final : int
         최종 log-spaced 출력 포인트 수
 
@@ -178,13 +179,15 @@ def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
     dict with 'strain', 'f_avg', 'g_avg', 'common_x', 'common_f', 'common_g', 'Ts_used'
     or None if failed.
     """
-    # 1) 활성 데이터셋 수집
+    # 1) 활성 데이터셋 수집 — strain을 /100 하여 fraction으로 변환
     datasets = []
     for T in selected_temps:
         if T not in fg_by_T:
             continue
         data = fg_by_T[T]
-        x, f, g = data['strain'], data['f'], data['g']
+        x, f, g = data['strain'].copy(), data['f'], data['g']
+        # strain /100: 입력(%) → fraction
+        x = x / 100.0
         # strain > 0 이고 최소 3개 점 필요
         mask = x > 0
         x, f, g = x[mask], f[mask], g[mask]
@@ -207,15 +210,15 @@ def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
     if not datasets:
         return None
 
-    # 2) 전체 활성 데이터셋 중 max strain
+    # 2) 데이터의 실제 min/max strain (fraction 스케일)
+    min_strain = min(ds[1].min() for ds in datasets)
     max_strain = max(ds[1].max() for ds in datasets)
-    if max_strain <= start_strain:
+    if max_strain <= min_strain:
         return None
 
-    # 3) 공통 그리드 = 모든 활성 데이터의 strain 합집합 (start_strain ~ max_strain)
+    # 3) 공통 그리드 = 모든 활성 데이터의 strain 합집합 (min ~ max)
     all_x = np.concatenate([ds[1] for ds in datasets])
-    common_x = np.unique(all_x[(all_x >= start_strain) & (all_x <= max_strain)])
-    common_x = np.unique(np.concatenate([common_x, np.array([start_strain])]))
+    common_x = np.unique(all_x[(all_x >= min_strain) & (all_x <= max_strain)])
     common_x.sort()
 
     if len(common_x) < 3:
@@ -240,14 +243,8 @@ def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
     mean_f = np.nanmean(F_mat, axis=0)
     mean_g = np.nanmean(G_mat, axis=0)
 
-    # 6) 보간 완료 후 strain을 /100 하여 fraction 스케일로 변환
-    #    입력: 0.0148 ~ 27.4 (%) → 출력: 0.000148 ~ 0.274 (fraction)
-    common_x = common_x / 100.0
-    start_strain_frac = start_strain / 100.0
-    max_strain_frac = max_strain / 100.0
-
-    # 7) 최종 log-spaced 포인트 (fraction 스케일)
-    final_x = _logspace_points(start_strain_frac, max_strain_frac, n_final)
+    # 6) 최종 log-spaced 포인트 (fraction 스케일)
+    final_x = _logspace_points(min_strain, max_strain, n_final)
 
     # 평균 커브를 다시 스플라인으로 보간하여 최종 포인트에 평가
     def _interp_mean(cx, my, xq):
@@ -8535,17 +8532,14 @@ class PerssonModelGUI_V2:
         persson_avg_frame = ttk.LabelFrame(left_panel, text="3) Persson average f,g", padding=5)
         persson_avg_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        # Start strain setting
+        # N final log-spaced points
         row1 = ttk.Frame(persson_avg_frame)
         row1.pack(fill=tk.X, pady=1)
-        ttk.Label(row1, text="Start strain:", font=self.FONTS['body']).pack(side=tk.LEFT)
-        self.start_strain_var = tk.StringVar(value="0.0148")
-        ttk.Entry(row1, textvariable=self.start_strain_var, width=8, font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
-
-        # N final log-spaced points
-        ttk.Label(row1, text="N pts:", font=self.FONTS['body']).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(row1, text="N pts:", font=self.FONTS['body']).pack(side=tk.LEFT)
         self.n_final_pts_var = tk.StringVar(value="20")
         ttk.Entry(row1, textvariable=self.n_final_pts_var, width=5, font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
+        ttk.Label(row1, text="(strain /100 → fraction 자동변환)", font=self.FONTS['small'],
+                  foreground='#64748B').pack(side=tk.LEFT, padx=(8, 0))
 
         # Method description
         info_frame = ttk.Frame(persson_avg_frame)
@@ -8862,7 +8856,6 @@ class PerssonModelGUI_V2:
 
         try:
             # Step 2: UI에서 파라미터 읽기
-            start_strain = float(self.start_strain_var.get())
             n_final = int(self.n_final_pts_var.get())
 
             # 체크된 온도만 사용 (체크박스가 있으면)
@@ -8874,11 +8867,10 @@ class PerssonModelGUI_V2:
             else:
                 all_temps = list(self.fg_by_T.keys())
 
-            # Step 3: fgnew 로직 - 스플라인 보간 → 평균 → log-spaced
+            # Step 3: fgnew 로직 - strain /100 → 스플라인 보간 → 평균 → log-spaced
             result = spline_average_fg(
                 self.fg_by_T,
                 all_temps,
-                start_strain=start_strain,
                 n_final=n_final
             )
 
@@ -8899,7 +8891,6 @@ class PerssonModelGUI_V2:
                 'f_avg': final_f,
                 'g_avg': final_g,
                 'n_eff': result['n_eff'],
-                'split': start_strain,
                 'temps_A': all_temps,
                 'temps_B': all_temps,
                 'common_x': result['common_x'],
@@ -8931,12 +8922,14 @@ class PerssonModelGUI_V2:
             # 제외된 온도 표시
             excluded = [T for T, var in self._temp_check_vars.items() if not var.get()] if self._temp_check_vars else []
             excl_str = f" (제외: {', '.join(f'{t:.1f}' for t in sorted(excluded))}°C)" if excluded else ""
+            strain_min = final_strain[0]
+            strain_max = final_strain[-1]
             self.persson_avg_status_var.set(
                 f"완료: {n_temps}개 온도, {n_final}pts [{temps_str}°C]{excl_str}"
             )
             self.status_var.set(
                 f"Spline average f,g 완료: {n_temps}개 온도, "
-                f"start={start_strain:.4f}, N={n_final}{excl_str}"
+                f"ε={strain_min:.2e}~{strain_max:.2e}, N={n_final}{excl_str}"
             )
 
         except Exception as e:
@@ -8995,9 +8988,14 @@ class PerssonModelGUI_V2:
         self.canvas_mu_visc.draw()
 
     def _export_fg_curves(self):
-        """Export f,g curves to CSV file with proper column separation."""
+        """Export f,g curves to CSV file. strain 범위를 20포인트 log-spaced로 리샘플링하여 출력."""
         if self.fg_averaged is None and self.piecewise_result is None:
             self._show_status("먼저 f,g 곡선을 계산하세요.", 'warning')
+            return
+
+        # interpolator가 있어야 리샘플링 가능
+        if self.f_interpolator is None or self.g_interpolator is None:
+            self._show_status("f,g interpolator가 없습니다. 먼저 평균화를 수행하세요.", 'warning')
             return
 
         result = self.piecewise_result if self.piecewise_result is not None else self.fg_averaged
@@ -9015,6 +9013,16 @@ class PerssonModelGUI_V2:
             import csv
             from datetime import datetime
 
+            # strain 범위에서 20포인트 log-spaced 리샘플링
+            src_strain = result['strain']
+            s_min, s_max = src_strain[0], src_strain[-1]
+            n_export = 20
+            export_strain = _logspace_points(s_min, s_max, n_export)
+
+            # interpolator로 f, g 평가
+            export_f = np.array([self.f_interpolator(s) for s in export_strain])
+            export_g = np.array([self.g_interpolator(s) for s in export_strain])
+
             # 평가 정보 수집
             try:
                 load_mpa = float(self.sigma_0_var.get())
@@ -9027,30 +9035,29 @@ class PerssonModelGUI_V2:
             nonlinear_applied = self.use_fg_correction_var.get() if hasattr(self, 'use_fg_correction_var') else False
 
             with open(filename, 'w', newline='', encoding='utf-8-sig') as f:
-                writer = csv.writer(f)  # 쉼표 구분자 (기본값)
+                writer = csv.writer(f)
                 # 헤더 정보
-                writer.writerow(['# f,g 곡선 데이터'])
+                writer.writerow(['# f,g 곡선 데이터 (20포인트 log-spaced)'])
                 writer.writerow(['# 생성일시', datetime.now().strftime('%Y-%m-%d %H:%M:%S')])
                 writer.writerow(['# 공칭하중(MPa)', f'{load_mpa:.3f}'])
                 writer.writerow(['# 계산온도(°C)', f'{calc_temp:.1f}'])
                 writer.writerow(['# 비선형보정적용', '예' if nonlinear_applied else '아니오'])
+                writer.writerow(['# Strain 범위(fraction)', f'{s_min:.4e} ~ {s_max:.4e}'])
+                writer.writerow(['# 포인트 수', f'{n_export}'])
                 if self.piecewise_result is not None:
-                    split = self.piecewise_result['split']
-                    writer.writerow(['# Split Strain(%)', f'{split*100:.2f}'])
-                    writer.writerow(['# Method', 'Persson Average (RANK1 weighted)'])
+                    writer.writerow(['# Method', 'Spline Average'])
                     writer.writerow(['# Temps used', str(self.piecewise_result.get("temps_A", []))])
-                writer.writerow([])  # 빈 줄
-                writer.writerow(['strain_fraction', 'f_value', 'g_value', 'n_eff'])
+                writer.writerow([])
+                writer.writerow(['strain_fraction', 'f_value', 'g_value'])
 
-                for i in range(len(result['strain'])):
+                for i in range(n_export):
                     writer.writerow([
-                        f'{result["strain"][i]:.6e}',
-                        f'{result["f_avg"][i]:.6f}',
-                        f'{result["g_avg"][i]:.6f}',
-                        f'{result["n_eff"][i]:.0f}'
+                        f'{export_strain[i]:.6e}',
+                        f'{export_f[i]:.6f}',
+                        f'{export_g[i]:.6f}',
                     ])
 
-            self._show_status(f"f,g 곡선 저장 완료:\n{filename}", 'success')
+            self._show_status(f"f,g 곡선 저장 완료 ({n_export}pts):\n{filename}", 'success')
             self.status_var.set(f"f,g 곡선 저장: {filename}")
 
         except Exception as e:
@@ -9261,14 +9268,12 @@ class PerssonModelGUI_V2:
             temps = sorted(self.fg_by_T.keys())
             selected_temps = [temps[i] for i in selections]
 
-            # fgnew 로직: 스플라인 보간 → 평균 → log-spaced
-            start_strain = float(self.start_strain_var.get()) if hasattr(self, 'start_strain_var') else 0.0148
+            # fgnew 로직: strain /100 → 스플라인 보간 → 평균 → log-spaced
             n_final = int(self.n_final_pts_var.get()) if hasattr(self, 'n_final_pts_var') else 20
 
             result = spline_average_fg(
                 self.fg_by_T,
                 selected_temps,
-                start_strain=start_strain,
                 n_final=n_final
             )
 
@@ -9323,13 +9328,10 @@ class PerssonModelGUI_V2:
         # Plot Persson average if available (이미 fraction 스케일)
         if self.piecewise_result is not None:
             s = self.piecewise_result['strain']
-            split = self.piecewise_result['split'] / 100.0
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
             self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='f(ε) Persson Avg')
             self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='g(ε) Persson Avg')
-            self.ax_fg_curves.axvline(split, color='green', linewidth=2, linestyle=':', alpha=0.8,
-                                      label=f'Split @ ε={split:.4f}')
             self.ax_fg_curves.legend(loc='upper right', fontsize=12, ncol=2)
         elif self.fg_averaged is not None:
             s = self.fg_averaged['strain']
@@ -9983,8 +9985,8 @@ class PerssonModelGUI_V2:
                 if strain_est_method == 'fixed':
                     self.mu_result_text.insert(tk.END, f"  고정 Strain: {fixed_strain*100:.2f}%\n")
                 if self.piecewise_result is not None:
-                    split = self.piecewise_result['split']
-                    self.mu_result_text.insert(tk.END, f"  Piecewise Split: {split*100:.1f}%\n")
+                    s_range = self.piecewise_result['strain']
+                    self.mu_result_text.insert(tk.END, f"  Strain 범위: {s_range[0]:.2e} ~ {s_range[-1]:.2e} (fraction)\n")
                 self.mu_result_text.insert(tk.END, "\n  [보정 적용 항목]\n")
                 self.mu_result_text.insert(tk.END, "  • E'(ω) → E'(ω) × f(ε)  (저장탄성률)\n")
                 self.mu_result_text.insert(tk.END, "  • E''(ω) → E''(ω) × g(ε) (손실탄성률)\n")
