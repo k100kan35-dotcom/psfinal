@@ -9015,31 +9015,6 @@ class PerssonModelGUI_V2:
             f2, g2 = _zone_avg(grid2, zone2_temps)
             f3, g3 = _zone_avg(grid3, zone3_temps)
 
-            # ── Zone 경계 코사인 블렌딩: 온도 서브셋 변경에 의한 불연속 제거 ──
-            def _blend_boundary(gridA, fA, gA, tempsA, gridB, fB, gB, tempsB):
-                """인접 Zone 경계에서 코사인 가중 블렌딩 적용."""
-                if len(fA) < 3 or len(fB) < 3:
-                    return
-                n_bl = max(2, min(4, len(fA) // 3, len(fB) // 3))
-                # 상대 Zone 평균을 경계 부근 grid에서 계산
-                fB_at_A, gB_at_A = _zone_avg(gridA[-n_bl:], tempsB)
-                fA_at_B, gA_at_B = _zone_avg(gridB[:n_bl], tempsA)
-                if len(fB_at_A) != n_bl or len(fA_at_B) != n_bl:
-                    return
-                # 코사인 가중치: 1(자기 Zone) → 0(상대 Zone)
-                w = 0.5 * (1 + np.cos(np.linspace(0, np.pi, n_bl)))
-                fA[-n_bl:] = w * fA[-n_bl:] + (1 - w) * fB_at_A
-                gA[-n_bl:] = w * gA[-n_bl:] + (1 - w) * gB_at_A
-                fB[:n_bl] = (1 - w) * fA_at_B + w * fB[:n_bl]
-                gB[:n_bl] = (1 - w) * gA_at_B + w * gB[:n_bl]
-
-            if len(f1) > 0 and len(f2) > 0:
-                _blend_boundary(grid1, f1, g1, zone1_temps,
-                                grid2, f2, g2, zone2_temps)
-            if len(f2) > 0 and len(f3) > 0:
-                _blend_boundary(grid2, f2, g2, zone2_temps,
-                                grid3, f3, g3, zone3_temps)
-
             # 3구간 결합 (경계 중복 제거: 뒷 구간 첫 점 제거)
             parts_s, parts_f, parts_g = [], [], []
             zone_boundaries = []  # 각 zone 시작 인덱스
@@ -9213,29 +9188,29 @@ class PerssonModelGUI_V2:
                 n_t2 = len(self.piecewise_result.get('temps_B', []))
                 n_t3 = len(self.piecewise_result.get('temps_C', []))
 
-                # Zone1: 전체 온도 — 파란/빨간 (원형 마커)
+                # Zone1: 전체 온도 — 파란/빨간
                 if np.any(z1_mask):
-                    self.ax_fg_curves.plot(s[z1_mask], f_final[z1_mask], '-o',
-                                           color='#1E40AF', linewidth=2.5, markersize=3,
+                    self.ax_fg_curves.plot(s[z1_mask], f_final[z1_mask], '-',
+                                           color='#1E40AF', linewidth=2.5,
                                            label=f'f Z1 전체 ({n_t1}T)')
-                    self.ax_fg_curves.plot(s[z1_mask], g_final[z1_mask], '-o',
-                                           color='#DC2626', linewidth=2.5, markersize=3,
+                    self.ax_fg_curves.plot(s[z1_mask], g_final[z1_mask], '-',
+                                           color='#DC2626', linewidth=2.5,
                                            label=f'g Z1 전체 ({n_t1}T)')
-                # Zone2: 고온 — 녹색/주황 (사각형 마커)
+                # Zone2: 고온 — 녹색/주황
                 if np.any(z2_mask):
-                    self.ax_fg_curves.plot(s[z2_mask], f_final[z2_mask], '-s',
-                                           color='#059669', linewidth=2.5, markersize=4,
+                    self.ax_fg_curves.plot(s[z2_mask], f_final[z2_mask], '-',
+                                           color='#059669', linewidth=2.5,
                                            label=f'f Z2 고온 ({n_t2}T)')
-                    self.ax_fg_curves.plot(s[z2_mask], g_final[z2_mask], '-s',
-                                           color='#D97706', linewidth=2.5, markersize=4,
+                    self.ax_fg_curves.plot(s[z2_mask], g_final[z2_mask], '-',
+                                           color='#D97706', linewidth=2.5,
                                            label=f'g Z2 고온 ({n_t2}T)')
-                # Zone3: 최고온 — 보라/분홍 (삼각형 마커)
+                # Zone3: 최고온 — 보라/분홍
                 if np.any(z3_mask):
-                    self.ax_fg_curves.plot(s[z3_mask], f_final[z3_mask], '-^',
-                                           color='#7C3AED', linewidth=2.5, markersize=4,
+                    self.ax_fg_curves.plot(s[z3_mask], f_final[z3_mask], '-',
+                                           color='#7C3AED', linewidth=2.5,
                                            label=f'f Z3 최고온 ({n_t3}T)')
-                    self.ax_fg_curves.plot(s[z3_mask], g_final[z3_mask], '-^',
-                                           color='#DB2777', linewidth=2.5, markersize=4,
+                    self.ax_fg_curves.plot(s[z3_mask], g_final[z3_mask], '-',
+                                           color='#DB2777', linewidth=2.5,
                                            label=f'g Z3 최고온 ({n_t3}T)')
 
                 # Split 수직선
