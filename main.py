@@ -8993,6 +8993,31 @@ class PerssonModelGUI_V2:
             f2, g2 = _zone_avg(grid2, zone2_temps)
             f3, g3 = _zone_avg(grid3, zone3_temps)
 
+            # ── Zone 경계 코사인 블렌딩: 온도 서브셋 변경에 의한 불연속 제거 ──
+            def _blend_boundary(gridA, fA, gA, tempsA, gridB, fB, gB, tempsB):
+                """인접 Zone 경계에서 코사인 가중 블렌딩 적용."""
+                if len(fA) < 3 or len(fB) < 3:
+                    return
+                n_bl = max(2, min(4, len(fA) // 3, len(fB) // 3))
+                # 상대 Zone 평균을 경계 부근 grid에서 계산
+                fB_at_A, gB_at_A = _zone_avg(gridA[-n_bl:], tempsB)
+                fA_at_B, gA_at_B = _zone_avg(gridB[:n_bl], tempsA)
+                if len(fB_at_A) != n_bl or len(fA_at_B) != n_bl:
+                    return
+                # 코사인 가중치: 1(자기 Zone) → 0(상대 Zone)
+                w = 0.5 * (1 + np.cos(np.linspace(0, np.pi, n_bl)))
+                fA[-n_bl:] = w * fA[-n_bl:] + (1 - w) * fB_at_A
+                gA[-n_bl:] = w * gA[-n_bl:] + (1 - w) * gB_at_A
+                fB[:n_bl] = (1 - w) * fA_at_B + w * fB[:n_bl]
+                gB[:n_bl] = (1 - w) * gA_at_B + w * gB[:n_bl]
+
+            if len(f1) > 0 and len(f2) > 0:
+                _blend_boundary(grid1, f1, g1, zone1_temps,
+                                grid2, f2, g2, zone2_temps)
+            if len(f2) > 0 and len(f3) > 0:
+                _blend_boundary(grid2, f2, g2, zone2_temps,
+                                grid3, f3, g3, zone3_temps)
+
             # 3구간 결합 (경계 중복 제거: 뒷 구간 첫 점 제거)
             parts_s, parts_f, parts_g = [], [], []
             zone_boundaries = []  # 각 zone 시작 인덱스
@@ -16201,14 +16226,16 @@ class PerssonModelGUI_V2:
 
 def main():
     """Run the enhanced application."""
-    root = tk.Tk()
-
     # ── High-DPI awareness (Windows 10+) ──
+    # 반드시 tk.Tk() 생성 전에 호출해야 함.
+    # 그래야 Tk가 실제 DPI를 반영한 스케일링을 적용함.
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
+
+    root = tk.Tk()
 
     app = PerssonModelGUI_V2(root)
     root.mainloop()

@@ -132,11 +132,16 @@ def build():
         # ===== hidden imports: numpy/scipy =====
         '--hidden-import', 'numpy',
         '--hidden-import', 'numpy.core',
+        '--hidden-import', 'numpy.core.multiarray',
+        '--hidden-import', 'numpy.core.numeric',
+        '--hidden-import', 'numpy.fft',
+        '--hidden-import', 'scipy',
         '--hidden-import', 'scipy.integrate',
         '--hidden-import', 'scipy.interpolate',
         '--hidden-import', 'scipy.optimize',
         '--hidden-import', 'scipy.signal',
         '--hidden-import', 'scipy.special',
+        '--hidden-import', 'scipy.signal._savitzky_golay',
 
         # ===== hidden imports: pandas =====
         '--hidden-import', 'pandas',
@@ -154,6 +159,9 @@ def build():
         '--hidden-import', 'tempfile',
         '--hidden-import', 'csv',
         '--hidden-import', 're',
+        '--hidden-import', 'json',
+        '--hidden-import', 'importlib',
+        '--hidden-import', 'importlib.metadata',
 
         # ===== hidden imports: importlib_resources =====
         '--hidden-import', 'importlib_resources',
@@ -207,6 +215,9 @@ def build():
 
     if os.path.isfile('strain.py'):
         args.extend(['--add-data', f'strain.py{sep}.'])
+
+    if os.path.isfile('reference_datasets.json'):
+        args.extend(['--add-data', f'reference_datasets.json{sep}.'])
 
     print("=" * 60)
     print("  NEXEN Rubber Friction Model Program - EXE Build")

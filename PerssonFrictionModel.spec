@@ -19,6 +19,8 @@ if os.path.isdir('preset_data'):
     project_datas.append(('preset_data', 'preset_data'))
 if os.path.isfile('strain.py'):
     project_datas.append(('strain.py', '.'))
+if os.path.isfile('reference_datasets.json'):
+    project_datas.append(('reference_datasets.json', '.'))
 
 a = Analysis(
     ['main.py'],
@@ -27,21 +29,45 @@ a = Analysis(
     datas=project_datas + mpl_datas,
     hiddenimports=mpl_hiddenimports + [
         # numpy/scipy
-        'numpy', 'numpy.core',
-        'scipy.integrate', 'scipy.interpolate', 'scipy.optimize',
+        'numpy', 'numpy.core', 'numpy.core.multiarray',
+        'numpy.core.numeric', 'numpy.fft',
+        'scipy', 'scipy.integrate', 'scipy.interpolate', 'scipy.optimize',
         'scipy.signal', 'scipy.special',
+        'scipy.signal._savitzky_golay',
         # pandas (DMA/PSD 파일 로딩)
         'pandas', 'pandas.core',
         # tkinter
         'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
-        # 한글 폰트 탐색
-        'platform',
+        'tkinter.simpledialog', 'tkinter.colorchooser',
+        # stdlib
+        'platform', 'tempfile', 'csv', 're', 'json',
+        'importlib', 'importlib.metadata',
+        # importlib_resources
+        'importlib_resources', 'importlib_resources.trees',
+        # pkg_resources / jaraco
+        'pkg_resources',
+        'jaraco', 'jaraco.text', 'jaraco.functools', 'jaraco.context',
+        # persson_model 전체
+        'persson_model',
+        'persson_model.core',
+        'persson_model.core.contact',
+        'persson_model.core.friction',
+        'persson_model.core.g_calculator',
+        'persson_model.core.master_curve',
+        'persson_model.core.psd_from_profile',
+        'persson_model.core.psd_models',
+        'persson_model.core.viscoelastic',
+        'persson_model.utils',
+        'persson_model.utils.data_loader',
+        'persson_model.utils.numerical',
+        'persson_model.utils.output',
     ],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
     excludes=[
         # 불필요 matplotlib 백엔드 (TkAgg만 사용)
+        'matplotlib.tests',
         'matplotlib.backends.backend_qt5agg',
         'matplotlib.backends.backend_qt5',
         'matplotlib.backends.backend_qt',
@@ -56,16 +82,19 @@ a = Analysis(
         'matplotlib.backends.backend_nbagg',
         'matplotlib.backends.backend_cairo',
         'matplotlib.backends.backend_macosx',
-        # 불필요 패키지
+        # 불필요 외부 패키지
         'IPython', 'jupyter', 'notebook',
-        'pytest', 'setuptools', 'pip', 'wheel',
-        'pdb', 'doctest', 'pydoc', 'unittest', 'test',
-        'lib2to3', 'ensurepip', 'idlelib', 'distutils',
-        'curses',
+        'pytest',
+        # 주의: setuptools, pip, wheel, unittest, pydoc, doctest 등 stdlib은 제외 금지
+        #   → numpy.testing → unittest, scipy._lib._docscrape → pydoc 등
+        #   예측 불가능한 내부 의존성이 존재함
         # 대형 ML/DL
         'torch', 'torchvision', 'torchaudio',
         'tensorflow', 'keras',
         'numba', 'llvmlite',
+        'tensorboard', 'tensorboardX',
+        'onnx', 'onnxruntime',
+        'xgboost', 'lightgbm', 'catboost',
     ],
     noarchive=False,
     optimize=0,
