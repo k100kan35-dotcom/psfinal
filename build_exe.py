@@ -117,6 +117,7 @@ def build():
         '--noconfirm',
         '--noconsole',
         '--icon=assets/app_icon.ico',
+        '--manifest=assets/dpi_aware.manifest',
         '--log-level', 'WARN',
 
         # ===== matplotlib 폰트/데이터 번들 =====
