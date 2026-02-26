@@ -210,27 +210,25 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     if not datasets:
         return None
 
-    # 2) 공통 범위: 모든 데이터셋이 커버하는 교집합 (fraction 스케일)
-    #    min → 각 데이터셋 최솟값 중 최대 (모두가 시작하는 지점)
-    #    max → 각 데이터셋 최댓값 중 최소 (모두가 끝나는 지점)
-    min_strain = max(ds[1].min() for ds in datasets)
-    max_strain = min(ds[1].max() for ds in datasets)
+    # 2) 전체 범위: 모든 데이터셋의 합집합 min~max (fraction 스케일)
+    min_strain = min(ds[1].min() for ds in datasets)
+    max_strain = max(ds[1].max() for ds in datasets)
     if max_strain <= min_strain:
         return None
 
-    # 3) 공통 그리드 = 모든 활성 데이터의 strain 합집합 (min ~ max)
+    # 3) 공통 그리드 = 모든 데이터셋의 strain 합집합 (전체 범위)
     all_x = np.concatenate([ds[1] for ds in datasets])
-    common_x = np.unique(all_x[(all_x >= min_strain) & (all_x <= max_strain)])
+    common_x = np.unique(all_x)
     common_x.sort()
 
     if len(common_x) < 3:
         return None
 
-    # 4) 각 데이터셋을 공통 그리드에 스플라인 보간
+    # 4) 각 데이터셋을 자기 데이터 범위 내에서만 보간 (범위 밖 = NaN)
     F_rows, G_rows = [], []
     for T, x, f, g in datasets:
         try:
-            f_i = _spline_interp(x, f, common_x)
+            f_i = _spline_interp(x, f, common_x)  # x 범위 밖은 NaN 반환
             g_i = _spline_interp(x, g, common_x)
         except Exception:
             f_i = np.full_like(common_x, np.nan)
@@ -241,14 +239,15 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     F_mat = np.vstack(F_rows)
     G_mat = np.vstack(G_rows)
 
-    # 5) NaN 무시 평균
+    # 5) NaN 무시 평균 (3개 커버 → 3개 평균, 1개만 → 그 1개 값)
     mean_f = np.nanmean(F_mat, axis=0)
     mean_g = np.nanmean(G_mat, axis=0)
+    n_contributing = np.sum(np.isfinite(F_mat), axis=0)  # 각 지점 기여 데이터셋 수
 
-    # 6) 최종 log-spaced 포인트 (fraction 스케일)
+    # 6) 최종 log-spaced 포인트 (전체 범위)
     final_x = _logspace_points(min_strain, max_strain, n_final)
 
-    # 평균 커브를 다시 스플라인으로 보간하여 최종 포인트에 평가
+    # 평균 커브를 Akima 보간하여 최종 포인트에 평가
     def _interp_mean(cx, my, xq):
         valid = np.isfinite(my)
         cx2, my2 = cx[valid], my[valid]
@@ -262,21 +261,24 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     final_f = _interp_mean(common_x, mean_f, final_x)
     final_g = _interp_mean(common_x, mean_g, final_x)
 
-    # f, g는 물리적으로 0 이상, 원본 데이터 최대값 이하여야 함
-    f_max = np.nanmax(mean_f) * 1.1 if np.any(np.isfinite(mean_f)) else 2.0
-    g_max = np.nanmax(mean_g) * 1.1 if np.any(np.isfinite(mean_g)) else 2.0
-    final_f = np.clip(final_f, 0.0, f_max)
-    final_g = np.clip(final_g, 0.0, g_max)
+    # f, g 물리적 범위 클램핑 (0 이상)
+    final_f = np.where(np.isfinite(final_f), np.maximum(final_f, 0.0), np.nan)
+    final_g = np.where(np.isfinite(final_g), np.maximum(final_g, 0.0), np.nan)
+    mean_f = np.where(np.isfinite(mean_f), np.maximum(mean_f, 0.0), np.nan)
+    mean_g = np.where(np.isfinite(mean_g), np.maximum(mean_g, 0.0), np.nan)
+
+    # n_eff: 최종 포인트별 기여 데이터셋 수 보간
+    final_n = np.interp(final_x, common_x, n_contributing.astype(float))
 
     return {
         'strain': final_x,
         'f_avg': final_f,
         'g_avg': final_g,
         'common_x': common_x,
-        'common_f': np.clip(mean_f, 0.0, f_max),
-        'common_g': np.clip(mean_g, 0.0, g_max),
+        'common_f': mean_f,
+        'common_g': mean_g,
         'Ts_used': [ds[0] for ds in datasets],
-        'n_eff': np.full_like(final_x, len(datasets), dtype=float),
+        'n_eff': final_n,
     }
 
 
