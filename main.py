@@ -148,8 +148,8 @@ def _natural_cubic_spline_eval(x: np.ndarray, y: np.ndarray, m: np.ndarray, xq: 
 
 
 def _spline_interp(x: np.ndarray, y: np.ndarray, xq: np.ndarray):
-    """선형 보간 + 외삽. 범위 밖은 양끝 값으로 외삽(clamp)."""
-    return np.interp(xq, x, y)
+    """선형 보간. 범위 밖은 NaN."""
+    return np.interp(xq, x, y, left=np.nan, right=np.nan)
 
 
 def _logspace_points(x_start: float, x_end: float, n: int):
@@ -472,6 +472,7 @@ class PerssonModelGUI_V2:
         # Strain/mu_visc related variables
         self.strain_data = None  # Strain sweep raw data by temperature
         self.fg_by_T = None  # f,g curves by temperature
+        self.fg_by_T_extrap = None  # f,g curves extrapolated to global max strain
         self.fg_averaged = None  # Averaged f,g curves
         self.f_interpolator = None  # f(strain) function
         self.g_interpolator = None  # g(strain) function
@@ -8365,6 +8366,7 @@ class PerssonModelGUI_V2:
         mu_toolbar = self._create_panel_toolbar(left_frame, buttons=[
             ("\u03bc_visc 계산", self._calculate_mu_visc, 'Accent.TButton'),
             ("f,g 계산", self._compute_fg_curves, 'TButton'),
+            ("f,g 외삽", self._extrapolate_fg_curves, 'TButton'),
         ])
 
         # Progress bar in toolbar (linked to same variable as scrollable area)
@@ -8518,14 +8520,22 @@ class PerssonModelGUI_V2:
         self.use_persson_grid_var = tk.BooleanVar(value=True)
         ttk.Checkbutton(row2, text="Persson Grid", variable=self.use_persson_grid_var).pack(side=tk.LEFT)
 
-        # Compute f,g button
+        # Compute f,g button row
+        fg_btn_row = ttk.Frame(fg_settings_frame)
+        fg_btn_row.pack(fill=tk.X, pady=2)
         ttk.Button(
-            fg_settings_frame,
+            fg_btn_row,
             text="f,g 계산",
             command=self._compute_fg_curves,
             style='Accent.TButton',
-            width=15
-        ).pack(anchor=tk.W, pady=2)
+            width=12
+        ).pack(side=tk.LEFT, padx=(0, 3))
+        ttk.Button(
+            fg_btn_row,
+            text="f,g 외삽",
+            command=self._extrapolate_fg_curves,
+            width=12
+        ).pack(side=tk.LEFT)
 
         # 3. Persson Average f,g (스플라인 보간 → 평균 → log-spaced)
         persson_avg_frame = ttk.LabelFrame(left_panel, text="3) Persson average f,g", padding=5)
@@ -8872,9 +8882,14 @@ class PerssonModelGUI_V2:
             else:
                 all_temps = list(self.fg_by_T.keys())
 
-            # Step 3: fgnew 로직 - 스플라인 보간 → 평균 → log-spaced
+            # Step 3: 외삽 데이터가 있으면 사용, 없으면 원본 사용
+            # 외삽 데이터가 없으면 자동 생성
+            if self.fg_by_T_extrap is None:
+                self._extrapolate_fg_curves()
+            fg_source = self.fg_by_T_extrap if self.fg_by_T_extrap else self.fg_by_T
+
             result = spline_average_fg(
-                self.fg_by_T,
+                fg_source,
                 all_temps,
                 n_final=n_final
             )
@@ -8951,7 +8966,30 @@ class PerssonModelGUI_V2:
         self.ax_fg_curves.grid(True, alpha=0.3)
 
         # Plot individual temperature curves (thin, low alpha)
-        if self.fg_by_T is not None:
+        # 외삽 데이터가 있으면 외삽 형태로 표시 (원본 구간 실선 + 외삽 구간 점선)
+        if self.fg_by_T_extrap is not None:
+            colors = plt.cm.tab10(np.linspace(0, 1, max(len(self.fg_by_T_extrap), 1)))
+            for idx, (T, ext_data) in enumerate(sorted(self.fg_by_T_extrap.items())):
+                clr = colors[idx % len(colors)]
+                s_ext = ext_data['strain']
+                f_ext = ext_data['f']
+                g_ext = ext_data['g']
+                s_max = ext_data['original_max']
+                s_min = ext_data['original_min']
+                orig_mask = (s_ext >= s_min) & (s_ext <= s_max)
+                ext_mask = ~orig_mask
+                # 원본 구간
+                self.ax_fg_curves.plot(s_ext[orig_mask], f_ext[orig_mask], '-',
+                                       color=clr, alpha=0.25, linewidth=0.8)
+                self.ax_fg_curves.plot(s_ext[orig_mask], g_ext[orig_mask], '--',
+                                       color=clr, alpha=0.25, linewidth=0.8)
+                # 외삽 구간
+                if np.any(ext_mask):
+                    self.ax_fg_curves.plot(s_ext[ext_mask], f_ext[ext_mask], ':',
+                                           color=clr, alpha=0.20, linewidth=0.8)
+                    self.ax_fg_curves.plot(s_ext[ext_mask], g_ext[ext_mask], ':',
+                                           color=clr, alpha=0.20, linewidth=0.8)
+        elif self.fg_by_T is not None:
             for T, data in self.fg_by_T.items():
                 s = data['strain']
                 f = data['f']
@@ -9209,11 +9247,157 @@ class PerssonModelGUI_V2:
             )
             cb.pack(anchor=tk.W, padx=2)
 
+    def _extrapolate_fg_curves(self):
+        """f,g 외삽: 각 온도 데이터를 전체 strain 범위(global max)까지 외삽.
+
+        각 온도의 strain 상한 이후는 마지막 f,g 값을 일정하게 유지(hold).
+        strain 하한 이전도 첫 f,g 값을 유지.
+        """
+        if self.fg_by_T is None:
+            if self.strain_data is None:
+                self._show_status("먼저 Strain Sweep 데이터를 로드하세요.", 'warning')
+                return
+            self._compute_fg_curves()
+            if self.fg_by_T is None:
+                return
+
+        try:
+            # 체크된 온도만 사용
+            if self._temp_check_vars:
+                selected_temps = [T for T, var in self._temp_check_vars.items() if var.get()]
+                if not selected_temps:
+                    self._show_status("최소 1개 이상의 온도를 체크하세요.", 'warning')
+                    return
+            else:
+                selected_temps = list(self.fg_by_T.keys())
+
+            # 전체 strain 범위(min~max) 결정
+            all_strains = []
+            for T in selected_temps:
+                if T in self.fg_by_T:
+                    s = self.fg_by_T[T]['strain']
+                    mask = s > 0
+                    if np.any(mask):
+                        all_strains.append(s[mask])
+            if not all_strains:
+                self._show_status("유효한 strain 데이터가 없습니다.", 'warning')
+                return
+
+            global_min = min(s.min() for s in all_strains)
+            global_max = max(s.max() for s in all_strains)
+
+            # 공통 그리드: 500개 log-spaced (충분한 해상도)
+            n_grid = 500
+            common_grid = _logspace_points(global_min, global_max, n_grid)
+
+            # 각 온도별 외삽 데이터 생성
+            self.fg_by_T_extrap = {}
+            for T in selected_temps:
+                if T not in self.fg_by_T:
+                    continue
+                data = self.fg_by_T[T]
+                x = data['strain'].copy()
+                f = data['f'].copy()
+                g = data['g'].copy()
+
+                mask = x > 0
+                x, f, g = x[mask], f[mask], g[mask]
+                if len(x) < 2:
+                    continue
+
+                order = np.argsort(x)
+                x, f, g = x[order], f[order], g[order]
+
+                # 보간 + hold 외삽 (np.interp 기본: 범위 밖은 양끝 값 유지)
+                f_ext = np.interp(common_grid, x, f)
+                g_ext = np.interp(common_grid, x, g)
+
+                self.fg_by_T_extrap[T] = {
+                    'strain': common_grid.copy(),
+                    'f': f_ext,
+                    'g': g_ext,
+                    'original_max': x[-1],
+                    'original_min': x[0],
+                }
+
+            if not self.fg_by_T_extrap:
+                self._show_status("외삽 가능한 데이터가 없습니다.", 'warning')
+                return
+
+            # 그래프 업데이트 (외삽 시각화)
+            self._update_fg_plot_with_extrap()
+
+            n_temps = len(self.fg_by_T_extrap)
+            self.status_var.set(
+                f"f,g 외삽 완료: {n_temps}개 온도, "
+                f"ε={global_min:.2e}~{global_max:.2e}"
+            )
+
+        except Exception as e:
+            messagebox.showerror("오류", f"f,g 외삽 실패:\n{str(e)}")
+            import traceback
+            traceback.print_exc()
+
+    def _update_fg_plot_with_extrap(self):
+        """f,g 외삽 결과를 그래프에 시각화."""
+        self.ax_fg_curves.clear()
+        self.ax_fg_curves.set_title('f(ε), g(ε) 외삽 결과', fontweight='bold', fontsize=15)
+        self.ax_fg_curves.set_xlabel('변형률 ε (fraction)', fontsize=13)
+        self.ax_fg_curves.set_ylabel('보정 계수', fontsize=13)
+        self.ax_fg_curves.grid(True, alpha=0.3)
+
+        colors = plt.cm.tab10(np.linspace(0, 1, max(len(self.fg_by_T_extrap), 1)))
+
+        for idx, (T, ext_data) in enumerate(sorted(self.fg_by_T_extrap.items())):
+            clr = colors[idx % len(colors)]
+            s_ext = ext_data['strain']
+            f_ext = ext_data['f']
+            g_ext = ext_data['g']
+            s_orig_max = ext_data['original_max']
+            s_orig_min = ext_data['original_min']
+
+            # 원본 구간 마스크
+            orig_mask = (s_ext >= s_orig_min) & (s_ext <= s_orig_max)
+            extrap_right_mask = s_ext > s_orig_max
+            extrap_left_mask = s_ext < s_orig_min
+
+            # 원본 구간: 실선
+            self.ax_fg_curves.plot(s_ext[orig_mask], f_ext[orig_mask], '-',
+                                   color=clr, linewidth=1.5, alpha=0.8,
+                                   label=f'f {T:.0f}°C')
+            self.ax_fg_curves.plot(s_ext[orig_mask], g_ext[orig_mask], '--',
+                                   color=clr, linewidth=1.5, alpha=0.8,
+                                   label=f'g {T:.0f}°C')
+
+            # 외삽 구간 (오른쪽): 점선 + 마커
+            if np.any(extrap_right_mask):
+                self.ax_fg_curves.plot(s_ext[extrap_right_mask], f_ext[extrap_right_mask], ':',
+                                       color=clr, linewidth=2.0, alpha=0.5)
+                self.ax_fg_curves.plot(s_ext[extrap_right_mask], g_ext[extrap_right_mask], ':',
+                                       color=clr, linewidth=2.0, alpha=0.5)
+            # 외삽 구간 (왼쪽): 점선
+            if np.any(extrap_left_mask):
+                self.ax_fg_curves.plot(s_ext[extrap_left_mask], f_ext[extrap_left_mask], ':',
+                                       color=clr, linewidth=2.0, alpha=0.5)
+                self.ax_fg_curves.plot(s_ext[extrap_left_mask], g_ext[extrap_left_mask], ':',
+                                       color=clr, linewidth=2.0, alpha=0.5)
+
+            # 외삽 시작점 수직선 표시
+            self.ax_fg_curves.axvline(x=s_orig_max, color=clr, linestyle=':', alpha=0.3, linewidth=0.8)
+
+        self.ax_fg_curves.set_xlim(0, None)
+        self.ax_fg_curves.set_ylim(0, 1.1)
+        self.ax_fg_curves.legend(loc='upper right', fontsize=9, ncol=2)
+        self.canvas_mu_visc.draw()
+
     def _compute_fg_curves(self):
         """Compute f,g curves from strain sweep data."""
         if self.strain_data is None:
             self._show_status("먼저 Strain 데이터를 로드하세요.", 'warning')
             return
+
+        # f,g 재계산 시 외삽 데이터 초기화
+        self.fg_by_T_extrap = None
 
         try:
             target_freq = float(self.fg_target_freq_var.get())
