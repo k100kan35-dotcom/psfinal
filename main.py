@@ -210,9 +210,11 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     if not datasets:
         return None
 
-    # 2) 데이터의 실제 min/max strain (fraction 스케일)
-    min_strain = min(ds[1].min() for ds in datasets)
-    max_strain = max(ds[1].max() for ds in datasets)
+    # 2) 공통 범위: 모든 데이터셋이 커버하는 교집합 (fraction 스케일)
+    #    min → 각 데이터셋 최솟값 중 최대 (모두가 시작하는 지점)
+    #    max → 각 데이터셋 최댓값 중 최소 (모두가 끝나는 지점)
+    min_strain = max(ds[1].min() for ds in datasets)
+    max_strain = min(ds[1].max() for ds in datasets)
     if max_strain <= min_strain:
         return None
 
