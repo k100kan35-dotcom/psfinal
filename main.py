@@ -223,9 +223,38 @@ class PerssonModelGUI_V2:
         """Initialize enhanced GUI."""
         self.root = root
         self.root.title("NEXEN Rubber Friction Model Program  v3.0")
-        self.root.geometry("1600x1000")
+
+        # ── 화면 해상도 감지 → 윈도우 크기 + 폰트 스케일링 ──
+        screen_w = root.winfo_screenwidth()
+        screen_h = root.winfo_screenheight()
+        # 화면의 85% 크기로 윈도우 설정 (최대 1600x1000)
+        win_w = min(1600, int(screen_w * 0.85))
+        win_h = min(1000, int(screen_h * 0.85))
+        # 중앙 배치
+        x = max(0, (screen_w - win_w) // 2)
+        y = max(0, (screen_h - win_h) // 2)
+        self.root.geometry(f"{win_w}x{win_h}+{x}+{y}")
+
+        # GUI 폰트 스케일 (1600px 기준)
+        gui_scale = max(0.65, min(1.0, win_w / 1600))
+        def _sf(base_size):
+            return max(9, round(base_size * gui_scale))
+
+        self.FONTS = {
+            'heading':   ('Segoe UI', _sf(22), 'bold'),
+            'subheading':('Segoe UI', _sf(20), 'bold'),
+            'body':      ('Segoe UI', _sf(17)),
+            'body_bold': ('Segoe UI', _sf(17), 'bold'),
+            'small':     ('Segoe UI', _sf(16)),
+            'small_bold':('Segoe UI', _sf(16), 'bold'),
+            'tiny':      ('Segoe UI', _sf(15)),
+            'mono':      ('Consolas', _sf(17)),
+            'mono_small':('Consolas', _sf(16)),
+        }
+        self._gui_scale = gui_scale
+
         self.root.configure(bg=self.COLORS['bg'])
-        self.root.minsize(1200, 700)
+        self.root.minsize(1000, 600)
 
         # ── 앱 아이콘 설정 ──
         try:
@@ -358,7 +387,7 @@ class PerssonModelGUI_V2:
                         tabmargins=[4, 4, 4, 0])
         style.configure('TNotebook.Tab', background=C['tab_inactive'],
                         foreground=C['text_secondary'], font=F['body_bold'],
-                        padding=[14, 6], borderwidth=0)
+                        padding=[8, 5], borderwidth=0)
         style.map('TNotebook.Tab',
                   background=[('selected', C['tab_active']),
                               ('active', C['highlight'])],
@@ -605,25 +634,25 @@ class PerssonModelGUI_V2:
 
         # ── Tab definitions ──
         tabs = [
-            ('tab_psd_profile',     'PSD 생성',           self._create_psd_profile_tab),
-            ('tab_master_curve',    '마스터 커브',         self._create_master_curve_tab),
-            ('tab_parameters',      '계산 설정',           self._create_parameters_tab),
-            ('tab_results',         'G(q,v) 결과',        self._create_results_tab),
-            ('tab_rms_slope',       "h'rms / Strain",     self._create_rms_slope_tab),
-            ('tab_mu_visc',         'μ_visc 계산',        self._create_mu_visc_tab),
-            ('tab_ve_advisor',      '점탄성 설계',        self._create_ve_advisor_tab),
-            ('tab_strain_map',      'Strain Map',         self._create_strain_map_tab),
-            ('tab_integrand',       '피적분함수',          self._create_integrand_tab),
-            ('tab_equations',       '핵심개념의 이해',     self._create_equations_tab),
-            ('tab_variables',       '변수 관계',           self._create_variables_tab),
-            ('tab_debug',           '디버그',              self._create_debug_tab),
-            ('tab_friction_factors','영향 인자',           self._create_friction_factors_tab),
+            ('tab_psd_profile',     'PSD',              self._create_psd_profile_tab),
+            ('tab_master_curve',    '마스터커브',        self._create_master_curve_tab),
+            ('tab_parameters',      '계산설정',          self._create_parameters_tab),
+            ('tab_results',         'G(q,v)',           self._create_results_tab),
+            ('tab_rms_slope',       "h'rms",            self._create_rms_slope_tab),
+            ('tab_mu_visc',         'μ_visc',           self._create_mu_visc_tab),
+            ('tab_ve_advisor',      '점탄성설계',       self._create_ve_advisor_tab),
+            ('tab_strain_map',      'Strain',           self._create_strain_map_tab),
+            ('tab_integrand',       '피적분함수',        self._create_integrand_tab),
+            ('tab_equations',       '핵심개념',          self._create_equations_tab),
+            ('tab_variables',       '변수관계',          self._create_variables_tab),
+            ('tab_debug',           '디버그',            self._create_debug_tab),
+            ('tab_friction_factors','영향인자',          self._create_friction_factors_tab),
         ]
 
         for attr, label, builder in tabs:
             frame = ttk.Frame(self.notebook)
             setattr(self, attr, frame)
-            self.notebook.add(frame, text=f'  {label}  ')
+            self.notebook.add(frame, text=f' {label} ')
             builder(frame)
 
         # ── Handle tab switch: prevent graph resize flicker ──
@@ -4645,13 +4674,15 @@ class PerssonModelGUI_V2:
         title_bar = tk.Frame(log_container, bg=C['sidebar'], height=22)
         title_bar.pack(fill=tk.X, side=tk.TOP)
         title_bar.pack_propagate(False)
+        _log_title_size = max(9, round(14 * getattr(self, '_gui_scale', 1.0)))
         tk.Label(title_bar, text="\u25A0 \uc791\uc5c5 \ub85c\uadf8",
                  bg=C['sidebar'], fg='#94A3B8',
-                 font=('Segoe UI', 14, 'bold')).pack(side=tk.LEFT, padx=6)
+                 font=('Segoe UI', _log_title_size, 'bold')).pack(side=tk.LEFT, padx=6)
 
-        # Toggle button to expand/collapse
-        self._log_expanded = True
+        # Toggle button to expand/collapse (기본: 접힘)
+        self._log_expanded = False
         self._log_container = log_container
+        log_container.config(height=22)  # 시작 시 접힌 상태
 
         def _toggle_log():
             if self._log_expanded:
@@ -4659,11 +4690,11 @@ class PerssonModelGUI_V2:
                 toggle_btn.config(text="\u25BC")
                 self._log_expanded = False
             else:
-                log_container.config(height=170)
+                log_container.config(height=130)
                 toggle_btn.config(text="\u25B2")
                 self._log_expanded = True
 
-        toggle_btn = tk.Button(title_bar, text="\u25B2", bg=C['sidebar'], fg='#94A3B8',
+        toggle_btn = tk.Button(title_bar, text="\u25BC", bg=C['sidebar'], fg='#94A3B8',
                                font=('Segoe UI', 10), bd=0, command=_toggle_log,
                                activebackground=C['sidebar'], activeforeground='#E2E8F0',
                                cursor='hand2')
@@ -4685,8 +4716,9 @@ class PerssonModelGUI_V2:
         log_frame = tk.Frame(log_container, bg=C['sidebar'])
         log_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
 
+        _log_font_size = max(9, round(14 * getattr(self, '_gui_scale', 1.0)))
         self._log_text = tk.Text(log_frame, bg='#0F172A', fg='#CBD5E1',
-                                 font=('Consolas', 14), wrap=tk.WORD,
+                                 font=('Consolas', _log_font_size), wrap=tk.WORD,
                                  bd=0, highlightthickness=0,
                                  state='disabled', cursor='arrow')
         log_scrollbar = ttk.Scrollbar(log_frame, orient='vertical',
