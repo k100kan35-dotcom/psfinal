@@ -557,8 +557,8 @@ class PerssonModelGUI_V2:
         style.configure('TNotebook', background=C['bg'], borderwidth=0,
                         tabmargins=[4, 4, 4, 0])
         style.configure('TNotebook.Tab', background=C['tab_inactive'],
-                        foreground=C['text_secondary'], font=F['body_bold'],
-                        padding=[8, 5], borderwidth=0)
+                        foreground=C['text_secondary'], font=F['subheading'],
+                        padding=[14, 8], borderwidth=0)
         style.map('TNotebook.Tab',
                   background=[('selected', C['tab_active']),
                               ('active', C['highlight'])],
@@ -7106,7 +7106,6 @@ class PerssonModelGUI_V2:
         add_var_row(sec4, "μ 평활화 창", "smooth_window_var", "5", "Savitzky-Golay 창 크기")
         add_var_row(sec4, "μ 계산 온도 [°C]", "mu_calc_temp_var", "20.0", "μ 계산 시 온도")
         add_var_row(sec4, "고정 strain [%]", "fixed_strain_var", "1.0", "고정 strain 모드 값")
-        add_var_row(sec4, "Strain split [%]", "split_strain_var", "14.2", "f,g 분리 기준 strain")
         add_var_row(sec4, "Extend strain [%]", "extend_strain_var", "40", "strain 외삽 상한")
 
         # ═══ Section 5: DMA 관련 ═══
@@ -8529,9 +8528,6 @@ class PerssonModelGUI_V2:
         ttk.Label(self._temp_check_frame, text="(f,g 곡선 계산 후 표시됩니다)",
                   font=self.FONTS['small'], foreground='#94A3B8').pack(anchor=tk.W)
 
-        # Legacy vars for compatibility (hidden)
-        self.split_strain_var = tk.StringVar(value="14.2")
-
         # Persson average f,g 계산 button
         ttk.Button(
             persson_avg_frame,
@@ -9134,14 +9130,18 @@ class PerssonModelGUI_V2:
             traceback.print_exc()
 
     def _update_temp_checkboxes(self, temps):
-        """온도별 체크박스를 동적으로 생성/갱신. 모든 온도 기본 체크됨."""
+        """온도별 체크박스를 동적으로 생성/갱신. 최저 온도는 기본 해제."""
         # 기존 위젯 제거
         for widget in self._temp_check_frame.winfo_children():
             widget.destroy()
         self._temp_check_vars.clear()
 
-        for T in sorted(temps):
-            var = tk.BooleanVar(value=True)
+        sorted_temps = sorted(temps)
+        min_temp = sorted_temps[0] if sorted_temps else None
+
+        for T in sorted_temps:
+            # 가장 낮은 온도는 기본 해제
+            var = tk.BooleanVar(value=(T != min_temp))
             self._temp_check_vars[T] = var
             n_pts = len(self.fg_by_T[T]['strain']) if self.fg_by_T and T in self.fg_by_T else 0
             cb = ttk.Checkbutton(
