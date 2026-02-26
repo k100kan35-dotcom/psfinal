@@ -535,14 +535,17 @@ class PerssonModelGUI_V2:
             pass
 
         # ── Override Tk default fonts (affects all Entry/Combobox field text) ──
+        # gui_scale이 적용된 FONTS 딕셔너리의 크기를 사용하여 DPI 무관하게 일관성 유지
         import tkinter.font as tkfont
+        _body_sz = self.FONTS['body'][1]
+        _mono_sz = self.FONTS['mono'][1]
         for fname in ('TkDefaultFont', 'TkTextFont', 'TkFixedFont'):
             try:
                 f = tkfont.nametofont(fname)
                 if fname == 'TkFixedFont':
-                    f.configure(family='Consolas', size=17)
+                    f.configure(family='Consolas', size=_mono_sz)
                 else:
-                    f.configure(family='Segoe UI', size=17)
+                    f.configure(family='Segoe UI', size=_body_sz)
             except Exception:
                 pass
 
@@ -16236,16 +16239,22 @@ class PerssonModelGUI_V2:
 
 def main():
     """Run the enhanced application."""
-    root = tk.Tk()
-
     # ── High-DPI awareness (Windows 10+) ──
-    # Tk 생성 후 호출: Windows 비트맵 스케일링에 의존하여 안정적 크기 유지.
-    # Tk 생성 전에 호출하면 수동 스케일링 보정이 필요하고 환경별 차이 발생.
+    # Tk 생성 전에 호출해야 winfo_screenwidth()가 실제 픽셀을 반환하고,
+    # Windows 비트맵 스케일링(흐릿한 확대)이 적용되지 않음.
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
+
+    root = tk.Tk()
+
+    # ── Tk DPI 스케일링 정규화 ──
+    # Tk는 시스템 DPI를 감지하여 폰트를 자동 확대함 (125%→1.667, 150%→2.0).
+    # 96 DPI 기준값(1.333 = 96/72)으로 고정하여 모든 디스플레이에서 동일 렌더링.
+    # gui_scale (screen_w / 1600 기반)이 해상도별 크기 조정을 별도 처리함.
+    root.tk.call('tk', 'scaling', 1.3333333333333333)
 
     app = PerssonModelGUI_V2(root)
     root.mainloop()
