@@ -6919,20 +6919,30 @@ class PerssonModelGUI_V2:
         def add_separator():
             tk.Frame(scrollable_frame, bg='#CBD5E1', height=2).pack(fill=tk.X, padx=10, pady=10)
 
-        def add_graph(plot_func, fig_height=3.5):
-            """Add an illustrative matplotlib graph."""
+        def add_graph(plot_func, fig_height=5.5):
+            """Add an illustrative matplotlib graph (near-square aspect ratio)."""
             import numpy as np
-            fig = Figure(figsize=(12, fig_height), facecolor='#FAFBFC')
+            fig = Figure(figsize=(7, fig_height), facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
             ax.tick_params(labelsize=14)
             for spine in ax.spines.values():
                 spine.set_color('#CBD5E1')
-            fig.tight_layout(pad=1.5)
+            # Move legend outside the plot area if present
+            legend = ax.get_legend()
+            if legend:
+                legend.set_bbox_to_anchor((1.02, 1))
+                legend.set_loc('upper left')
+                legend.set_fontsize(12)
+                legend.get_frame().set_alpha(0.9)
+                legend.get_frame().set_edgecolor('#CBD5E1')
+                fig.subplots_adjust(left=0.12, right=0.72, top=0.90, bottom=0.12)
+            else:
+                fig.subplots_adjust(left=0.12, right=0.95, top=0.90, bottom=0.12)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72))
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 80))
             graph_canvas.get_tk_widget().pack(fill=tk.X, padx=30, pady=(6, 14))
 
         # === Title ===
@@ -12540,20 +12550,30 @@ class PerssonModelGUI_V2:
         def add_separator():
             tk.Frame(scrollable_frame, bg='#CBD5E1', height=2).pack(fill=tk.X, padx=10, pady=10)
 
-        def add_graph(plot_func, fig_height=3.5):
-            """Add an illustrative matplotlib graph."""
+        def add_graph(plot_func, fig_height=5.5):
+            """Add an illustrative matplotlib graph (near-square aspect ratio)."""
             import numpy as np
-            fig = Figure(figsize=(12, fig_height), facecolor='#FAFBFC')
+            fig = Figure(figsize=(7, fig_height), facecolor='#FAFBFC')
             ax = fig.add_subplot(111)
             ax.set_facecolor('#FAFBFC')
             plot_func(ax, np)
             ax.tick_params(labelsize=14)
             for spine in ax.spines.values():
                 spine.set_color('#CBD5E1')
-            fig.tight_layout(pad=1.5)
+            # Move legend outside the plot area if present
+            legend = ax.get_legend()
+            if legend:
+                legend.set_bbox_to_anchor((1.02, 1))
+                legend.set_loc('upper left')
+                legend.set_fontsize(12)
+                legend.get_frame().set_alpha(0.9)
+                legend.get_frame().set_edgecolor('#CBD5E1')
+                fig.subplots_adjust(left=0.12, right=0.72, top=0.90, bottom=0.12)
+            else:
+                fig.subplots_adjust(left=0.12, right=0.95, top=0.90, bottom=0.12)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 72))
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 80))
             graph_canvas.get_tk_widget().pack(fill=tk.X, padx=30, pady=(6, 14))
 
         # === Title ===
