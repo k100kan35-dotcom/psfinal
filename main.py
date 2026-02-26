@@ -16249,16 +16249,16 @@ class PerssonModelGUI_V2:
 
 def main():
     """Run the enhanced application."""
+    root = tk.Tk()
+
     # ── High-DPI awareness (Windows 10+) ──
-    # 반드시 tk.Tk() 생성 전에 호출해야 함.
-    # 그래야 Tk가 실제 DPI를 반영한 스케일링을 적용함.
+    # Tk 생성 후 호출: Windows 비트맵 스케일링에 의존하여 안정적 크기 유지.
+    # Tk 생성 전에 호출하면 수동 스케일링 보정이 필요하고 환경별 차이 발생.
     try:
         from ctypes import windll
         windll.shcore.SetProcessDpiAwareness(1)
     except Exception:
         pass
-
-    root = tk.Tk()
 
     app = PerssonModelGUI_V2(root)
     root.mainloop()
