@@ -506,8 +506,16 @@ class PerssonModelGUI_V2:
             'micro':     ('Segoe UI', _sf(12)),
             'mono':      ('Consolas', _sf(17)),
             'mono_small':('Consolas', _sf(16)),
+            # 결과 텍스트/다이얼로그용 스케일된 폰트
+            'result_mono':    ('Courier', _sf(15)),
+            'result_label':   ('Arial', _sf(12), 'bold'),
+            'dialog_title':   ('Arial', _sf(15), 'bold'),
+            'calc_status':    ('Arial', _sf(13), 'bold'),
+            'listbox':        ('Segoe UI', _sf(13)),
         }
         self._gui_scale = gui_scale
+        # 스케일된 패딩/크기 헬퍼 (하드코딩 방지)
+        self._sp = lambda base: max(1, round(base * gui_scale))  # scaled pixels
 
         self.root.configure(bg=self.COLORS['bg'])
         self.root.minsize(1000, 600)
@@ -594,6 +602,7 @@ class PerssonModelGUI_V2:
         """Configure ttk styles for a modern, professional look."""
         C = self.COLORS
         F = self.FONTS
+        _sp = self._sp  # scaled pixel helper
         style = ttk.Style(self.root)
 
         # Base theme
@@ -634,7 +643,7 @@ class PerssonModelGUI_V2:
         style.configure('Tiny.TLabel', font=F['tiny'], foreground=C['text_secondary'])
         style.configure('Status.TLabel', background=C['statusbar_bg'],
                         foreground=C['statusbar_fg'], font=F['small'],
-                        padding=(12, 6))
+                        padding=(_sp(12), _sp(6)))
 
         # ── TLabelframe ──
         style.configure('TLabelframe', background=C['surface'],
@@ -644,10 +653,10 @@ class PerssonModelGUI_V2:
 
         # ── TNotebook (Tabs) ──
         style.configure('TNotebook', background=C['bg'], borderwidth=0,
-                        tabmargins=[4, 4, 4, 0])
+                        tabmargins=[_sp(4), _sp(4), _sp(4), 0])
         style.configure('TNotebook.Tab', background=C['tab_inactive'],
                         foreground=C['text_secondary'], font=F['subheading'],
-                        padding=[14, 8], borderwidth=0)
+                        padding=[_sp(14), _sp(8)], borderwidth=0)
         style.map('TNotebook.Tab',
                   background=[('selected', C['tab_active']),
                               ('active', C['highlight'])],
@@ -656,7 +665,7 @@ class PerssonModelGUI_V2:
                   expand=[('selected', [0, 0, 0, 2])])
 
         # ── TButton (Default) ──
-        style.configure('TButton', font=F['body'], padding=[12, 5],
+        style.configure('TButton', font=F['body'], padding=[_sp(12), _sp(5)],
                         background=C['surface'], foreground=C['text'],
                         borderwidth=1, relief='raised', anchor='center')
         style.map('TButton',
@@ -667,19 +676,19 @@ class PerssonModelGUI_V2:
         # ── Accent.TButton (Primary action - blue) ──
         style.configure('Accent.TButton', font=F['body_bold'],
                         background=C['primary'], foreground=C['primary_fg'],
-                        padding=[14, 6], borderwidth=2, relief='raised')
+                        padding=[_sp(14), _sp(6)], borderwidth=2, relief='raised')
         style.map('Accent.TButton',
                   background=[('pressed', '#0F172A'),
                               ('active', C['primary_hover']),
                               ('disabled', C['border'])],
                   foreground=[('disabled', C['text_secondary'])],
                   relief=[('pressed', 'sunken'), ('!pressed', 'raised')],
-                  padding=[('pressed', [16, 8])])
+                  padding=[('pressed', [_sp(16), _sp(8)])])
 
         # ── Outline.TButton (Blue outline / border) ──
         style.configure('Outline.TButton', font=F['body_bold'],
                         background=C['surface'], foreground=C['primary'],
-                        padding=[14, 6], borderwidth=2, relief='solid',
+                        padding=[_sp(14), _sp(6)], borderwidth=2, relief='solid',
                         bordercolor=C['primary'])
         style.map('Outline.TButton',
                   background=[('active', '#EBF5FF'),
@@ -689,68 +698,69 @@ class PerssonModelGUI_V2:
         # ── Success.TButton (Confirm - green) ──
         style.configure('Success.TButton', font=F['body_bold'],
                         background=C['success'], foreground=C['success_fg'],
-                        padding=[14, 6], borderwidth=2, relief='raised')
+                        padding=[_sp(14), _sp(6)], borderwidth=2, relief='raised')
         style.map('Success.TButton',
                   background=[('pressed', '#064E3B'),
                               ('active', '#047857'),
                               ('disabled', C['border'])],
                   foreground=[('disabled', C['text_secondary'])],
                   relief=[('pressed', 'sunken'), ('!pressed', 'raised')],
-                  padding=[('pressed', [16, 8])])
+                  padding=[('pressed', [_sp(16), _sp(8)])])
 
         # ── Danger.TButton (Warning action - red) ──
         style.configure('Danger.TButton', font=F['body_bold'],
                         background=C['danger'], foreground=C['danger_fg'],
-                        padding=[14, 6], borderwidth=2, relief='raised')
+                        padding=[_sp(14), _sp(6)], borderwidth=2, relief='raised')
         style.map('Danger.TButton',
                   background=[('pressed', '#7F1D1D'),
                               ('active', '#B91C1C'),
                               ('disabled', C['border'])],
                   foreground=[('disabled', C['text_secondary'])],
                   relief=[('pressed', 'sunken'), ('!pressed', 'raised')],
-                  padding=[('pressed', [16, 8])])
+                  padding=[('pressed', [_sp(16), _sp(8)])])
 
         # ── TEntry ──
         style.configure('TEntry', fieldbackground=C['input_bg'],
                         foreground=C['text'], font=F['body'],
-                        borderwidth=1, relief='solid', padding=[6, 4])
+                        borderwidth=1, relief='solid', padding=[_sp(6), _sp(4)])
         style.map('TEntry',
                   fieldbackground=[('focus', '#F0F7FF'), ('readonly', C['bg'])],
                   bordercolor=[('focus', C['primary'])])
 
         # ── TCombobox ──
         style.configure('TCombobox', fieldbackground=C['input_bg'],
-                        foreground=C['text'], font=F['body'], padding=[6, 4])
+                        foreground=C['text'], font=F['body'], padding=[_sp(6), _sp(4)])
         style.map('TCombobox',
                   fieldbackground=[('readonly', C['input_bg']),
                                    ('focus', '#F0F7FF')])
 
         # ── TCheckbutton / TRadiobutton ──
+        _ind_size = _sp(20)
         style.configure('TCheckbutton', background=C['bg'],
                         foreground=C['text'], font=F['body'],
-                        indicatorsize=20, padding=[4, 2])
+                        indicatorsize=_ind_size, padding=[_sp(4), _sp(2)])
         style.configure('TRadiobutton', background=C['bg'],
                         foreground=C['text'], font=F['body'],
-                        indicatorsize=20, padding=[4, 2])
+                        indicatorsize=_ind_size, padding=[_sp(4), _sp(2)])
         # Inside LabelFrames (surface bg)
         style.configure('Surface.TCheckbutton', background=C['surface'],
                         foreground=C['text'], font=F['body'],
-                        indicatorsize=20, padding=[4, 2])
+                        indicatorsize=_ind_size, padding=[_sp(4), _sp(2)])
         style.configure('Surface.TRadiobutton', background=C['surface'],
                         foreground=C['text'], font=F['body'],
-                        indicatorsize=20, padding=[4, 2])
+                        indicatorsize=_ind_size, padding=[_sp(4), _sp(2)])
 
         # ── Horizontal.TProgressbar ──
         style.configure('Horizontal.TProgressbar',
                         troughcolor=C['border'], background=C['primary'],
-                        thickness=6, borderwidth=0)
+                        thickness=_sp(6), borderwidth=0)
 
         # ── TSeparator ──
         style.configure('TSeparator', background=C['border'])
 
         # ── TScrollbar ──
         style.configure('Vertical.TScrollbar', background=C['bg'],
-                        troughcolor=C['bg'], borderwidth=0, arrowsize=12)
+                        troughcolor=C['bg'], borderwidth=0, arrowsize=_sp(12))
         style.map('Vertical.TScrollbar',
                   background=[('active', C['border']),
                               ('pressed', C['input_border'])])
@@ -914,9 +924,10 @@ class PerssonModelGUI_V2:
         _highlight_tabs = {'tab_psd_profile', 'tab_master_curve',
                            'tab_parameters', 'tab_mu_visc'}
 
-        # 노란색 탭 마커 이미지 생성 (12×12 노란 사각형)
-        self._yellow_tab_img = tk.PhotoImage(width=12, height=12)
-        self._yellow_tab_img.put('#F59E0B', to=(0, 0, 12, 12))
+        # 노란색 탭 마커 이미지 생성 (스케일 적용)
+        _tab_marker_sz = self._sp(12)
+        self._yellow_tab_img = tk.PhotoImage(width=_tab_marker_sz, height=_tab_marker_sz)
+        self._yellow_tab_img.put('#F59E0B', to=(0, 0, _tab_marker_sz, _tab_marker_sz))
 
         for attr, label, builder in tabs:
             frame = ttk.Frame(self.notebook)
@@ -1077,7 +1088,7 @@ class PerssonModelGUI_V2:
         Must be called BEFORE packing scrollable content so it stays at bottom."""
         if self._logo_image is None:
             return
-        logo_container = tk.Frame(parent_frame, bg='#F0F2F5', height=80)
+        logo_container = tk.Frame(parent_frame, bg='#F0F2F5', height=self._sp(80))
         logo_container.pack(side=tk.BOTTOM, fill=tk.X)
         logo_container.pack_propagate(False)
         tk.Frame(logo_container, bg=self.COLORS['border'], height=1).pack(fill=tk.X, side=tk.TOP)
@@ -2706,7 +2717,7 @@ class PerssonModelGUI_V2:
         results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.mc_result_text = tk.Text(results_frame, height=10, font=("Courier", 15), wrap=tk.WORD)
+        self.mc_result_text = tk.Text(results_frame, height=max(6, round(10 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.WORD)
         self.mc_result_text.pack(fill=tk.X)
 
         # 6. Shift Factor Table
@@ -4471,7 +4482,7 @@ class PerssonModelGUI_V2:
         ttk.Label(q1_result_row, text="→ 계산된 q1:").pack(side=tk.LEFT)
         self.calculated_q1_var = tk.StringVar(value="(계산 후 표시)")
         self.calculated_q1_label = ttk.Label(q1_result_row, textvariable=self.calculated_q1_var,
-                                             font=('Arial', 12, 'bold'), foreground='#2563EB')
+                                             font=self.FONTS['result_label'], foreground='#2563EB')
         self.calculated_q1_label.pack(side=tk.LEFT, padx=5)
         ttk.Label(q1_result_row, text="(1/m)").pack(side=tk.LEFT)
 
@@ -4481,7 +4492,7 @@ class PerssonModelGUI_V2:
         ttk.Label(hrms_result_row, text="→ 계산된 h'rms (ξ):").pack(side=tk.LEFT)
         self.calculated_hrms_var = tk.StringVar(value="(계산 후 표시)")
         self.calculated_hrms_label = ttk.Label(hrms_result_row, textvariable=self.calculated_hrms_var,
-                                               font=('Arial', 12, 'bold'), foreground='#059669')
+                                               font=self.FONTS['result_label'], foreground='#059669')
         self.calculated_hrms_label.pack(side=tk.LEFT, padx=5)
         ttk.Label(hrms_result_row, text="(무차원)").pack(side=tk.LEFT)
 
@@ -4512,7 +4523,7 @@ class PerssonModelGUI_V2:
         self.calc_status_label = ttk.Label(
             status_display_frame,
             text="대기 중 | v = - m/s | q 범위 = - ~ - (1/m) | f 범위 = - ~ - (Hz)",
-            font=('Arial', 13, 'bold'),
+            font=self.FONTS['calc_status'],
             foreground='#2563EB'
         )
         self.calc_status_label.pack()
@@ -6539,7 +6550,8 @@ class PerssonModelGUI_V2:
         """Show popup window for exporting all graph data to txt files."""
         popup = tk.Toplevel(self.root)
         popup.title("Graph Data Export")
-        popup.geometry("600x500")
+        _dw, _dh = self._sp(600), self._sp(500)
+        popup.geometry(f"{_dw}x{_dh}")
         popup.transient(self.root)
 
         # Main frame
@@ -6547,7 +6559,7 @@ class PerssonModelGUI_V2:
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         # Title
-        ttk.Label(main_frame, text="Available Graph Data", font=('Arial', 15, 'bold')).pack(anchor=tk.W)
+        ttk.Label(main_frame, text="Available Graph Data", font=self.FONTS['dialog_title']).pack(anchor=tk.W)
         ttk.Label(main_frame, text="Select data to export as txt files", font=self.FONTS['body']).pack(anchor=tk.W)
 
         # Listbox with scrollbar
@@ -6670,7 +6682,7 @@ class PerssonModelGUI_V2:
         dialog.resizable(True, True)
         dialog.transient(self.root)
 
-        dlg_w, dlg_h = 750, 850
+        dlg_w, dlg_h = self._sp(750), self._sp(850)
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - dlg_h) // 2
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
@@ -6854,7 +6866,7 @@ class PerssonModelGUI_V2:
         dialog.transient(self.root)
         dialog.grab_set()
 
-        dlg_w, dlg_h = 700, 850
+        dlg_w, dlg_h = self._sp(700), self._sp(850)
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + max(0, (self.root.winfo_height() - dlg_h) // 2)
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
@@ -7168,7 +7180,7 @@ class PerssonModelGUI_V2:
         dialog.transient(self.root)
         dialog.grab_set()
 
-        dlg_w, dlg_h = 900, 900
+        dlg_w, dlg_h = self._sp(900), self._sp(900)
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + max(0, (self.root.winfo_height() - dlg_h) // 2)
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
@@ -7385,7 +7397,7 @@ class PerssonModelGUI_V2:
         dialog.transient(self.root)
         dialog.grab_set()
 
-        dlg_w, dlg_h = 480, 420
+        dlg_w, dlg_h = self._sp(480), self._sp(420)
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + (self.root.winfo_height() - dlg_h) // 2
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
@@ -7406,7 +7418,12 @@ class PerssonModelGUI_V2:
         content = tk.Frame(dialog, bg='white', padx=25, pady=20)
         content.pack(fill=tk.BOTH, expand=True)
 
-        def add_label(text, size=14, bold=False, fg='#1E293B', pady=(0, 2)):
+        _about_base_sz = self.FONTS['info'][1]
+        def add_label(text, size=None, bold=False, fg='#1E293B', pady=(0, 2)):
+            if size is None:
+                size = _about_base_sz
+            else:
+                size = max(7, round(size * self._gui_scale))
             weight = 'bold' if bold else 'normal'
             tk.Label(content, text=text, bg='white', fg=fg,
                      font=('Segoe UI', size, weight),
@@ -8099,7 +8116,7 @@ class PerssonModelGUI_V2:
         ttk.Label(row_target, text="목표 ξ:", font=self.FONTS['body']).pack(side=tk.LEFT)
         self.rms_target_xi_display = tk.StringVar(value="(Tab 2에서 설정)")
         self.rms_target_xi_label = ttk.Label(row_target, textvariable=self.rms_target_xi_display,
-                                             font=('Arial', 12, 'bold'), foreground='#2563EB')
+                                             font=self.FONTS['result_label'], foreground='#2563EB')
         self.rms_target_xi_label.pack(side=tk.RIGHT)
 
         # Refresh button for target value
@@ -8133,7 +8150,7 @@ class PerssonModelGUI_V2:
         results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.rms_result_text = tk.Text(results_frame, height=12, font=("Courier", 15), wrap=tk.WORD)
+        self.rms_result_text = tk.Text(results_frame, height=max(6, round(12 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.WORD)
         self.rms_result_text.pack(fill=tk.X)
 
         # 4. Export / Apply buttons
@@ -8920,7 +8937,7 @@ class PerssonModelGUI_V2:
         results_frame = ttk.LabelFrame(left_panel, text="5) 결과", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.mu_result_text = tk.Text(results_frame, height=8, font=("Courier", 15), wrap=tk.WORD)
+        self.mu_result_text = tk.Text(results_frame, height=max(5, round(8 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.WORD)
         self.mu_result_text.pack(fill=tk.X)
 
         # Export buttons
@@ -11080,20 +11097,21 @@ class PerssonModelGUI_V2:
         # Create analysis dialog
         dialog = tk.Toplevel(self.root)
         dialog.title("μ_visc 비교 분석")
-        dialog.geometry("650x700")
+        _dw, _dh = self._sp(650), self._sp(700)
+        dialog.geometry(f"{_dw}x{_dh}")
         dialog.transient(self.root)
 
         # Center dialog
         dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - 650) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 700) // 2
+        x = self.root.winfo_x() + (self.root.winfo_width() - _dw) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - _dh) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Text widget for analysis
         text_frame = ttk.Frame(dialog, padding=10)
         text_frame.pack(fill=tk.BOTH, expand=True)
 
-        text = tk.Text(text_frame, wrap=tk.WORD, font=('Courier', 15))
+        text = tk.Text(text_frame, wrap=tk.WORD, font=self.FONTS['result_mono'])
         scrollbar = ttk.Scrollbar(text_frame, orient=tk.VERTICAL, command=text.yview)
         text.configure(yscrollcommand=scrollbar.set)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
@@ -11473,15 +11491,16 @@ class PerssonModelGUI_V2:
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - μ_visc 데이터 선택")
-        dialog.geometry("450x620")
+        _dw, _dh = self._sp(450), self._sp(620)
+        dialog.geometry(f"{_dw}x{_dh}")
         dialog.resizable(False, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
         # Center the dialog
         dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - 450) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 620) // 2
+        x = self.root.winfo_x() + (self.root.winfo_width() - _dw) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - _dh) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
@@ -11503,7 +11522,7 @@ class PerssonModelGUI_V2:
         check_frame.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
 
         # Data options - main results
-        main_label = ttk.Label(check_frame, text="[기본 결과 (v vs 값)]", font=('Arial', 12, 'bold'))
+        main_label = ttk.Label(check_frame, text="[기본 결과 (v vs 값)]", font=self.FONTS['result_label'])
         main_label.pack(anchor=tk.W, pady=(0, 5))
 
         main_options = [
@@ -11512,7 +11531,7 @@ class PerssonModelGUI_V2:
         ]
 
         # q-dependent data options
-        q_label = ttk.Label(check_frame, text="\n[q 의존성 데이터 (특정 속도)]", font=('Arial', 12, 'bold'))
+        q_label = ttk.Label(check_frame, text="\n[q 의존성 데이터 (특정 속도)]", font=self.FONTS['result_label'])
         q_label.pack(anchor=tk.W, pady=(5, 5))
 
         q_options = [
@@ -11987,8 +12006,8 @@ class PerssonModelGUI_V2:
         notebook.add(mu_frame, text="  mu_visc 참조 데이터  ")
 
         ttk.Label(mu_frame, text="mu_visc 참조 데이터 (log10(v) \\t mu_visc):",
-                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        mu_text = tk.Text(mu_frame, height=20, font=("Courier", 15), wrap=tk.NONE)
+                  font=self.FONTS['result_label']).pack(anchor=tk.W)
+        mu_text = tk.Text(mu_frame, height=max(10, round(20 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.NONE)
         mu_scroll = ttk.Scrollbar(mu_frame, orient=tk.VERTICAL, command=mu_text.yview)
         mu_text.configure(yscrollcommand=mu_scroll.set)
         mu_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -12007,8 +12026,8 @@ class PerssonModelGUI_V2:
         notebook.add(area_frame, text="  A/A0 참조 데이터  ")
 
         ttk.Label(area_frame, text="A/A0 참조 데이터 (log10(v) \\t A/A0):",
-                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
-        area_text = tk.Text(area_frame, height=20, font=("Courier", 15), wrap=tk.NONE)
+                  font=self.FONTS['result_label']).pack(anchor=tk.W)
+        area_text = tk.Text(area_frame, height=max(10, round(20 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.NONE)
         area_scroll = ttk.Scrollbar(area_frame, orient=tk.VERTICAL, command=area_text.yview)
         area_text.configure(yscrollcommand=area_scroll.set)
         area_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -12027,11 +12046,11 @@ class PerssonModelGUI_V2:
         notebook.add(fg_frame, text="  f,g 참조 데이터  ")
 
         ttk.Label(fg_frame, text="f,g 참조 데이터 (strain \\t f \\t g):",
-                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
+                  font=self.FONTS['result_label']).pack(anchor=tk.W)
         ttk.Label(fg_frame, text="여러 세트를 추가할 수 있습니다. '세트 추가' 버튼으로 현재 내용을 추가하세요.",
                   font=self.FONTS['hint'], foreground='#64748B').pack(anchor=tk.W)
 
-        fg_text = tk.Text(fg_frame, height=15, font=("Courier", 15), wrap=tk.NONE)
+        fg_text = tk.Text(fg_frame, height=max(8, round(15 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.NONE)
         fg_scroll = ttk.Scrollbar(fg_frame, orient=tk.VERTICAL, command=fg_text.yview)
         fg_text.configure(yscrollcommand=fg_scroll.set)
         fg_scroll.pack(side=tk.RIGHT, fill=tk.Y)
@@ -12041,7 +12060,7 @@ class PerssonModelGUI_V2:
         fg_list_frame = ttk.LabelFrame(fg_frame, text="추가된 f,g 참조", padding=3)
         fg_list_frame.pack(fill=tk.X, pady=(5, 0))
 
-        fg_listbox = tk.Listbox(fg_list_frame, height=4, font=("Segoe UI", 13))
+        fg_listbox = tk.Listbox(fg_list_frame, height=4, font=self.FONTS['listbox'])
         fg_listbox.pack(fill=tk.X)
 
         fg_ref_datasets = list(self.reference_fg_data)  # copy current
@@ -13321,15 +13340,16 @@ class PerssonModelGUI_V2:
         # Create dialog for selecting data to export
         dialog = tk.Toplevel(self.root)
         dialog.title("CSV 내보내기 - 데이터 선택")
-        dialog.geometry("400x600")
+        _dw, _dh = self._sp(400), self._sp(600)
+        dialog.geometry(f"{_dw}x{_dh}")
         dialog.resizable(False, True)
         dialog.transient(self.root)
         dialog.grab_set()
 
         # Center the dialog
         dialog.update_idletasks()
-        x = self.root.winfo_x() + (self.root.winfo_width() - 400) // 2
-        y = self.root.winfo_y() + (self.root.winfo_height() - 600) // 2
+        x = self.root.winfo_x() + (self.root.winfo_width() - _dw) // 2
+        y = self.root.winfo_y() + (self.root.winfo_height() - _dh) // 2
         dialog.geometry(f"+{x}+{y}")
 
         # Description
@@ -13544,14 +13564,14 @@ class PerssonModelGUI_V2:
         results_frame = ttk.LabelFrame(left_frame, text="결과 요약", padding=5)
         results_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.integrand_result_text = tk.Text(results_frame, height=16, font=("Courier", 15), wrap=tk.WORD)
+        self.integrand_result_text = tk.Text(results_frame, height=max(8, round(16 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.WORD)
         self.integrand_result_text.pack(fill=tk.X)
 
         # 4. Frequency range info
         freq_frame = ttk.LabelFrame(left_frame, text="주파수 범위 (ω = qv cosφ)", padding=5)
         freq_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        self.freq_range_text = tk.Text(freq_frame, height=6, font=("Courier", 15), wrap=tk.WORD)
+        self.freq_range_text = tk.Text(freq_frame, height=max(4, round(6 * self._gui_scale)), font=self.FONTS['result_mono'], wrap=tk.WORD)
         self.freq_range_text.pack(fill=tk.X)
 
         # ============== Right Panel: Plots ==============
@@ -14261,7 +14281,7 @@ class PerssonModelGUI_V2:
         self.debug_log_text = tk.Text(
             log_frame,
             wrap=tk.WORD,
-            font=('Courier New', 15),
+            font=self.FONTS['result_mono'],
             yscrollcommand=log_scroll.set
         )
         self.debug_log_text.pack(fill=tk.BOTH, expand=True)
@@ -14881,7 +14901,7 @@ class PerssonModelGUI_V2:
 ════════════════════════════════════════════════════════════════════════════════
 """
 
-        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=('Courier New', 15), height=50, width=90)
+        text_widget = tk.Text(title_frame, wrap=tk.WORD, font=self.FONTS['result_mono'], height=max(25, round(50 * self._gui_scale)), width=max(60, round(90 * self._gui_scale)))
         text_widget.insert(tk.END, content)
         text_widget.config(state='disabled')  # Read-only
         text_widget.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
