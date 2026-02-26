@@ -100,6 +100,177 @@ from persson_model.core.friction import (
 from persson_model.core.master_curve import MasterCurveGenerator, load_multi_temp_dma
 from persson_model.core.psd_from_profile import ProfilePSDAnalyzer, self_affine_psd_model
 
+
+# ============================================================
+# fgnew 스플라인 보간 유틸 (개별 보간 → 평균 → log-spaced 출력)
+# ============================================================
+def _natural_cubic_spline_prepare(x: np.ndarray, y: np.ndarray):
+    """Natural cubic spline: 양끝 2차 미분 = 0. knot에서의 2차 미분 m을 반환."""
+    n = len(x)
+    if n < 3:
+        raise ValueError("Need >= 3 points for spline.")
+    h = np.diff(x)
+    if np.any(h <= 0):
+        raise ValueError("x must be strictly increasing.")
+    A = np.zeros((n - 2, n - 2), dtype=float)
+    rhs = np.zeros(n - 2, dtype=float)
+    for i in range(1, n - 1):
+        row = i - 1
+        A[row, row] = 2.0 * (h[i - 1] + h[i])
+        if row - 1 >= 0:
+            A[row, row - 1] = h[i - 1]
+        if row + 1 < n - 2:
+            A[row, row + 1] = h[i]
+        rhs[row] = 6.0 * ((y[i + 1] - y[i]) / h[i] - (y[i] - y[i - 1]) / h[i - 1])
+    m = np.zeros(n, dtype=float)
+    if n - 2 > 0:
+        m[1:n - 1] = np.linalg.solve(A, rhs)
+    return m
+
+
+def _natural_cubic_spline_eval(x: np.ndarray, y: np.ndarray, m: np.ndarray, xq: np.ndarray):
+    """스플라인 평가. 범위 밖은 NaN."""
+    xq = np.asarray(xq, dtype=float)
+    yq = np.full_like(xq, np.nan, dtype=float)
+    for k, xx in enumerate(xq):
+        if xx < x[0] or xx > x[-1]:
+            continue
+        i = np.searchsorted(x, xx) - 1
+        i = max(0, min(i, len(x) - 2))
+        hi = x[i + 1] - x[i]
+        if hi <= 0:
+            continue
+        t = (x[i + 1] - xx) / hi
+        u = (xx - x[i]) / hi
+        yq[k] = (t * y[i] + u * y[i + 1]
+                  + (((t ** 3) - t) * m[i] + ((u ** 3) - u) * m[i + 1]) * (hi ** 2) / 6.0)
+    return yq
+
+
+def _spline_interp(x: np.ndarray, y: np.ndarray, xq: np.ndarray):
+    """Natural cubic spline 보간 (x → y, 쿼리 xq)."""
+    m = _natural_cubic_spline_prepare(x, y)
+    return _natural_cubic_spline_eval(x, y, m, xq)
+
+
+def _logspace_points(x_start: float, x_end: float, n: int):
+    """log 등간격 N개 포인트 생성."""
+    return 10 ** np.linspace(np.log10(x_start), np.log10(x_end), n)
+
+
+def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
+    """
+    fgnew 로직: 각 온도의 f,g를 개별 스플라인 보간 → 공통 그리드에서 평균 → log-spaced 출력.
+
+    Parameters
+    ----------
+    fg_by_T : dict
+        {temperature: {'strain': array, 'f': array, 'g': array, ...}}
+    selected_temps : list
+        사용할 온도 목록
+    start_strain : float
+        시작 strain (이 값 미만은 제외)
+    n_final : int
+        최종 log-spaced 출력 포인트 수
+
+    Returns
+    -------
+    dict with 'strain', 'f_avg', 'g_avg', 'common_x', 'common_f', 'common_g', 'Ts_used'
+    or None if failed.
+    """
+    # 1) 활성 데이터셋 수집
+    datasets = []
+    for T in selected_temps:
+        if T not in fg_by_T:
+            continue
+        data = fg_by_T[T]
+        x, f, g = data['strain'], data['f'], data['g']
+        # strain > 0 이고 최소 3개 점 필요
+        mask = x > 0
+        x, f, g = x[mask], f[mask], g[mask]
+        if len(x) < 3:
+            continue
+        order = np.argsort(x)
+        x, f, g = x[order], f[order], g[order]
+        # 중복 제거 (평균)
+        ux = np.unique(x)
+        if len(ux) != len(x):
+            f_out, g_out = [], []
+            for val in ux:
+                m = (x == val)
+                f_out.append(np.mean(f[m]))
+                g_out.append(np.mean(g[m]))
+            x, f, g = ux, np.array(f_out), np.array(g_out)
+        if len(x) >= 3:
+            datasets.append((T, x, f, g))
+
+    if not datasets:
+        return None
+
+    # 2) 전체 활성 데이터셋 중 max strain
+    max_strain = max(ds[1].max() for ds in datasets)
+    if max_strain <= start_strain:
+        return None
+
+    # 3) 공통 그리드 = 모든 활성 데이터의 strain 합집합 (start_strain ~ max_strain)
+    all_x = np.concatenate([ds[1] for ds in datasets])
+    common_x = np.unique(all_x[(all_x >= start_strain) & (all_x <= max_strain)])
+    common_x = np.unique(np.concatenate([common_x, np.array([start_strain])]))
+    common_x.sort()
+
+    if len(common_x) < 3:
+        return None
+
+    # 4) 각 데이터셋을 공통 그리드에 스플라인 보간
+    F_rows, G_rows = [], []
+    for T, x, f, g in datasets:
+        try:
+            f_i = _spline_interp(x, f, common_x)
+            g_i = _spline_interp(x, g, common_x)
+        except Exception:
+            f_i = np.full_like(common_x, np.nan)
+            g_i = np.full_like(common_x, np.nan)
+        F_rows.append(f_i)
+        G_rows.append(g_i)
+
+    F_mat = np.vstack(F_rows)
+    G_mat = np.vstack(G_rows)
+
+    # 5) NaN 무시 평균
+    mean_f = np.nanmean(F_mat, axis=0)
+    mean_g = np.nanmean(G_mat, axis=0)
+
+    # 6) 최종 log-spaced 포인트
+    final_x = _logspace_points(start_strain, max_strain, n_final)
+
+    # 평균 커브를 다시 스플라인으로 보간하여 최종 포인트에 평가
+    def _interp_mean(cx, my, xq):
+        valid = np.isfinite(my)
+        cx2, my2 = cx[valid], my[valid]
+        if len(cx2) >= 3:
+            return _spline_interp(cx2, my2, xq)
+        elif len(cx2) >= 2:
+            return np.interp(xq, cx2, my2, left=np.nan, right=np.nan)
+        else:
+            return np.full_like(xq, np.nan, dtype=float)
+
+    final_f = _interp_mean(common_x, mean_f, final_x)
+    final_g = _interp_mean(common_x, mean_g, final_x)
+
+    return {
+        'strain': final_x,
+        'f_avg': final_f,
+        'g_avg': final_g,
+        'common_x': common_x,
+        'common_f': mean_f,
+        'common_g': mean_g,
+        'Ts_used': [ds[0] for ds in datasets],
+        'n_eff': np.full_like(final_x, len(datasets), dtype=float),
+    }
+
+
+# ============================================================
+
 # === 한글 폰트 설정 (PyInstaller frozen exe 호환) ===
 try:
     import matplotlib.font_manager as fm
@@ -8327,27 +8498,31 @@ class PerssonModelGUI_V2:
             width=15
         ).pack(anchor=tk.W, pady=2)
 
-        # 3. Persson Average f,g (RANK 1 최적 가중치 자동 적용)
+        # 3. Persson Average f,g (스플라인 보간 → 평균 → log-spaced)
         persson_avg_frame = ttk.LabelFrame(left_panel, text="3) Persson average f,g", padding=5)
         persson_avg_frame.pack(fill=tk.X, pady=2, padx=3)
 
-        # Split strain setting (RANK 1 default: 14.2%)
-        split_row = ttk.Frame(persson_avg_frame)
-        split_row.pack(fill=tk.X, pady=1)
-        ttk.Label(split_row, text="Split(%):", font=('Segoe UI', 17)).pack(side=tk.LEFT)
-        self.split_strain_var = tk.StringVar(value="14.2")
-        ttk.Entry(split_row, textvariable=self.split_strain_var, width=6).pack(side=tk.LEFT, padx=2)
-        ttk.Label(split_row, text="RANK1 최적", font=('Segoe UI', 16), foreground='#2563EB').pack(side=tk.LEFT, padx=2)
+        # Start strain setting
+        row1 = ttk.Frame(persson_avg_frame)
+        row1.pack(fill=tk.X, pady=1)
+        ttk.Label(row1, text="Start strain:").pack(side=tk.LEFT)
+        self.start_strain_var = tk.StringVar(value="0.0148")
+        ttk.Entry(row1, textvariable=self.start_strain_var, width=8).pack(side=tk.LEFT, padx=2)
 
-        # RANK 1 weight info display
+        # N final log-spaced points
+        ttk.Label(row1, text="N pts:").pack(side=tk.LEFT, padx=(8, 0))
+        self.n_final_pts_var = tk.StringVar(value="20")
+        ttk.Entry(row1, textvariable=self.n_final_pts_var, width=5).pack(side=tk.LEFT, padx=2)
+
+        # Method description
         info_frame = ttk.Frame(persson_avg_frame)
         info_frame.pack(fill=tk.X, pady=1)
-        weight_info = (
-            "f: low(0.02°C:10%,29.9°C:90%) high(29.9°C:30%,49.99°C:70%)\n"
-            "g: low(0.02°C:35%,49.99°C:65%) high(29.9°C:55%,49.99°C:45%)"
-        )
-        ttk.Label(info_frame, text=weight_info, font=('Arial', 15),
-                  foreground='#64748B', justify=tk.LEFT).pack(anchor=tk.W)
+        ttk.Label(info_frame, text="Cubic spline 개별보간 → nanmean → log-spaced",
+                  font=self.FONTS.get('tiny', ('Segoe UI', 15)),
+                  foreground='#2563EB').pack(anchor=tk.W)
+
+        # Legacy vars for compatibility (hidden)
+        self.split_strain_var = tk.StringVar(value="14.2")
 
         # Persson average f,g 계산 button
         ttk.Button(
@@ -8361,7 +8536,7 @@ class PerssonModelGUI_V2:
         # Status label for Persson average
         self.persson_avg_status_var = tk.StringVar(value="(미계산)")
         ttk.Label(persson_avg_frame, textvariable=self.persson_avg_status_var,
-                  font=('Segoe UI', 17), foreground='#059669').pack(anchor=tk.W)
+                  foreground='#059669').pack(anchor=tk.W)
 
         # Hidden listboxes for internal compatibility (not displayed)
         _hidden_frame = ttk.Frame(left_panel)
@@ -8629,11 +8804,13 @@ class PerssonModelGUI_V2:
             self.temp_listbox_B.selection_set(i)
 
     def _persson_average_fg(self):
-        """Persson average f,g 계산: RANK 1 최적 가중치로 자동 계산.
+        """Persson average f,g 계산: 개별 스플라인 보간 → 평균 → log-spaced 출력.
 
         1) fg_by_T가 없으면 먼저 f,g 곡선 계산 (strain data 필요)
-        2) DEFAULT_STRAIN_SPLIT (RANK 1) 가중치로 strain-split weighted average
-        3) interpolator 생성 → mu_visc 계산에 바로 사용 가능
+        2) Natural cubic spline으로 각 온도 개별 보간
+        3) 공통 strain 그리드(합집합)에서 nanmean 평균
+        4) log-spaced 최종 포인트로 리샘플링
+        5) interpolator 생성 → mu_visc 계산에 바로 사용 가능
         """
         # Step 1: fg_by_T가 없으면 자동으로 계산
         if self.fg_by_T is None:
@@ -8641,87 +8818,63 @@ class PerssonModelGUI_V2:
                 self._show_status("Strain Sweep 데이터가 없습니다.\n"
                     "먼저 '1) Strain Sweep 로드'로 데이터를 로드하세요.", 'warning')
                 return
-            # 자동으로 f,g 곡선 계산
             self._compute_fg_curves()
             if self.fg_by_T is None:
-                return  # 계산 실패
+                return
 
         try:
-            # Step 2: RANK 1 최적 설정으로 strain-split 구성
-            split_percent = float(self.split_strain_var.get())
-            split_strain = split_percent / 100.0
+            # Step 2: UI에서 파라미터 읽기
+            start_strain = float(self.start_strain_var.get())
+            n_final = int(self.n_final_pts_var.get())
 
-            extend_percent = float(self.extend_strain_var.get())
-            max_strain = extend_percent / 100.0
-
-            use_persson = self.use_persson_grid_var.get()
-            grid_strain = create_strain_grid(30, max_strain, use_persson_grid=use_persson)
-
-            # DEFAULT_STRAIN_SPLIT (RANK 1) 가중치 + UI threshold 적용
-            strain_split_cfg = dict(DEFAULT_STRAIN_SPLIT)
-            strain_split_cfg['threshold'] = split_strain
-
-            # 모든 온도 자동 사용 (Group A/B 수동 선택 불필요)
+            # 모든 온도 자동 사용
             all_temps = list(self.fg_by_T.keys())
 
-            result = average_fg_curves(
+            # Step 3: fgnew 로직 - 스플라인 보간 → 평균 → log-spaced
+            result = spline_average_fg(
                 self.fg_by_T,
                 all_temps,
-                grid_strain,
-                interp_kind='loglog_linear',
-                avg_mode='mean',
-                clip_leq_1=self.clip_fg_var.get(),
-                strain_split=strain_split_cfg
+                start_strain=start_strain,
+                n_final=n_final
             )
 
             if result is None:
                 messagebox.showerror("오류",
-                    "Persson average 실패: 데이터가 부족합니다.\n"
-                    "DEFAULT_STRAIN_SPLIT 온도(0.02, 29.9, 49.99°C)와\n"
-                    "데이터 온도가 매칭되지 않을 수 있습니다.")
+                    "Spline average 실패: 데이터가 부족합니다.\n"
+                    "각 온도에 최소 3개 이상의 유효한 데이터 포인트가 필요합니다.")
                 return
 
-            f_stitched = result['f_avg']
-            g_stitched = result['g_avg']
-            n_eff_stitched = result['n_eff']
+            final_strain = result['strain']
+            final_f = result['f_avg']
+            final_g = result['g_avg']
 
-            # Extend to 100% strain with hold extrapolation
-            max_data_strain = grid_strain[-1]
-            original_len = len(grid_strain)
-            if max_data_strain < 1.0:
-                extend_strains = np.array([0.5, 0.7, 1.0])
-                extend_strains = extend_strains[extend_strains > max_data_strain]
-                if len(extend_strains) > 0:
-                    grid_strain = np.concatenate([grid_strain, extend_strains])
-                    f_stitched = np.concatenate([f_stitched, np.full(len(extend_strains), f_stitched[-1])])
-                    g_stitched = np.concatenate([g_stitched, np.full(len(extend_strains), g_stitched[-1])])
-                    n_eff_stitched = np.concatenate([n_eff_stitched, np.full(len(extend_strains), n_eff_stitched[-1])])
-
-            # Store piecewise result (Persson average)
+            # Store piecewise result (하위 호환)
             self.piecewise_result = {
-                'strain': grid_strain.copy(),
-                'strain_original_len': original_len,
-                'f_avg': f_stitched,
-                'g_avg': g_stitched,
-                'n_eff': n_eff_stitched,
-                'split': split_strain,
+                'strain': final_strain.copy(),
+                'strain_original_len': len(final_strain),
+                'f_avg': final_f,
+                'g_avg': final_g,
+                'n_eff': result['n_eff'],
+                'split': start_strain,
                 'temps_A': all_temps,
                 'temps_B': all_temps,
-                'strain_split_cfg': strain_split_cfg
+                'common_x': result['common_x'],
+                'common_f': result['common_f'],
+                'common_g': result['common_g'],
             }
 
             # Set as main averaged result for mu_visc calculation
             self.fg_averaged = {
-                'strain': grid_strain.copy(),
-                'f_avg': f_stitched,
-                'g_avg': g_stitched,
-                'Ts_used': all_temps,
-                'n_eff': n_eff_stitched
+                'strain': final_strain.copy(),
+                'f_avg': final_f,
+                'g_avg': final_g,
+                'Ts_used': result['Ts_used'],
+                'n_eff': result['n_eff']
             }
 
-            # Create interpolators with 'hold' extrapolation
+            # Create interpolators: 스플라인 기반, hold extrapolation
             self.f_interpolator, self.g_interpolator = create_fg_interpolator(
-                grid_strain, f_stitched, g_stitched,
+                final_strain, final_f, final_g,
                 interp_kind='loglog_linear', extrap_mode='hold'
             )
 
@@ -8729,25 +8882,25 @@ class PerssonModelGUI_V2:
             self._update_fg_plot_persson_avg()
 
             # Update status
-            n_temps = len(all_temps)
-            temps_str = ", ".join(f"{t:.1f}" for t in sorted(all_temps))
+            n_temps = len(result['Ts_used'])
+            temps_str = ", ".join(f"{t:.1f}" for t in sorted(result['Ts_used']))
             self.persson_avg_status_var.set(
-                f"완료: Split={split_percent:.1f}%, {n_temps}개 온도 [{temps_str}°C]"
+                f"완료: {n_temps}개 온도, {n_final}pts log-spaced [{temps_str}°C]"
             )
             self.status_var.set(
-                f"Persson average f,g 완료: RANK1 가중치, Split={split_percent:.1f}%, "
-                f"{n_temps}개 온도"
+                f"Spline average f,g 완료: {n_temps}개 온도, "
+                f"start={start_strain:.4f}, N={n_final}"
             )
 
         except Exception as e:
-            messagebox.showerror("오류", f"Persson average f,g 실패:\n{str(e)}")
+            messagebox.showerror("오류", f"Spline average f,g 실패:\n{str(e)}")
             import traceback
             traceback.print_exc()
 
     def _update_fg_plot_persson_avg(self):
-        """Update f,g curves plot with Persson average visualization."""
+        """Update f,g curves plot with spline average visualization."""
         self.ax_fg_curves.clear()
-        self.ax_fg_curves.set_title('f(ε), g(ε) Persson Average (RANK1)', fontweight='bold', fontsize=15)
+        self.ax_fg_curves.set_title('f(ε), g(ε) Spline Average', fontweight='bold', fontsize=15)
         self.ax_fg_curves.set_xlabel('변형률 ε (fraction)', fontsize=13)
         self.ax_fg_curves.set_ylabel('보정 계수', fontsize=13)
         self.ax_fg_curves.grid(True, alpha=0.3)
@@ -8761,19 +8914,24 @@ class PerssonModelGUI_V2:
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.15, linewidth=0.8)
                 self.ax_fg_curves.plot(s, g, 'r-', alpha=0.15, linewidth=0.8)
 
-        # Plot Persson average results
+        # Plot spline average results
         if self.piecewise_result is not None:
-            s = self.piecewise_result['strain']
-            split = self.piecewise_result['split']
+            # 공통 그리드 평균 (중간 과정) - 얇은 점선
+            if 'common_x' in self.piecewise_result:
+                cx = self.piecewise_result['common_x']
+                cf = self.piecewise_result['common_f']
+                cg = self.piecewise_result['common_g']
+                self.ax_fg_curves.plot(cx, cf, 'b:', alpha=0.35, linewidth=1.0, label='f mean(common)')
+                self.ax_fg_curves.plot(cx, cg, 'r:', alpha=0.35, linewidth=1.0, label='g mean(common)')
 
+            # 최종 log-spaced 결과 - 굵은 실선 + 마커
+            s = self.piecewise_result['strain']
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
-            self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='f(ε) Persson Avg')
-            self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='g(ε) Persson Avg')
-
-            # Split line
-            self.ax_fg_curves.axvline(split, color='green', linewidth=2, linestyle=':', alpha=0.8,
-                                      label=f'Split @ {split*100:.1f}%')
+            self.ax_fg_curves.plot(s, f_final, 'b-o', linewidth=2.5, markersize=4,
+                                   label=f'f(ε) log-spaced ({len(s)}pts)')
+            self.ax_fg_curves.plot(s, g_final, 'r-o', linewidth=2.5, markersize=4,
+                                   label=f'g(ε) log-spaced ({len(s)}pts)')
 
         elif self.fg_averaged is not None:
             s = self.fg_averaged['strain']
@@ -8782,9 +8940,9 @@ class PerssonModelGUI_V2:
             self.ax_fg_curves.plot(s, f_avg, 'b-', linewidth=3, label='f(ε) 평균')
             self.ax_fg_curves.plot(s, g_avg, 'r-', linewidth=3, label='g(ε) 평균')
 
-        self.ax_fg_curves.set_xlim(0, 1.0)
-        self.ax_fg_curves.set_ylim(0, 1.1)
-        self.ax_fg_curves.legend(loc='upper right', fontsize=12, ncol=2)
+        self.ax_fg_curves.set_xlim(0, None)
+        self.ax_fg_curves.set_ylim(0, None)
+        self.ax_fg_curves.legend(loc='upper right', fontsize=10, ncol=2)
 
         self.canvas_mu_visc.draw()
 
@@ -9030,32 +9188,35 @@ class PerssonModelGUI_V2:
             temps = sorted(self.fg_by_T.keys())
             selected_temps = [temps[i] for i in selections]
 
-            # Create strain grid
-            max_strain = max(
-                np.max(self.fg_by_T[T]['strain']) for T in selected_temps
-            )
-            grid_strain = create_strain_grid(30, max_strain, use_persson_grid=True)
+            # fgnew 로직: 스플라인 보간 → 평균 → log-spaced
+            start_strain = float(self.start_strain_var.get()) if hasattr(self, 'start_strain_var') else 0.0148
+            n_final = int(self.n_final_pts_var.get()) if hasattr(self, 'n_final_pts_var') else 20
 
-            # Average curves
-            self.fg_averaged = average_fg_curves(
+            result = spline_average_fg(
                 self.fg_by_T,
                 selected_temps,
-                grid_strain,
-                interp_kind='loglog_linear',
-                avg_mode='mean',
-                clip_leq_1=self.clip_fg_var.get(),
-                strain_split=DEFAULT_STRAIN_SPLIT
+                start_strain=start_strain,
+                n_final=n_final
             )
 
-            if self.fg_averaged is None:
+            if result is None:
                 messagebox.showerror("오류", "평균화 실패")
                 return
+
+            self.fg_averaged = {
+                'strain': result['strain'],
+                'f_avg': result['f_avg'],
+                'g_avg': result['g_avg'],
+                'Ts_used': result['Ts_used'],
+                'n_eff': result['n_eff']
+            }
 
             # Create interpolators
             self.f_interpolator, self.g_interpolator = create_fg_interpolator(
                 self.fg_averaged['strain'],
                 self.fg_averaged['f_avg'],
-                self.fg_averaged['g_avg']
+                self.fg_averaged['g_avg'],
+                interp_kind='loglog_linear', extrap_mode='hold'
             )
 
             # Update plot
