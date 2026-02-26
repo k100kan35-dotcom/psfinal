@@ -1473,7 +1473,7 @@ class PerssonModelGUI_V2:
         result_frame = ttk.LabelFrame(left_scrollable, text="6. 결과", padding=5)
         result_frame.pack(fill=tk.X, pady=3)
 
-        self.psd_profile_result_text = tk.Text(result_frame, height=12, width=45, font=self.FONTS['mono'])
+        self.psd_profile_result_text = tk.Text(result_frame, height=max(6, round(12 * self._gui_scale)), width=max(30, round(45 * self._gui_scale)), font=self.FONTS['mono'])
         self.psd_profile_result_text.pack(fill=tk.BOTH, expand=True)
 
         # 7. Export Options
@@ -2726,7 +2726,7 @@ class PerssonModelGUI_V2:
 
         # Create treeview for shift factors
         columns = ('T', 'aT', 'bT', 'log_aT')
-        self.mc_shift_table = ttk.Treeview(table_frame, columns=columns, show='headings', height=8)
+        self.mc_shift_table = ttk.Treeview(table_frame, columns=columns, show='headings', height=max(4, round(8 * self._gui_scale)))
         self.mc_shift_table.heading('T', text='T (°C)')
         self.mc_shift_table.heading('aT', text='aT')
         self.mc_shift_table.heading('bT', text='bT')
@@ -6570,7 +6570,8 @@ class PerssonModelGUI_V2:
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
 
         self.graph_data_listbox = tk.Listbox(list_frame, selectmode=tk.MULTIPLE,
-                                              yscrollcommand=scrollbar.set, height=15,
+                                              yscrollcommand=scrollbar.set,
+                                              height=max(8, round(15 * self._gui_scale)),
                                               font=self.FONTS['body'])
         self.graph_data_listbox.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.config(command=self.graph_data_listbox.yview)
@@ -6870,7 +6871,7 @@ class PerssonModelGUI_V2:
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + max(0, (self.root.winfo_height() - dlg_h) // 2)
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
-        dialog.minsize(600, 700)
+        dialog.minsize(self._sp(600), self._sp(700))
 
         C = self.COLORS
 
@@ -7184,7 +7185,7 @@ class PerssonModelGUI_V2:
         x = self.root.winfo_x() + (self.root.winfo_width() - dlg_w) // 2
         y = self.root.winfo_y() + max(0, (self.root.winfo_height() - dlg_h) // 2)
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
-        dialog.minsize(700, 600)
+        dialog.minsize(self._sp(700), self._sp(600))
 
         C = self.COLORS
 
@@ -7551,7 +7552,7 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 2 * 90), width=950)
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 2 * 90), width=self._sp(950))
             graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
@@ -8033,7 +8034,7 @@ class PerssonModelGUI_V2:
         add_graph(_plot_payne_effect)
 
         # Bottom padding for scroll
-        tk.Frame(scrollable_frame, bg='white', height=80).pack(fill=tk.X)
+        tk.Frame(scrollable_frame, bg='white', height=self._sp(80)).pack(fill=tk.X)
 
         # Force scrollregion update after all widgets are added
         self.root.after(100, _update_scrollregion)
@@ -11980,7 +11981,7 @@ class PerssonModelGUI_V2:
         x = self.root.winfo_x() + (root_w - dlg_w) // 2
         y = self.root.winfo_y() + (root_h - dlg_h) // 2
         dialog.geometry(f"{dlg_w}x{dlg_h}+{x}+{y}")
-        dialog.minsize(1000, 700)
+        dialog.minsize(self._sp(1000), self._sp(700))
 
         # Instructions
         inst_frame = ttk.Frame(dialog, padding=10)
@@ -13980,7 +13981,7 @@ class PerssonModelGUI_V2:
             fig.tight_layout(pad=1.5)
             graph_canvas = FigureCanvasTkAgg(fig, master=scrollable_frame)
             graph_canvas.draw()
-            graph_canvas.get_tk_widget().configure(height=int(fig_height * 2 * 90), width=950)
+            graph_canvas.get_tk_widget().configure(height=int(fig_height * 2 * 90), width=self._sp(950))
             graph_canvas.get_tk_widget().pack(anchor='w', padx=25, pady=(6, 14))
 
         # === Title ===
@@ -14223,7 +14224,7 @@ class PerssonModelGUI_V2:
             unit_frame.columnconfigure(col_idx, weight=1)
 
         # Bottom padding for scroll
-        tk.Frame(scrollable_frame, bg='white', height=80).pack(fill=tk.X)
+        tk.Frame(scrollable_frame, bg='white', height=self._sp(80)).pack(fill=tk.X)
 
         # Force scrollregion update after all widgets are added
         self.root.after(100, _update_scrollregion)
@@ -15739,7 +15740,7 @@ class PerssonModelGUI_V2:
         result_frame = ttk.LabelFrame(left_panel, text="3) 분석 결과 / 제안", padding=5)
         result_frame.pack(fill=tk.X, pady=3, padx=3)
 
-        self.ve_result_text = tk.Text(result_frame, height=22, width=60,
+        self.ve_result_text = tk.Text(result_frame, height=max(12, round(22 * self._gui_scale)), width=max(40, round(60 * self._gui_scale)),
                                       font=self.FONTS['mono_small'], wrap=tk.WORD,
                                       bg='#F8FAFC', relief='solid', bd=1)
         ve_scroll_r = ttk.Scrollbar(result_frame, orient='vertical',
