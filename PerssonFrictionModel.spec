@@ -11,6 +11,7 @@ mpl_hiddenimports = collect_submodules('matplotlib')
 
 # 프로젝트 데이터 디렉토리
 project_datas = [
+    ('assets', 'assets'),
     ('persson_model', 'persson_model'),
     ('reference_data', 'reference_data'),
 ]
@@ -18,6 +19,9 @@ if os.path.isdir('preset_data'):
     project_datas.append(('preset_data', 'preset_data'))
 if os.path.isfile('strain.py'):
     project_datas.append(('strain.py', '.'))
+
+# DPI-aware manifest
+manifest_path = os.path.join('assets', 'app.manifest')
 
 a = Analysis(
     ['main.py'],
@@ -32,9 +36,13 @@ a = Analysis(
         # pandas (DMA/PSD 파일 로딩)
         'pandas', 'pandas.core',
         # tkinter
-        'tkinter', 'tkinter.ttk', 'tkinter.filedialog', 'tkinter.messagebox',
-        # 한글 폰트 탐색
-        'platform',
+        'tkinter', 'tkinter.ttk', 'tkinter.filedialog',
+        'tkinter.messagebox', 'tkinter.font',
+        # stdlib (DPI 스케일링 등)
+        'platform', 'ctypes',
+        # jaraco
+        'pkg_resources', 'jaraco', 'jaraco.text',
+        'jaraco.functools', 'jaraco.context',
     ],
     hookspath=[],
     hooksconfig={},
@@ -56,11 +64,7 @@ a = Analysis(
         'matplotlib.backends.backend_cairo',
         'matplotlib.backends.backend_macosx',
         # 불필요 패키지
-        'IPython', 'jupyter', 'notebook',
-        'pytest', 'setuptools', 'pip', 'wheel',
-        'pdb', 'doctest', 'pydoc', 'unittest', 'test',
-        'lib2to3', 'ensurepip', 'idlelib', 'distutils',
-        'curses',
+        'IPython', 'jupyter', 'notebook', 'pytest',
         # 대형 ML/DL
         'torch', 'torchvision', 'torchaudio',
         'tensorflow', 'keras',
@@ -77,7 +81,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='PerssonFrictionModel',
+    name='NexenRubberFriction',
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,
@@ -90,4 +94,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/app_icon.ico',
+    manifest=manifest_path if os.path.exists(manifest_path) else None,
 )

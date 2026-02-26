@@ -11,6 +11,9 @@ import shutil
 import subprocess
 import time
 
+APP_NAME = "NexenRubberFriction"
+APP_VERSION = "3.0"
+
 # 프로젝트와 100% 무관한 대형 ML/DL 패키지만 제외
 EXCLUDES = [
     'torch', 'torchvision', 'torchaudio',
@@ -93,6 +96,41 @@ def _kill_old_exe(exe_path):
         pass
 
 
+def _create_dpi_manifest():
+    """Windows DPI-aware manifest 파일을 생성합니다.
+    이 매니페스트가 있어야 ctypes.windll.user32.GetDpiForSystem()이
+    실제 DPI를 반환하고, UI가 올바르게 스케일링됩니다."""
+    manifest_content = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"
+          xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
+  <asmv3:application>
+    <asmv3:windowsSettings>
+      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
+      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">permonitorv2,permonitor,system</dpiAwareness>
+    </asmv3:windowsSettings>
+  </asmv3:application>
+  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
+    <application>
+      <!-- Windows 10 / 11 -->
+      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
+      <!-- Windows 8.1 -->
+      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
+      <!-- Windows 8 -->
+      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
+      <!-- Windows 7 -->
+      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
+    </application>
+  </compatibility>
+</assembly>"""
+
+    manifest_path = os.path.join('assets', 'app.manifest')
+    os.makedirs('assets', exist_ok=True)
+    with open(manifest_path, 'w', encoding='utf-8') as f:
+        f.write(manifest_content)
+    print(f"  [DPI] Created DPI-aware manifest: {manifest_path}")
+    return manifest_path
+
+
 def build():
     # --onedir 옵션 확인 (설치 파일 빌드용)
     use_onedir = '--onedir' in sys.argv
@@ -100,23 +138,27 @@ def build():
     sep = ';' if sys.platform == 'win32' else ':'
 
     # ===== 빌드 전 기존 EXE 정리 (OneDrive 잠금 방지) =====
-    exe_name = 'NexenRubberFriction.exe' if sys.platform == 'win32' else 'NexenRubberFriction'
+    exe_name = f'{APP_NAME}.exe' if sys.platform == 'win32' else APP_NAME
     if use_onedir:
-        exe_path = os.path.join('dist', 'NexenRubberFriction', exe_name)
+        exe_path = os.path.join('dist', APP_NAME, exe_name)
     else:
         exe_path = os.path.join('dist', exe_name)
     _kill_old_exe(exe_path)
 
     pack_mode = '--onedir' if use_onedir else '--onefile'
 
+    # DPI-aware manifest 생성 (Windows)
+    manifest_path = _create_dpi_manifest()
+
     args = [
         'main.py',
         pack_mode,
-        '--name=NexenRubberFriction',
+        f'--name={APP_NAME}',
         '--clean',
         '--noconfirm',
         '--noconsole',
         '--icon=assets/app_icon.ico',
+        f'--manifest={manifest_path}',
         '--log-level', 'WARN',
 
         # ===== matplotlib 폰트/데이터 번들 =====
@@ -155,12 +197,14 @@ def build():
         '--hidden-import', 'tkinter.filedialog',
         '--hidden-import', 'tkinter.messagebox',
         '--hidden-import', 'tkinter.simpledialog',
+        '--hidden-import', 'tkinter.font',
 
-        # ===== hidden imports: stdlib =====
+        # ===== hidden imports: stdlib (DPI 스케일링 등) =====
         '--hidden-import', 'platform',
         '--hidden-import', 'tempfile',
         '--hidden-import', 'csv',
         '--hidden-import', 're',
+        '--hidden-import', 'ctypes',
 
         # ===== hidden imports: importlib_resources =====
         '--hidden-import', 'importlib_resources',
@@ -211,7 +255,7 @@ def build():
         args.extend(['--add-data', f'strain.py{sep}.'])
 
     print("=" * 60)
-    print("  NEXEN Rubber Friction Modelling Program - EXE Build")
+    print(f"  NEXEN Rubber Friction Modelling Program v{APP_VERSION} - EXE Build")
     print(f"  Mode: {'onedir (for installer)' if use_onedir else 'onefile (standalone)'}")
     print("=" * 60)
     print(f"Python: {sys.version}")

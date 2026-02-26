@@ -2,15 +2,16 @@
 ; =====================================================================
 ; Usage:
 ;   1. Build with PyInstaller first: python build_exe.py --onedir
+;      (또는 python build_installer.py 로 자동 빌드)
 ;   2. Compile with Inno Setup: iscc installer.iss
 ;
 ; Download Inno Setup: https://jrsoftware.org/issetup.php
 
 #define MyAppName "NEXEN Rubber Friction Modelling Program"
-#define MyAppVersion "1.1.0"
+#define MyAppVersion "3.0"
 #define MyAppPublisher "NEXEN TIRE - Material Research Team"
 #define MyAppExeName "NexenRubberFriction.exe"
-#define MyAppDescription "NEXEN Rubber Friction Modelling Program based on Persson Theory"
+#define MyAppDescription "NEXEN Rubber Friction Modelling Program based on Persson Theory v3.0"
 
 [Setup]
 ; Unique App ID (GUID) - Do not change this value
@@ -48,6 +49,8 @@ CloseApplications=yes
 RestartApplications=no
 ; Uninstall display name
 UninstallDisplayName={#MyAppName}
+; DPI aware installer
+DPIAware=yes
 
 [Languages]
 Name: "korean"; MessagesFile: "compiler:Languages\Korean.isl"
@@ -88,9 +91,9 @@ begin
      RegQueryStringValue(HKCU, UninstallKey, 'UninstallString', UninstallString) then
   begin
     if MsgBox('{#MyAppName}' + #13#10 +
-              'A previous version is already installed.' + #13#10 +
-              'Do you want to uninstall it before continuing?' + #13#10#13#10 +
-              '(Recommended: Yes)',
+              '이전 버전이 이미 설치되어 있습니다.' + #13#10 +
+              '계속하기 전에 이전 버전을 제거하시겠습니까?' + #13#10#13#10 +
+              '(권장: 예)',
               mbConfirmation, MB_YESNO) = IDYES then
     begin
       Exec(RemoveQuotes(UninstallString), '/SILENT', '', SW_SHOW, ewWaitUntilTerminated, ResultCode);
