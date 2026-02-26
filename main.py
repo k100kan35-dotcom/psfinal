@@ -839,10 +839,22 @@ class PerssonModelGUI_V2:
             ('tab_friction_factors','영향인자',          self._create_friction_factors_tab),
         ]
 
+        # 핵심 작업 탭 (노란 음영 강조)
+        _highlight_tabs = {'tab_psd_profile', 'tab_master_curve',
+                           'tab_parameters', 'tab_mu_visc'}
+
+        # 노란색 탭 마커 이미지 생성 (12×12 노란 사각형)
+        self._yellow_tab_img = tk.PhotoImage(width=12, height=12)
+        self._yellow_tab_img.put('#F59E0B', to=(0, 0, 12, 12))
+
         for attr, label, builder in tabs:
             frame = ttk.Frame(self.notebook)
             setattr(self, attr, frame)
-            self.notebook.add(frame, text=f' {label} ')
+            if attr in _highlight_tabs:
+                self.notebook.add(frame, text=f' {label} ',
+                                  image=self._yellow_tab_img, compound='left')
+            else:
+                self.notebook.add(frame, text=f' {label} ')
             builder(frame)
 
         # ── Handle tab switch: prevent graph resize flicker ──
@@ -7336,7 +7348,7 @@ class PerssonModelGUI_V2:
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
         # Use Cambria Math for mathtext (good LaTeX rendering)
-        math_fontfamily = 'dejavusans'  # PyInstaller 호환 (cm은 exe에서 깨짐)
+        math_fontfamily = 'cm'  # Cambria Math 스타일 (Computer Modern)
 
         def add_section_title(title_text, bg_color='#1B2A4A', fg_color='white'):
             """Add a colored section header."""
@@ -13791,7 +13803,7 @@ class PerssonModelGUI_V2:
         from matplotlib.figure import Figure
         from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-        math_fontfamily = 'dejavusans'  # PyInstaller 호환 (cm은 exe에서 깨짐)
+        math_fontfamily = 'cm'  # Cambria Math 스타일 (Computer Modern)
 
         def add_section_title(title_text, bg_color='#1B2A4A', fg_color='white'):
             frame = tk.Frame(scrollable_frame, bg=bg_color, padx=15, pady=12)
