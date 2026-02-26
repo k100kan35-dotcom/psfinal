@@ -7,7 +7,7 @@ Windows 설치 프로그램(.exe installer)을 자동 생성합니다.
     python build_installer.py
 
 빌드 과정:
-    1단계: PyInstaller로 앱을 dist/NexenRubberFriction/ 폴더에 빌드 (onedir 모드)
+    1단계: PyInstaller로 앱을 dist/PerssonFrictionModel/ 폴더에 빌드 (onedir 모드)
     2단계: Inno Setup으로 설치 프로그램 생성
 
 사전 설치:
@@ -26,7 +26,7 @@ import glob
 # 설정
 # =====================================================================
 APP_NAME = "NexenRubberFriction"
-APP_VERSION = "3.0"
+APP_VERSION = "1.1.0"
 MAIN_SCRIPT = "main.py"
 ISS_FILE = "installer.iss"
 OUTPUT_DIR = "installer_output"
@@ -78,9 +78,8 @@ HIDDEN_IMPORTS = [
     # tkinter
     'tkinter', 'tkinter.ttk', 'tkinter.filedialog',
     'tkinter.messagebox', 'tkinter.simpledialog',
-    'tkinter.font',
-    # stdlib (DPI 스케일링 등)
-    'platform', 'tempfile', 'csv', 're', 'ctypes',
+    # stdlib
+    'platform', 'tempfile', 'csv', 're',
     # importlib
     'importlib_resources',
     # jaraco
@@ -144,34 +143,6 @@ def clean_build():
             shutil.rmtree(d, ignore_errors=True)
 
 
-def create_dpi_manifest():
-    """Windows DPI-aware manifest 파일을 생성합니다."""
-    manifest_content = """<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0"
-          xmlns:asmv3="urn:schemas-microsoft-com:asm.v3">
-  <asmv3:application>
-    <asmv3:windowsSettings>
-      <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>
-      <dpiAwareness xmlns="http://schemas.microsoft.com/SMI/2016/WindowsSettings">permonitorv2,permonitor,system</dpiAwareness>
-    </asmv3:windowsSettings>
-  </asmv3:application>
-  <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
-    <application>
-      <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"/>
-      <supportedOS Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"/>
-      <supportedOS Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"/>
-      <supportedOS Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"/>
-    </application>
-  </compatibility>
-</assembly>"""
-    manifest_path = os.path.join('assets', 'app.manifest')
-    os.makedirs('assets', exist_ok=True)
-    with open(manifest_path, 'w', encoding='utf-8') as f:
-        f.write(manifest_content)
-    print(f"  [DPI] Created DPI-aware manifest: {manifest_path}")
-    return manifest_path
-
-
 def step1_pyinstaller():
     """1단계: PyInstaller로 앱 빌드 (onedir 모드)"""
     print()
@@ -183,9 +154,6 @@ def step1_pyinstaller():
 
     sep = ';' if sys.platform == 'win32' else ':'
 
-    # DPI manifest 생성
-    manifest_path = create_dpi_manifest()
-
     args = [
         MAIN_SCRIPT,
         '--onedir',
@@ -195,7 +163,6 @@ def step1_pyinstaller():
         '--noconsole',
         '--log-level', 'WARN',
         '--icon=assets/app_icon.ico',
-        f'--manifest={manifest_path}',
 
         # matplotlib 데이터 번들
         '--collect-data', 'matplotlib',
