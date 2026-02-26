@@ -11,7 +11,7 @@ Mathematical Definition:
 
 where:
     - P(q) = erf(1 / (2*sqrt(G(q)))) : contact area ratio
-    - S(q) = gamma + (1-gamma) * P(q) : contact correction factor (gamma ~ 0.6)
+    - S(q) = gamma + (1-gamma) * P(q)^2 : contact correction factor (gamma ~ 0.6)
     - Im[E(omega)] : loss modulus
     - omega = q * v * cos(phi) : excitation frequency
 
@@ -208,7 +208,7 @@ class FrictionCalculator:
         """
         Calculate contact correction factor S(q) from P(q).
 
-        S(q) = gamma + (1 - gamma) * P(q)
+        S(q) = gamma + (1 - gamma) * P(q)^2
 
         Parameters
         ----------
@@ -221,7 +221,7 @@ class FrictionCalculator:
             S(q) contact correction factor
         """
         P = np.asarray(P)
-        return self.gamma + (1 - self.gamma) * P
+        return self.gamma + (1 - self.gamma) * P**2
 
     def _angle_integral_friction(
         self,
@@ -329,7 +329,7 @@ class FrictionCalculator:
 
         This follows the work instruction:
         1. For each q, compute P(q) = erf(1/(2*sqrt(G(q))))
-        2. Compute S(q) = gamma + (1-gamma)*P(q)
+        2. Compute S(q) = gamma + (1-gamma)*P(q)^2
         3. Compute angle integral with optional strain correction
         4. Form integrand: q^3 * C(q) * P(q) * S(q) * angle_integral
         5. Integrate over q and multiply by 1/2
@@ -373,7 +373,7 @@ class FrictionCalculator:
         # Calculate P(q) from G(q): P = erf(1 / (2*sqrt(G)))
         P_array = self.calculate_P_from_G(G_array)
 
-        # Calculate S(q) from P(q): S = gamma + (1-gamma)*P
+        # Calculate S(q) from P(q): S = gamma + (1-gamma)*P²
         S_array = self.calculate_S_from_P(P_array)
 
         # Calculate angle integral for each q
@@ -638,8 +638,8 @@ def calculate_mu_visc_simple(
         arg = np.minimum(1.0 / (2.0 * sqrt_G), 10.0)
         P_array[valid_mask] = erf(arg)
 
-    # Calculate S(q) from P(q): S = gamma + (1-gamma)*P
-    S_array = gamma + (1 - gamma) * P_array
+    # Calculate S(q) from P(q): S = gamma + (1-gamma)*P²
+    S_array = gamma + (1 - gamma) * P_array**2
 
     # Angle array - use symmetry: integrate 0 to pi/2 and multiply by 4
     phi = np.linspace(0, np.pi / 2, n_phi)
