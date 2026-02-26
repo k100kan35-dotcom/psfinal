@@ -240,8 +240,14 @@ def spline_average_fg(fg_by_T, selected_temps, start_strain=0.0148, n_final=20):
     mean_f = np.nanmean(F_mat, axis=0)
     mean_g = np.nanmean(G_mat, axis=0)
 
-    # 6) 최종 log-spaced 포인트
-    final_x = _logspace_points(start_strain, max_strain, n_final)
+    # 6) 보간 완료 후 strain을 /100 하여 fraction 스케일로 변환
+    #    입력: 0.0148 ~ 27.4 (%) → 출력: 0.000148 ~ 0.274 (fraction)
+    common_x = common_x / 100.0
+    start_strain_frac = start_strain / 100.0
+    max_strain_frac = max_strain / 100.0
+
+    # 7) 최종 log-spaced 포인트 (fraction 스케일)
+    final_x = _logspace_points(start_strain_frac, max_strain_frac, n_final)
 
     # 평균 커브를 다시 스플라인으로 보간하여 최종 포인트에 평가
     def _interp_mean(cx, my, xq):
@@ -4854,8 +4860,8 @@ class PerssonModelGUI_V2:
         """Create an activity log panel at the top of the main window."""
         C = self.COLORS
         _scale = getattr(self, '_gui_scale', 1.0)
-        _collapsed_h = max(36, round(36 * _scale))
-        _expanded_h = max(170, round(170 * _scale))
+        _collapsed_h = max(48, round(48 * _scale))
+        _expanded_h = max(200, round(200 * _scale))
 
         log_container = tk.Frame(self.root, bg=C['sidebar'], height=_expanded_h)
         log_container.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4, 0))
@@ -8947,9 +8953,10 @@ class PerssonModelGUI_V2:
         self.ax_fg_curves.grid(True, alpha=0.3)
 
         # Plot individual temperature curves (thin, low alpha)
+        # strain /100 하여 fraction 스케일로 표시
         if self.fg_by_T is not None:
             for T, data in self.fg_by_T.items():
-                s = data['strain']
+                s = data['strain'] / 100.0
                 f = data['f']
                 g = data['g']
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.15, linewidth=0.8)
@@ -9304,24 +9311,25 @@ class PerssonModelGUI_V2:
         self.ax_fg_curves.grid(True, alpha=0.3)
 
         # Plot individual temperature curves
+        # strain /100 하여 fraction 스케일로 표시
         if self.fg_by_T is not None:
             for T, data in self.fg_by_T.items():
-                s = data['strain']
+                s = data['strain'] / 100.0
                 f = data['f']
                 g = data['g']
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.3, linewidth=1)
                 self.ax_fg_curves.plot(s, g, 'r-', alpha=0.3, linewidth=1)
 
-        # Plot Persson average if available
+        # Plot Persson average if available (이미 fraction 스케일)
         if self.piecewise_result is not None:
             s = self.piecewise_result['strain']
-            split = self.piecewise_result['split']
+            split = self.piecewise_result['split'] / 100.0
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
             self.ax_fg_curves.plot(s, f_final, 'b-', linewidth=3.5, label='f(ε) Persson Avg')
             self.ax_fg_curves.plot(s, g_final, 'r-', linewidth=3.5, label='g(ε) Persson Avg')
             self.ax_fg_curves.axvline(split, color='green', linewidth=2, linestyle=':', alpha=0.8,
-                                      label=f'Split @ {split*100:.1f}%')
+                                      label=f'Split @ ε={split:.4f}')
             self.ax_fg_curves.legend(loc='upper right', fontsize=12, ncol=2)
         elif self.fg_averaged is not None:
             s = self.fg_averaged['strain']
@@ -9331,7 +9339,7 @@ class PerssonModelGUI_V2:
             self.ax_fg_curves.plot(s, g_avg, 'r-', linewidth=3, label='g(ε) 평균')
             self.ax_fg_curves.legend(loc='upper right')
 
-        self.ax_fg_curves.set_xlim(0, 1.0)
+        self.ax_fg_curves.set_xlim(0, None)
         self.ax_fg_curves.set_ylim(0, 1.1)
 
         self.canvas_mu_visc.draw()
