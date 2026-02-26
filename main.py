@@ -8505,21 +8505,29 @@ class PerssonModelGUI_V2:
         # Start strain setting
         row1 = ttk.Frame(persson_avg_frame)
         row1.pack(fill=tk.X, pady=1)
-        ttk.Label(row1, text="Start strain:").pack(side=tk.LEFT)
+        ttk.Label(row1, text="Start strain:", font=self.FONTS['body']).pack(side=tk.LEFT)
         self.start_strain_var = tk.StringVar(value="0.0148")
-        ttk.Entry(row1, textvariable=self.start_strain_var, width=8).pack(side=tk.LEFT, padx=2)
+        ttk.Entry(row1, textvariable=self.start_strain_var, width=8, font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
 
         # N final log-spaced points
-        ttk.Label(row1, text="N pts:").pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Label(row1, text="N pts:", font=self.FONTS['body']).pack(side=tk.LEFT, padx=(8, 0))
         self.n_final_pts_var = tk.StringVar(value="20")
-        ttk.Entry(row1, textvariable=self.n_final_pts_var, width=5).pack(side=tk.LEFT, padx=2)
+        ttk.Entry(row1, textvariable=self.n_final_pts_var, width=5, font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
 
         # Method description
         info_frame = ttk.Frame(persson_avg_frame)
         info_frame.pack(fill=tk.X, pady=1)
         ttk.Label(info_frame, text="Cubic spline 개별보간 → nanmean → log-spaced",
-                  font=self.FONTS.get('tiny', ('Segoe UI', 15)),
-                  foreground='#2563EB').pack(anchor=tk.W)
+                  font=self.FONTS['small'], foreground='#2563EB').pack(anchor=tk.W)
+
+        # 온도별 체크박스 영역 (f,g 계산 후 동적으로 채워짐)
+        temp_check_label = ttk.Label(persson_avg_frame, text="사용 온도:", font=self.FONTS['body'])
+        temp_check_label.pack(anchor=tk.W, pady=(3, 0))
+        self._temp_check_frame = ttk.Frame(persson_avg_frame)
+        self._temp_check_frame.pack(fill=tk.X, pady=1)
+        self._temp_check_vars = {}  # {temperature: BooleanVar}
+        ttk.Label(self._temp_check_frame, text="(f,g 곡선 계산 후 표시됩니다)",
+                  font=self.FONTS['small'], foreground='#94A3B8').pack(anchor=tk.W)
 
         # Legacy vars for compatibility (hidden)
         self.split_strain_var = tk.StringVar(value="14.2")
@@ -8536,7 +8544,7 @@ class PerssonModelGUI_V2:
         # Status label for Persson average
         self.persson_avg_status_var = tk.StringVar(value="(미계산)")
         ttk.Label(persson_avg_frame, textvariable=self.persson_avg_status_var,
-                  foreground='#059669').pack(anchor=tk.W)
+                  font=self.FONTS['body'], foreground='#059669').pack(anchor=tk.W)
 
         # Hidden listboxes for internal compatibility (not displayed)
         _hidden_frame = ttk.Frame(left_panel)
@@ -8827,8 +8835,14 @@ class PerssonModelGUI_V2:
             start_strain = float(self.start_strain_var.get())
             n_final = int(self.n_final_pts_var.get())
 
-            # 모든 온도 자동 사용
-            all_temps = list(self.fg_by_T.keys())
+            # 체크된 온도만 사용 (체크박스가 있으면)
+            if self._temp_check_vars:
+                all_temps = [T for T, var in self._temp_check_vars.items() if var.get()]
+                if not all_temps:
+                    self._show_status("최소 1개 이상의 온도를 체크하세요.", 'warning')
+                    return
+            else:
+                all_temps = list(self.fg_by_T.keys())
 
             # Step 3: fgnew 로직 - 스플라인 보간 → 평균 → log-spaced
             result = spline_average_fg(
@@ -8884,12 +8898,15 @@ class PerssonModelGUI_V2:
             # Update status
             n_temps = len(result['Ts_used'])
             temps_str = ", ".join(f"{t:.1f}" for t in sorted(result['Ts_used']))
+            # 제외된 온도 표시
+            excluded = [T for T, var in self._temp_check_vars.items() if not var.get()] if self._temp_check_vars else []
+            excl_str = f" (제외: {', '.join(f'{t:.1f}' for t in sorted(excluded))}°C)" if excluded else ""
             self.persson_avg_status_var.set(
-                f"완료: {n_temps}개 온도, {n_final}pts log-spaced [{temps_str}°C]"
+                f"완료: {n_temps}개 온도, {n_final}pts [{temps_str}°C]{excl_str}"
             )
             self.status_var.set(
                 f"Spline average f,g 완료: {n_temps}개 온도, "
-                f"start={start_strain:.4f}, N={n_final}"
+                f"start={start_strain:.4f}, N={n_final}{excl_str}"
             )
 
         except Exception as e:
@@ -9116,6 +9133,24 @@ class PerssonModelGUI_V2:
             import traceback
             traceback.print_exc()
 
+    def _update_temp_checkboxes(self, temps):
+        """온도별 체크박스를 동적으로 생성/갱신. 모든 온도 기본 체크됨."""
+        # 기존 위젯 제거
+        for widget in self._temp_check_frame.winfo_children():
+            widget.destroy()
+        self._temp_check_vars.clear()
+
+        for T in sorted(temps):
+            var = tk.BooleanVar(value=True)
+            self._temp_check_vars[T] = var
+            n_pts = len(self.fg_by_T[T]['strain']) if self.fg_by_T and T in self.fg_by_T else 0
+            cb = ttk.Checkbutton(
+                self._temp_check_frame,
+                text=f"{T:.2f} °C  ({n_pts}pts)",
+                variable=var
+            )
+            cb.pack(anchor=tk.W, padx=2)
+
     def _compute_fg_curves(self):
         """Compute f,g curves from strain sweep data."""
         if self.strain_data is None:
@@ -9161,6 +9196,9 @@ class PerssonModelGUI_V2:
             for T in temps:
                 self.temp_listbox.insert(tk.END, f"{T:.2f} °C")
                 self.temp_listbox.selection_set(tk.END)
+
+            # 온도별 체크박스 갱신
+            self._update_temp_checkboxes(temps)
 
             # Plot individual curves
             self._update_fg_plot()
