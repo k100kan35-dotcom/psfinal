@@ -4300,11 +4300,11 @@ class PerssonModelGUI_V2:
         # G 보정 계수 (Norm Factor)
         row += 1
         ttk.Label(input_frame, text="G 보정 계수 (Norm Factor):").grid(row=row, column=0, sticky=tk.W, pady=5)
-        self.g_norm_factor_var = tk.StringVar(value="1.6667")
+        self.g_norm_factor_var = tk.StringVar(value="1.72414")
         norm_entry_frame = tk.Frame(input_frame, bg=self.COLORS['warning'], padx=1, pady=1)
         norm_entry_frame.grid(row=row, column=1, pady=5, sticky=tk.W)
         ttk.Entry(norm_entry_frame, textvariable=self.g_norm_factor_var, width=8).pack(side=tk.LEFT)
-        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.6667",
+        ttk.Label(input_frame, text="G(q) = ∫ / (8 × NF), 기본값 1.72414",
                   font=('Segoe UI', 16), foreground='#64748B').grid(row=row+1, column=0, columnspan=2, sticky=tk.W)
         row += 1
 
@@ -7122,7 +7122,7 @@ class PerssonModelGUI_V2:
         add_var_row(sec2, "q_max [1/m]", "q_max_var", "1.0e+6", "적분 상한 파수")
         add_var_row(sec2, "q 분할 수", "n_q_var", "36", "파수 그리드 수")
         add_var_row(sec2, "φ 분할 수 (G(q))", "n_phi_gq_var", "36", "G(q) 각도 적분 분할")
-        add_var_row(sec2, "G 정규화 계수", "g_norm_factor_var", "1.6667", "G(q) 정규화")
+        add_var_row(sec2, "G 정규화 계수", "g_norm_factor_var", "1.72414", "G(q) 정규화")
 
         # ═══ Section 3: h'rms/Strain ═══
         sec3 = add_section("h'rms / Strain 설정 (Tab 4-5)")
@@ -7132,27 +7132,37 @@ class PerssonModelGUI_V2:
 
         # ═══ Section 4: μ_visc 계산 설정 ═══
         sec4 = add_section("μ_visc 계산 설정 (Tab 6)")
-        add_var_row(sec4, "γ (접촉 보정)", "gamma_var", "0.55", "S(q) 보정 계수")
+        add_var_row(sec4, "γ (접촉 보정)", "gamma_var", "0.57", "S(q) 보정 계수")
+        add_var_row(sec4, "S(q) P 지수", "s_q_p_exponent_var", "2", "1=P¹, 2=P²")
         add_var_row(sec4, "φ 분할 수 (μ)", "n_phi_var", "14", "μ 각도 적분 분할")
         add_var_row(sec4, "μ 평활화 창", "smooth_window_var", "5", "Savitzky-Golay 창 크기")
+        add_var_row(sec4, "μ 평활화 사용", "smooth_mu_var", "True", "True/False")
         add_var_row(sec4, "μ 계산 온도 [°C]", "mu_calc_temp_var", "20.0", "μ 계산 시 온도")
         add_var_row(sec4, "고정 strain [%]", "fixed_strain_var", "1.0", "고정 strain 모드 값")
+        add_var_row(sec4, "Strain 추정 방법", "strain_est_method_var", "rms_slope", "rms_slope/fixed/persson/simple")
         add_var_row(sec4, "Extend strain [%]", "extend_strain_var", "40", "strain 외삽 상한")
+        add_var_row(sec4, "비선형 f,g 보정", "use_fg_correction_var", "False", "True/False")
 
-        # ═══ Section 5: DMA 관련 ═══
-        sec5 = add_section("DMA / 마스터 커브 설정")
-        add_var_row(sec5, "외삽 최소 주파수", "dma_extrap_fmin_var", "1e-2", "DMA 외삽 하한 [Hz]")
-        add_var_row(sec5, "외삽 최대 주파수", "dma_extrap_fmax_var", "1e12", "DMA 외삽 상한 [Hz]")
-        add_var_row(sec5, "T_ref [°C]", "mc_tref_var", "20.0", "마스터 커브 기준 온도")
-        add_var_row(sec5, "평활화 창 크기", "mc_smooth_window_var", "23", "마스터 커브 평활화")
+        # ═══ Section 5: f,g Split 설정 ═══
+        sec5 = add_section("f,g Split Average 설정 (Tab 5)")
+        add_var_row(sec5, "Split 최종 pts", "n_final_pts_var", "20", "Split 평균 최종 포인트 수")
+        add_var_row(sec5, "Split1 [%]", "fg_split_strain_var", "10", "Zone1↔Zone2 경계")
+        add_var_row(sec5, "Split2 [%]", "fg_split_strain2_var", "20", "Zone2↔Zone3 경계")
 
-        # ═══ Section 6: 점탄성 설계 ═══
-        sec6 = add_section("점탄성 설계 (VE Advisor)")
-        add_var_row(sec6, "VE v_min [m/s]", "ve_v_min_var", "0.01", "속도 범위 최소")
-        add_var_row(sec6, "VE v_max [m/s]", "ve_v_max_var", "10.0", "속도 범위 최대")
-        add_var_row(sec6, "VE 속도 분할 수", "ve_n_v_var", "30", "속도 분할")
-        add_var_row(sec6, "VE 온도 [°C]", "ve_temp_var", "20.0", "설계 온도")
-        add_var_row(sec6, "VE σ₀ [MPa]", "ve_sigma_var", "0.3", "설계 압력")
+        # ═══ Section 6: DMA 관련 ═══
+        sec6 = add_section("DMA / 마스터 커브 설정")
+        add_var_row(sec6, "외삽 최소 주파수", "dma_extrap_fmin_var", "1e-2", "DMA 외삽 하한 [Hz]")
+        add_var_row(sec6, "외삽 최대 주파수", "dma_extrap_fmax_var", "1e12", "DMA 외삽 상한 [Hz]")
+        add_var_row(sec6, "T_ref [°C]", "mc_tref_var", "20.0", "마스터 커브 기준 온도")
+        add_var_row(sec6, "평활화 창 크기", "mc_smooth_window_var", "23", "마스터 커브 평활화")
+
+        # ═══ Section 7: 점탄성 설계 ═══
+        sec7 = add_section("점탄성 설계 (VE Advisor)")
+        add_var_row(sec7, "VE v_min [m/s]", "ve_v_min_var", "0.01", "속도 범위 최소")
+        add_var_row(sec7, "VE v_max [m/s]", "ve_v_max_var", "10.0", "속도 범위 최대")
+        add_var_row(sec7, "VE 속도 분할 수", "ve_n_v_var", "30", "속도 분할")
+        add_var_row(sec7, "VE 온도 [°C]", "ve_temp_var", "20.0", "설계 온도")
+        add_var_row(sec7, "VE σ₀ [MPa]", "ve_sigma_var", "0.3", "설계 압력")
 
         # ═══ Buttons ═══
         btn_frame = ttk.Frame(dialog, padding=10)
@@ -8671,7 +8681,7 @@ class PerssonModelGUI_V2:
         integ_row = ttk.Frame(mu_settings_frame)
         integ_row.pack(fill=tk.X, pady=1)
         ttk.Label(integ_row, text="γ:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
-        self.gamma_var = tk.StringVar(value="0.55")
+        self.gamma_var = tk.StringVar(value="0.57")
         ttk.Entry(integ_row, textvariable=self.gamma_var, width=5).pack(side=tk.LEFT, padx=2)
         ttk.Label(integ_row, text="φ점:", font=('Segoe UI', 17)).pack(side=tk.LEFT)
         self.n_phi_var = tk.StringVar(value="14")
@@ -8679,7 +8689,7 @@ class PerssonModelGUI_V2:
 
         # S(q) P exponent selection: P^1 or P^2
         ttk.Label(integ_row, text="  S(q):", font=('Segoe UI', 17)).pack(side=tk.LEFT, padx=(8, 0))
-        self.s_q_p_exponent_var = tk.IntVar(value=1)  # 기본 P^1
+        self.s_q_p_exponent_var = tk.IntVar(value=2)  # 기본 P^2
         ttk.Radiobutton(integ_row, text="P¹", variable=self.s_q_p_exponent_var, value=1).pack(side=tk.LEFT, padx=2)
         ttk.Radiobutton(integ_row, text="P²", variable=self.s_q_p_exponent_var, value=2).pack(side=tk.LEFT, padx=2)
 
@@ -11616,9 +11626,22 @@ class PerssonModelGUI_V2:
             # 상태바에도 표시
             self.status_var.set(gap_msg)
 
+            # 작업로그에 상세 기록
+            detail_strs = []
+            for target_v, (actual_v, gap) in zip(target_velocities, gaps):
+                idx = np.argmin(np.abs(np.log10(v) - np.log10(target_v)))
+                calc_val = P_qmax_array[idx]
+                ref_val = ref_interp(np.log10(actual_v))
+                detail_strs.append(
+                    f"v={actual_v:.0e}: 계산={calc_val:.4f}, 참조={ref_val:.4f}, 오차={gap:+.1f}%"
+                )
+            log_msg = "실접촉 A/A0 오차: " + " | ".join(detail_strs)
+            self._append_log(log_msg, 'info')
+
         except Exception as e:
             print(f"[DEBUG] A/A0 gap 계산 오류: {e}")
             self.area_gap_var.set("A/A0 Gap: 계산 오류")
+            self._append_log(f"A/A0 Gap 계산 오류: {e}", 'warning')
 
     def _export_mu_and_area_csv(self):
         """Export mu_visc and A/A0 data to a single CSV file with log10(v)."""
