@@ -148,9 +148,10 @@ def _natural_cubic_spline_eval(x: np.ndarray, y: np.ndarray, m: np.ndarray, xq: 
 
 
 def _spline_interp(x: np.ndarray, y: np.ndarray, xq: np.ndarray):
-    """Natural cubic spline 보간 (x → y, 쿼리 xq)."""
-    m = _natural_cubic_spline_prepare(x, y)
-    return _natural_cubic_spline_eval(x, y, m, xq)
+    """PCHIP 보간 (overshoot 방지). 범위 밖은 NaN."""
+    from scipy.interpolate import PchipInterpolator
+    pchip = PchipInterpolator(x, y, extrapolate=False)
+    return pchip(xq)
 
 
 def _logspace_points(x_start: float, x_end: float, n: int):
@@ -258,13 +259,19 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     final_f = _interp_mean(common_x, mean_f, final_x)
     final_g = _interp_mean(common_x, mean_g, final_x)
 
+    # f, g는 물리적으로 0 이상, 원본 데이터 최대값 이하여야 함
+    f_max = np.nanmax(mean_f) * 1.1 if np.any(np.isfinite(mean_f)) else 2.0
+    g_max = np.nanmax(mean_g) * 1.1 if np.any(np.isfinite(mean_g)) else 2.0
+    final_f = np.clip(final_f, 0.0, f_max)
+    final_g = np.clip(final_g, 0.0, g_max)
+
     return {
         'strain': final_x,
         'f_avg': final_f,
         'g_avg': final_g,
         'common_x': common_x,
-        'common_f': mean_f,
-        'common_g': mean_g,
+        'common_f': np.clip(mean_f, 0.0, f_max),
+        'common_g': np.clip(mean_g, 0.0, g_max),
         'Ts_used': [ds[0] for ds in datasets],
         'n_eff': np.full_like(final_x, len(datasets), dtype=float),
     }
