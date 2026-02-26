@@ -148,11 +148,8 @@ def _natural_cubic_spline_eval(x: np.ndarray, y: np.ndarray, m: np.ndarray, xq: 
 
 
 def _spline_interp(x: np.ndarray, y: np.ndarray, xq: np.ndarray):
-    """Akima 보간 (cubic spline급 매끄러움 + overshoot 억제). 범위 밖은 NaN."""
-    from scipy.interpolate import Akima1DInterpolator
-    akima = Akima1DInterpolator(x, y)
-    akima.extrapolate = False
-    return akima(xq)
+    """선형 보간. 범위 밖은 NaN."""
+    return np.interp(xq, x, y, left=np.nan, right=np.nan)
 
 
 def _logspace_points(x_start: float, x_end: float, n: int):
@@ -764,6 +761,7 @@ class PerssonModelGUI_V2:
         """
         self.reference_mu_data = None
         self.reference_area_data = None
+        self.reference_fg_data = []  # [{name, strain, f, g}, ...]
         print("[참조 데이터] 초기 참조 데이터 없음 (저장된 데이터셋에서 불러오기 가능)")
 
     def _create_menu(self):
@@ -8993,6 +8991,18 @@ class PerssonModelGUI_V2:
             self.ax_fg_curves.plot(s, f_avg, 'b-', linewidth=3, label='f(ε) 평균')
             self.ax_fg_curves.plot(s, g_avg, 'r-', linewidth=3, label='g(ε) 평균')
 
+        # 참조 f,g 데이터 오버레이
+        ref_colors = ['k', '#805AD5', '#D69E2E', '#00B5D8']
+        if hasattr(self, 'reference_fg_data') and self.reference_fg_data:
+            for i, ds in enumerate(self.reference_fg_data):
+                clr = ref_colors[i % len(ref_colors)]
+                self.ax_fg_curves.plot(ds['strain'], ds['f'], '--', color=clr,
+                                       linewidth=2, alpha=0.9,
+                                       label=f"f 참조: {ds['name']}")
+                self.ax_fg_curves.plot(ds['strain'], ds['g'], '-.', color=clr,
+                                       linewidth=2, alpha=0.9,
+                                       label=f"g 참조: {ds['name']}")
+
         self.ax_fg_curves.set_xlim(0, None)
         self.ax_fg_curves.set_ylim(0, None)
         self.ax_fg_curves.legend(loc='upper right', fontsize=10, ncol=2)
@@ -11448,6 +11458,84 @@ class PerssonModelGUI_V2:
                 for lv, a in zip(log_v, area):
                     area_text.insert(tk.END, f"{lv:.6e}\t{a:.6e}\n")
 
+        # Tab 3: f,g reference data
+        fg_frame = ttk.Frame(notebook, padding=5)
+        notebook.add(fg_frame, text="  f,g 참조 데이터  ")
+
+        ttk.Label(fg_frame, text="f,g 참조 데이터 (strain \\t f \\t g):",
+                  font=('Arial', 12, 'bold')).pack(anchor=tk.W)
+        ttk.Label(fg_frame, text="여러 세트를 추가할 수 있습니다. '세트 추가' 버튼으로 현재 내용을 추가하세요.",
+                  font=('Segoe UI', 13), foreground='#64748B').pack(anchor=tk.W)
+
+        fg_text = tk.Text(fg_frame, height=15, font=("Courier", 15), wrap=tk.NONE)
+        fg_scroll = ttk.Scrollbar(fg_frame, orient=tk.VERTICAL, command=fg_text.yview)
+        fg_text.configure(yscrollcommand=fg_scroll.set)
+        fg_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        fg_text.pack(fill=tk.BOTH, expand=True)
+
+        # f,g dataset list
+        fg_list_frame = ttk.LabelFrame(fg_frame, text="추가된 f,g 참조", padding=3)
+        fg_list_frame.pack(fill=tk.X, pady=(5, 0))
+
+        fg_listbox = tk.Listbox(fg_list_frame, height=4, font=("Segoe UI", 13))
+        fg_listbox.pack(fill=tk.X)
+
+        fg_ref_datasets = list(self.reference_fg_data)  # copy current
+
+        def _refresh_fg_listbox():
+            fg_listbox.delete(0, tk.END)
+            for i, ds in enumerate(fg_ref_datasets):
+                fg_listbox.insert(tk.END, f"{ds['name']}  ({len(ds['strain'])}pts)")
+
+        _refresh_fg_listbox()
+
+        fg_btn_row = ttk.Frame(fg_frame)
+        fg_btn_row.pack(fill=tk.X, pady=3)
+
+        fg_name_var = tk.StringVar(value="참조 f,g")
+
+        ttk.Label(fg_btn_row, text="이름:").pack(side=tk.LEFT)
+        ttk.Entry(fg_btn_row, textvariable=fg_name_var, width=15).pack(side=tk.LEFT, padx=3)
+
+        def add_fg_dataset():
+            content = fg_text.get("1.0", tk.END).strip()
+            if not content:
+                return
+            strains, fs, gs = [], [], []
+            for line in content.split('\n'):
+                line = line.strip()
+                if not line or line.startswith('#'):
+                    continue
+                parts = line.split()
+                if len(parts) >= 3:
+                    try:
+                        strains.append(float(parts[0]))
+                        fs.append(float(parts[1]))
+                        gs.append(float(parts[2]))
+                    except ValueError:
+                        continue
+            if not strains:
+                return
+            name = fg_name_var.get().strip() or f"참조 {len(fg_ref_datasets)+1}"
+            fg_ref_datasets.append({
+                'name': name,
+                'strain': np.array(strains),
+                'f': np.array(fs),
+                'g': np.array(gs),
+            })
+            _refresh_fg_listbox()
+            fg_text.delete("1.0", tk.END)
+
+        def remove_fg_dataset():
+            sel = fg_listbox.curselection()
+            if not sel:
+                return
+            fg_ref_datasets.pop(sel[0])
+            _refresh_fg_listbox()
+
+        ttk.Button(fg_btn_row, text="세트 추가", command=add_fg_dataset, width=10).pack(side=tk.LEFT, padx=3)
+        ttk.Button(fg_btn_row, text="삭제", command=remove_fg_dataset, width=6).pack(side=tk.LEFT, padx=3)
+
         # Button to load calculation results into text areas
         calc_load_frame = ttk.Frame(left_frame)
         calc_load_frame.pack(fill=tk.X, pady=(3, 0))
@@ -11959,6 +12047,11 @@ class PerssonModelGUI_V2:
                             }
                             print(f"[참조 데이터] A/A0 업데이트: {len(area)} points")
 
+                # f,g 참조 데이터 적용
+                self.reference_fg_data = list(fg_ref_datasets)
+                if self.reference_fg_data:
+                    print(f"[참조 데이터] f,g 참조: {len(self.reference_fg_data)}개 세트")
+
                 # Refresh plots if mu_visc results exist
                 if hasattr(self, 'mu_visc_results') and self.mu_visc_results is not None:
                     v = self.mu_visc_results.get('v')
@@ -11967,6 +12060,9 @@ class PerssonModelGUI_V2:
                     if v is not None and mu is not None and details is not None:
                         use_nonlinear = self.mu_use_fg_var.get() if hasattr(self, 'mu_use_fg_var') else False
                         self._update_mu_visc_plots(v, mu, details, use_nonlinear=use_nonlinear)
+
+                # f,g 차트도 새로고침
+                self._update_fg_plot_persson_avg()
 
                 dialog.destroy()
                 self._show_status("참조 데이터가 업데이트되었습니다.", 'success')
