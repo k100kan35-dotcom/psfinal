@@ -109,6 +109,7 @@ exe = EXE(
     [],
     name='PerssonFrictionModel',
     icon='assets/app_icon.ico' if os.path.isfile('assets/app_icon.ico') else None,
+    manifest='assets/app.manifest' if os.path.isfile('assets/app.manifest') else None,
     debug=False,
     bootloader_ignore_signals=False,
     strip=True,

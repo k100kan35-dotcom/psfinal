@@ -410,6 +410,47 @@ class PerssonModelGUI_V2:
     }
     _REFERENCE_WIDTH = 1600   # reference window width for font scaling
 
+    # ── UI 스케일 설정 파일 관리 ──
+    @staticmethod
+    def _get_settings_path():
+        """설정 파일 경로 반환 (exe 옆 또는 스크립트 옆)."""
+        if getattr(sys, 'frozen', False):
+            base = os.path.dirname(sys.executable)
+        else:
+            base = os.path.dirname(os.path.abspath(__file__))
+        return os.path.join(base, 'ui_settings.json')
+
+    @staticmethod
+    def _load_ui_scale_setting():
+        """저장된 UI 스케일 값 로드 (default 1.0)."""
+        try:
+            path = PerssonModelGUI_V2._get_settings_path()
+            if os.path.isfile(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                return float(data.get('ui_scale', 1.0))
+        except Exception:
+            pass
+        return 1.0
+
+    @staticmethod
+    def _save_ui_scale_setting(scale_value):
+        """UI 스케일 값 저장."""
+        path = PerssonModelGUI_V2._get_settings_path()
+        data = {}
+        try:
+            if os.path.isfile(path):
+                with open(path, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+        except Exception:
+            pass
+        data['ui_scale'] = round(scale_value, 2)
+        try:
+            with open(path, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+        except Exception:
+            pass
+
     def __init__(self, root):
         """Initialize enhanced GUI."""
         self.root = root
@@ -423,8 +464,27 @@ class PerssonModelGUI_V2:
         win_h = screen_h
         self.root.state('zoomed')  # Windows 전체 화면 (최대화)
 
-        # GUI 폰트 스케일 (1600px 기준)
+        # ── DPI 보정 (tk scaling 1.333 override 실패 시 fallback) ──
+        # main()에서 tk scaling을 1.333으로 강제했지만, 일부 환경에서 미작동 가능.
+        # 이 경우 effective scaling이 여전히 높으므로 gui_scale에서 보상.
+        _effective_scaling = 1.333
+        try:
+            _effective_scaling = float(self.root.tk.call('tk', 'scaling'))
+        except Exception:
+            pass
+        _dpi_factor = _effective_scaling / 1.3333333333333333
+        _dpi_compensation = (1.0 / _dpi_factor) if _dpi_factor > 1.05 else 1.0
+
+        # 사용자 UI 스케일 설정 로드 (default 1.0)
+        _user_scale = self._load_ui_scale_setting()
+        self._user_ui_scale = _user_scale
+        self._user_ui_scale_orig = _user_scale  # 변경 감지용
+
+        # GUI 폰트 스케일 (1600px 기준) + DPI 보정 + 사용자 스케일
         gui_scale = max(0.65, min(1.0, win_w / 1600))
+        gui_scale = gui_scale * _dpi_compensation * _user_scale
+        gui_scale = max(0.35, min(1.3, gui_scale))
+
         def _sf(base_size):
             return max(9, round(base_size * gui_scale))
 
@@ -6911,6 +6971,48 @@ class PerssonModelGUI_V2:
         ttk.Label(row7, text="(cm=Cambria Math \uc2a4\ud0c0\uc77c)", font=('Segoe UI', 13),
                   foreground='#64748B').pack(side=tk.LEFT, padx=3)
 
+        # ── Section 5: 해상도 / UI 스케일 ──
+        dpi_frame = ttk.LabelFrame(content_frame, text="해상도 / UI 스케일", padding=10)
+        dpi_frame.pack(fill=tk.X, pady=(0, 10))
+
+        # 현재 DPI 정보 표시
+        _orig_dpi = getattr(self.root, '_dpi_original_scaling', 1.333)
+        _current_scaling = 1.333
+        try:
+            _current_scaling = float(self.root.tk.call('tk', 'scaling'))
+        except Exception:
+            pass
+        _dpi_pct = round(_orig_dpi / 1.333 * 100)
+        _screen_w = self.root.winfo_screenwidth()
+        _screen_h = self.root.winfo_screenheight()
+
+        info_row = ttk.Frame(dpi_frame)
+        info_row.pack(fill=tk.X, pady=3)
+        ttk.Label(info_row, text="감지된 해상도:", width=15).pack(side=tk.LEFT)
+        ttk.Label(info_row, text=f"{_screen_w} x {_screen_h}  (DPI 배율: {_dpi_pct}%)",
+                  foreground='#3B82F6').pack(side=tk.LEFT, padx=5)
+
+        # UI 스케일 슬라이더 (50% ~ 150%)
+        scale_row = ttk.Frame(dpi_frame)
+        scale_row.pack(fill=tk.X, pady=3)
+        ttk.Label(scale_row, text="UI 스케일:", width=15).pack(side=tk.LEFT)
+        ui_scale_var = tk.DoubleVar(value=getattr(self, '_user_ui_scale', 1.0))
+        ui_scale_slider = ttk.Scale(scale_row, from_=0.5, to=1.5,
+                                     variable=ui_scale_var,
+                                     orient=tk.HORIZONTAL, length=250)
+        ui_scale_slider.pack(side=tk.LEFT, padx=5)
+        ui_scale_label = ttk.Label(scale_row,
+                                    text=f"{ui_scale_var.get():.0%}", width=8)
+        ui_scale_label.pack(side=tk.LEFT)
+
+        def _update_scale_label(*args):
+            ui_scale_label.config(text=f"{ui_scale_var.get():.0%}")
+        ui_scale_var.trace_add('write', _update_scale_label)
+
+        ttk.Label(dpi_frame,
+                  text="※ UI 스케일 변경 시 프로그램 재시작 필요  (설정은 자동 저장)",
+                  foreground='#94A3B8').pack(anchor=tk.W, pady=(4, 0))
+
         # ── Buttons ──
         btn_frame = ttk.Frame(dialog, padding=10)
         btn_frame.pack(fill=tk.X)
@@ -7011,8 +7113,20 @@ class PerssonModelGUI_V2:
             self._font_scale = 0  # force rescale
             self._rescale_all_fonts()
 
+            # 8. UI 스케일 저장 (재시작 시 적용)
+            new_ui_scale = ui_scale_var.get()
+            self._save_ui_scale_setting(new_ui_scale)
+            self._user_ui_scale = new_ui_scale
+
             dialog.destroy()
-            self._show_status("레이아웃 설정이 적용되었습니다.\n일부 변경은 탭 전환 시 반영됩니다.", 'success')
+
+            _scale_changed = abs(new_ui_scale - getattr(self, '_user_ui_scale_orig', 1.0)) > 0.05
+            if _scale_changed:
+                self._show_status(
+                    "UI 스케일이 변경되었습니다. 프로그램을 재시작해야 완전히 적용됩니다.",
+                    'warning', duration=15000)
+            else:
+                self._show_status("레이아웃 설정이 적용되었습니다.\n일부 변경은 탭 전환 시 반영됩니다.", 'success')
 
         def reset_defaults():
             """Reset to default settings."""
@@ -7024,6 +7138,7 @@ class PerssonModelGUI_V2:
             win_w_var.set(1600)
             win_h_var.set(1000)
             math_font_var.set('dejavusans')
+            ui_scale_var.set(1.0)
 
         ttk.Button(btn_frame, text="적용", command=apply_settings, width=12).pack(side=tk.RIGHT, padx=5)
         ttk.Button(btn_frame, text="초기화", command=reset_defaults, width=12).pack(side=tk.RIGHT, padx=5)
@@ -16240,21 +16355,35 @@ class PerssonModelGUI_V2:
 def main():
     """Run the enhanced application."""
     # ── High-DPI awareness (Windows 10+) ──
-    # Tk 생성 전에 호출해야 winfo_screenwidth()가 실제 픽셀을 반환하고,
+    # manifest(app.manifest)가 1차 DPI 선언이고, 아래는 python 직접 실행 시 fallback.
+    # Tk 생성 전에 호출해야 winfo_screenwidth()가 실제 물리 픽셀을 반환하고,
     # Windows 비트맵 스케일링(흐릿한 확대)이 적용되지 않음.
     try:
         from ctypes import windll
-        windll.shcore.SetProcessDpiAwareness(1)
+        windll.shcore.SetProcessDpiAwareness(2)   # Per-Monitor V2
     except Exception:
-        pass
+        try:
+            from ctypes import windll
+            windll.shcore.SetProcessDpiAwareness(1)   # System DPI aware
+        except Exception:
+            try:
+                from ctypes import windll
+                windll.user32.SetProcessDPIAware()     # Vista+ fallback
+            except Exception:
+                pass
 
     root = tk.Tk()
 
     # ── Tk DPI 스케일링 정규화 ──
     # Tk는 시스템 DPI를 감지하여 폰트를 자동 확대함 (125%→1.667, 150%→2.0).
-    # 96 DPI 기준값(1.333 = 96/72)으로 고정하여 모든 디스플레이에서 동일 렌더링.
-    # gui_scale (screen_w / 1600 기반)이 해상도별 크기 조정을 별도 처리함.
+    # 원래 값을 저장해 둔 뒤, 96 DPI 기준값(1.333 = 96/72)으로 강제 고정.
+    # 이렇게 하면 162개 이상의 하드코딩된 폰트 크기가 모두 동일 크기로 렌더링됨.
+    try:
+        _orig_tk_scaling = float(root.tk.call('tk', 'scaling'))
+    except Exception:
+        _orig_tk_scaling = 1.333
     root.tk.call('tk', 'scaling', 1.3333333333333333)
+    root._dpi_original_scaling = _orig_tk_scaling
 
     app = PerssonModelGUI_V2(root)
     root.mainloop()
