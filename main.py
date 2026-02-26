@@ -8557,7 +8557,7 @@ class PerssonModelGUI_V2:
                   font=self.FONTS['small'], foreground='#2563EB').pack(anchor=tk.W)
 
         # 온도별 체크박스 영역 (f,g 계산 후 동적으로 채워짐)
-        temp_check_label = ttk.Label(persson_avg_frame, text="사용 온도 (전체 구간):", font=self.FONTS['body'])
+        temp_check_label = ttk.Label(persson_avg_frame, text="Zone1 온도 (< Split1):", font=self.FONTS['body'])
         temp_check_label.pack(anchor=tk.W, pady=(3, 0))
         self._temp_check_frame = ttk.Frame(persson_avg_frame)
         self._temp_check_frame.pack(fill=tk.X, pady=1)
@@ -8565,23 +8565,38 @@ class PerssonModelGUI_V2:
         ttk.Label(self._temp_check_frame, text="(f,g 곡선 계산 후 표시됩니다)",
                   font=self.FONTS['small'], foreground='#94A3B8').pack(anchor=tk.W)
 
-        # Split strain 설정
-        split_frame = ttk.Frame(persson_avg_frame)
-        split_frame.pack(fill=tk.X, pady=(3, 1))
-        ttk.Label(split_frame, text="Split strain [%]:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        # Split strain 1 설정
+        split1_frame = ttk.Frame(persson_avg_frame)
+        split1_frame.pack(fill=tk.X, pady=(3, 1))
+        ttk.Label(split1_frame, text="Split1 [%]:", font=self.FONTS['body']).pack(side=tk.LEFT)
         self.fg_split_strain_var = tk.StringVar(value="10")
-        ttk.Entry(split_frame, textvariable=self.fg_split_strain_var, width=5,
+        ttk.Entry(split1_frame, textvariable=self.fg_split_strain_var, width=5,
                   font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
-        ttk.Label(split_frame, text="(이하: 전체온도, 이상: 고온만)",
-                  font=self.FONTS['small'], foreground='#64748B').pack(side=tk.LEFT, padx=(4, 0))
 
-        # 고온 온도 체크박스 영역
-        highT_label = ttk.Label(persson_avg_frame, text="고온 온도 (split 이상 구간):", font=self.FONTS['body'])
+        # 고온 온도 체크박스 영역 (Zone 2: Split1 ~ Split2)
+        highT_label = ttk.Label(persson_avg_frame, text="Zone2 온도 (Split1~Split2):", font=self.FONTS['body'])
         highT_label.pack(anchor=tk.W, pady=(3, 0))
         self._highT_check_frame = ttk.Frame(persson_avg_frame)
         self._highT_check_frame.pack(fill=tk.X, pady=1)
         self._highT_check_vars = {}  # {temperature: BooleanVar}
         ttk.Label(self._highT_check_frame, text="(f,g 곡선 계산 후 표시됩니다)",
+                  font=self.FONTS['small'], foreground='#94A3B8').pack(anchor=tk.W)
+
+        # Split strain 2 설정
+        split2_frame = ttk.Frame(persson_avg_frame)
+        split2_frame.pack(fill=tk.X, pady=(3, 1))
+        ttk.Label(split2_frame, text="Split2 [%]:", font=self.FONTS['body']).pack(side=tk.LEFT)
+        self.fg_split_strain2_var = tk.StringVar(value="20")
+        ttk.Entry(split2_frame, textvariable=self.fg_split_strain2_var, width=5,
+                  font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
+
+        # 최고온 온도 체크박스 영역 (Zone 3: > Split2)
+        topT_label = ttk.Label(persson_avg_frame, text="Zone3 온도 (> Split2):", font=self.FONTS['body'])
+        topT_label.pack(anchor=tk.W, pady=(3, 0))
+        self._topT_check_frame = ttk.Frame(persson_avg_frame)
+        self._topT_check_frame.pack(fill=tk.X, pady=1)
+        self._topT_check_vars = {}  # {temperature: BooleanVar}
+        ttk.Label(self._topT_check_frame, text="(f,g 곡선 계산 후 표시됩니다)",
                   font=self.FONTS['small'], foreground='#94A3B8').pack(anchor=tk.W)
 
         # Persson average f,g 계산 button
@@ -8870,13 +8885,13 @@ class PerssonModelGUI_V2:
             self.temp_listbox_B.selection_set(i)
 
     def _persson_average_fg(self):
-        """Persson average f,g 계산: split strain 기준 구간별 평균.
+        """Persson average f,g 계산: 3구간 split strain 기준 구간별 평균.
 
-        - split 이하: 전체 온도(체크된) 외삽 데이터로 평균
-        - split 이상: 고온 온도(체크된) 외삽 데이터로 평균
-        - 두 구간 결합 → log-spaced 최종 출력
+        - Zone1 (< split1): 전체 온도 평균
+        - Zone2 (split1 ~ split2): 고온 온도 평균
+        - Zone3 (> split2): 최고온 온도 평균
+        - 3구간 결합 → 최종 출력
         """
-        # Step 1: fg_by_T가 없으면 자동으로 계산
         if self.fg_by_T is None:
             if self.strain_data is None:
                 self._show_status("Strain Sweep 데이터가 없습니다.\n"
@@ -8887,40 +8902,38 @@ class PerssonModelGUI_V2:
                 return
 
         try:
-            # Step 2: UI에서 파라미터 읽기
             n_final = int(self.n_final_pts_var.get())
-            split_pct = float(self.fg_split_strain_var.get())
-            split_strain = split_pct / 100.0  # fraction 변환
+            split1_pct = float(self.fg_split_strain_var.get())
+            split2_pct = float(self.fg_split_strain2_var.get())
+            split1 = split1_pct / 100.0
+            split2 = split2_pct / 100.0
+            if split2 <= split1:
+                messagebox.showerror("오류", f"Split2({split2_pct}%)는 Split1({split1_pct}%)보다 커야 합니다.")
+                return
 
-            # 전체 구간 온도 (체크된)
-            if self._temp_check_vars:
-                all_temps = [T for T, var in self._temp_check_vars.items() if var.get()]
-                if not all_temps:
-                    self._show_status("최소 1개 이상의 전체 구간 온도를 체크하세요.", 'warning')
-                    return
-            else:
-                all_temps = list(self.fg_by_T.keys())
+            # Zone별 온도 수집
+            zone1_temps = [T for T, var in self._temp_check_vars.items() if var.get()] if self._temp_check_vars else list(self.fg_by_T.keys())
+            zone2_temps = [T for T, var in self._highT_check_vars.items() if var.get()] if self._highT_check_vars else sorted(zone1_temps)[-2:]
+            zone3_temps = [T for T, var in self._topT_check_vars.items() if var.get()] if self._topT_check_vars else sorted(zone1_temps)[-1:]
 
-            # 고온 온도 (체크된)
-            if self._highT_check_vars:
-                highT_temps = [T for T, var in self._highT_check_vars.items() if var.get()]
-                if not highT_temps:
-                    self._show_status("최소 1개 이상의 고온 온도를 체크하세요.", 'warning')
-                    return
-            else:
-                # 고온 체크박스가 없으면 상위 2개
-                highT_temps = sorted(all_temps)[-2:]
+            if not zone1_temps:
+                self._show_status("Zone1에 최소 1개 이상의 온도를 체크하세요.", 'warning')
+                return
+            if not zone2_temps:
+                self._show_status("Zone2에 최소 1개 이상의 온도를 체크하세요.", 'warning')
+                return
+            if not zone3_temps:
+                self._show_status("Zone3에 최소 1개 이상의 온도를 체크하세요.", 'warning')
+                return
 
-            # Step 3: 외삽 데이터 생성 (전체 온도 기준)
+            # 외삽 데이터 생성
             self._extrapolate_fg_curves()
-            if self.fg_by_T_extrap is None:
-                fg_source = self.fg_by_T
-            else:
-                fg_source = self.fg_by_T_extrap
+            fg_source = self.fg_by_T_extrap if self.fg_by_T_extrap else self.fg_by_T
 
-            # Step 4: 전체 strain 범위 결정
+            # 전체 strain 범위 결정
             all_strains = []
-            for T in all_temps:
+            all_used_temps = sorted(set(zone1_temps + zone2_temps + zone3_temps))
+            for T in all_used_temps:
                 if T in fg_source:
                     s = fg_source[T]['strain']
                     mask = s > 0
@@ -8932,29 +8945,27 @@ class PerssonModelGUI_V2:
 
             global_min = min(s.min() for s in all_strains)
             global_max = max(s.max() for s in all_strains)
+            s1 = min(split1, global_max)
+            s2 = min(split2, global_max)
 
-            # Step 5: 두 구간에 대해 각각 평균 계산
-            # 5a) 저strain 구간: min ~ split, 전체 온도
-            n_low = max(int(n_final * 0.5), 5)
-            n_high = max(n_final - n_low, 5)
+            # 각 Zone 포인트 수 분배
+            total_range = np.log10(global_max) - np.log10(global_min)
+            if total_range <= 0:
+                messagebox.showerror("오류", "strain 범위가 유효하지 않습니다.")
+                return
+            frac1 = (np.log10(s1) - np.log10(global_min)) / total_range if global_min < s1 else 0
+            frac2 = (np.log10(s2) - np.log10(s1)) / total_range if s1 < s2 else 0
+            frac3 = (np.log10(global_max) - np.log10(s2)) / total_range if s2 < global_max else 0
+            n1 = max(int(n_final * frac1), 3) if frac1 > 0 else 0
+            n2 = max(int(n_final * frac2), 3) if frac2 > 0 else 0
+            n3 = max(n_final - n1 - n2, 3) if frac3 > 0 else 0
 
-            # 저strain 구간 그리드
-            split_actual = min(split_strain, global_max)
-            if global_min < split_actual:
-                grid_low = _logspace_points(global_min, split_actual, n_low)
-            else:
-                grid_low = np.array([])
-
-            # 고strain 구간 그리드 (split 이상)
-            if split_actual < global_max:
-                grid_high = _logspace_points(split_actual, global_max, n_high)
-            else:
-                grid_high = np.array([])
-
-            # 5b) 저strain: 전체 온도 평균
-            if len(grid_low) > 0:
-                F_low, G_low = [], []
-                for T in all_temps:
+            def _zone_avg(grid, temps_list):
+                """주어진 그리드에서 온도 목록의 f,g 평균 계산."""
+                if len(grid) == 0:
+                    return np.array([]), np.array([])
+                F_rows, G_rows = [], []
+                for T in temps_list:
                     if T not in fg_source:
                         continue
                     data = fg_source[T]
@@ -8965,76 +8976,73 @@ class PerssonModelGUI_V2:
                         continue
                     order = np.argsort(x)
                     x, f, g = x[order], f[order], g[order]
-                    # hold 외삽: np.interp 기본
-                    f_i = np.interp(grid_low, x, f)
-                    g_i = np.interp(grid_low, x, g)
-                    F_low.append(f_i)
-                    G_low.append(g_i)
-                if F_low:
-                    avg_f_low = np.mean(np.vstack(F_low), axis=0)
-                    avg_g_low = np.mean(np.vstack(G_low), axis=0)
-                else:
-                    grid_low = np.array([])
-                    avg_f_low = np.array([])
-                    avg_g_low = np.array([])
-            else:
-                avg_f_low = np.array([])
-                avg_g_low = np.array([])
+                    F_rows.append(np.interp(grid, x, f))
+                    G_rows.append(np.interp(grid, x, g))
+                if not F_rows:
+                    return np.array([]), np.array([])
+                return np.mean(np.vstack(F_rows), axis=0), np.mean(np.vstack(G_rows), axis=0)
 
-            # 5c) 고strain: 고온 온도만 평균
-            if len(grid_high) > 0:
-                F_high, G_high = [], []
-                for T in highT_temps:
-                    if T not in fg_source:
-                        continue
-                    data = fg_source[T]
-                    x, f, g = data['strain'], data['f'], data['g']
-                    mask = x > 0
-                    x, f, g = x[mask], f[mask], g[mask]
-                    if len(x) < 2:
-                        continue
-                    order = np.argsort(x)
-                    x, f, g = x[order], f[order], g[order]
-                    f_i = np.interp(grid_high, x, f)
-                    g_i = np.interp(grid_high, x, g)
-                    F_high.append(f_i)
-                    G_high.append(g_i)
-                if F_high:
-                    avg_f_high = np.mean(np.vstack(F_high), axis=0)
-                    avg_g_high = np.mean(np.vstack(G_high), axis=0)
-                else:
-                    grid_high = np.array([])
-                    avg_f_high = np.array([])
-                    avg_g_high = np.array([])
-            else:
-                avg_f_high = np.array([])
-                avg_g_high = np.array([])
+            # Zone 그리드 생성
+            grid1 = _logspace_points(global_min, s1, n1) if n1 > 0 and global_min < s1 else np.array([])
+            grid2 = _logspace_points(s1, s2, n2) if n2 > 0 and s1 < s2 else np.array([])
+            grid3 = _logspace_points(s2, global_max, n3) if n3 > 0 and s2 < global_max else np.array([])
 
-            # Step 6: 두 구간 결합 (split point 중복 제거)
-            if len(grid_low) > 0 and len(grid_high) > 0:
-                # grid_high[0] == split_actual 이므로, low 끝과 high 시작 연결
-                final_strain = np.concatenate([grid_low, grid_high[1:]])
-                final_f = np.concatenate([avg_f_low, avg_f_high[1:]])
-                final_g = np.concatenate([avg_g_low, avg_g_high[1:]])
-            elif len(grid_low) > 0:
-                final_strain = grid_low
-                final_f = avg_f_low
-                final_g = avg_g_low
-            elif len(grid_high) > 0:
-                final_strain = grid_high
-                final_f = avg_f_high
-                final_g = avg_g_high
-            else:
+            # Zone별 평균
+            f1, g1 = _zone_avg(grid1, zone1_temps)
+            f2, g2 = _zone_avg(grid2, zone2_temps)
+            f3, g3 = _zone_avg(grid3, zone3_temps)
+
+            # 3구간 결합 (경계 중복 제거: 뒷 구간 첫 점 제거)
+            parts_s, parts_f, parts_g = [], [], []
+            zone_boundaries = []  # 각 zone 시작 인덱스
+
+            if len(grid1) > 0 and len(f1) > 0:
+                parts_s.append(grid1)
+                parts_f.append(f1)
+                parts_g.append(g1)
+
+            if len(grid2) > 0 and len(f2) > 0:
+                zone_boundaries.append(sum(len(p) for p in parts_s))
+                if len(parts_s) > 0:
+                    parts_s.append(grid2[1:])
+                    parts_f.append(f2[1:])
+                    parts_g.append(g2[1:])
+                else:
+                    parts_s.append(grid2)
+                    parts_f.append(f2)
+                    parts_g.append(g2)
+
+            if len(grid3) > 0 and len(f3) > 0:
+                zone_boundaries.append(sum(len(p) for p in parts_s))
+                if len(parts_s) > 0:
+                    parts_s.append(grid3[1:])
+                    parts_f.append(f3[1:])
+                    parts_g.append(g3[1:])
+                else:
+                    parts_s.append(grid3)
+                    parts_f.append(f3)
+                    parts_g.append(g3)
+
+            if not parts_s:
                 messagebox.showerror("오류", "유효한 strain 범위가 없습니다.")
                 return
 
-            # 물리적 범위 클램핑
-            final_f = np.maximum(final_f, 0.0)
-            final_g = np.maximum(final_g, 0.0)
+            final_strain = np.concatenate(parts_s)
+            final_f = np.maximum(np.concatenate(parts_f), 0.0)
+            final_g = np.maximum(np.concatenate(parts_g), 0.0)
 
-            n_eff = np.full(len(final_strain), float(len(all_temps)))
-            if len(grid_high) > 0 and len(grid_low) > 0:
-                n_eff[len(grid_low):] = float(len(highT_temps))
+            # n_eff 구성
+            n_eff = np.full(len(final_strain), float(len(zone1_temps)))
+            idx = 0
+            if len(grid1) > 0 and len(f1) > 0:
+                idx += len(grid1)
+            if len(grid2) > 0 and len(f2) > 0:
+                start2 = idx
+                count2 = len(grid2) - (1 if idx > 0 else 0)
+                n_eff[start2:start2 + count2] = float(len(zone2_temps))
+                idx = start2 + count2
+            if len(grid3) > 0 and len(f3) > 0:
+                n_eff[idx:] = float(len(zone3_temps))
 
             # Store piecewise result
             self.piecewise_result = {
@@ -9043,9 +9051,14 @@ class PerssonModelGUI_V2:
                 'f_avg': final_f,
                 'g_avg': final_g,
                 'n_eff': n_eff,
-                'temps_A': all_temps,
-                'temps_B': highT_temps,
-                'split_strain': split_strain,
+                'temps_A': zone1_temps,
+                'temps_B': zone2_temps,
+                'temps_C': zone3_temps,
+                'split_strain': split1,
+                'split_strain2': split2,
+                'n_zone1': len(grid1),
+                'n_zone2': len(grid2) - (1 if len(grid1) > 0 and len(grid2) > 0 else 0),
+                'n_zone3': len(grid3) - (1 if (len(grid1) > 0 or len(grid2) > 0) and len(grid3) > 0 else 0),
                 'common_x': final_strain.copy(),
                 'common_f': final_f.copy(),
                 'common_g': final_g.copy(),
@@ -9056,7 +9069,7 @@ class PerssonModelGUI_V2:
                 'strain': final_strain.copy(),
                 'f_avg': final_f,
                 'g_avg': final_g,
-                'Ts_used': sorted(set(all_temps + highT_temps)),
+                'Ts_used': sorted(set(zone1_temps + zone2_temps + zone3_temps)),
                 'n_eff': n_eff
             }
 
@@ -9070,17 +9083,18 @@ class PerssonModelGUI_V2:
             self._update_fg_plot_persson_avg()
 
             # Update status
-            allT_str = ", ".join(f"{t:.0f}" for t in sorted(all_temps))
-            highT_str = ", ".join(f"{t:.0f}" for t in sorted(highT_temps))
+            z1_str = ", ".join(f"{t:.0f}" for t in sorted(zone1_temps))
+            z2_str = ", ".join(f"{t:.0f}" for t in sorted(zone2_temps))
+            z3_str = ", ".join(f"{t:.0f}" for t in sorted(zone3_temps))
             self.persson_avg_status_var.set(
-                f"완료: split={split_pct}%, "
-                f"저strain {len(all_temps)}개T, 고strain {len(highT_temps)}개T, "
-                f"{len(final_strain)}pts"
+                f"완료: Z1({len(zone1_temps)}T)<{split1_pct}%"
+                f" | Z2({len(zone2_temps)}T)<{split2_pct}%"
+                f" | Z3({len(zone3_temps)}T), {len(final_strain)}pts"
             )
             self.status_var.set(
-                f"Split average: ε<{split_pct}%→[{allT_str}°C], "
-                f"ε>{split_pct}%→[{highT_str}°C], "
-                f"N={len(final_strain)}"
+                f"3-Zone avg: <{split1_pct}%→[{z1_str}°C], "
+                f"{split1_pct}~{split2_pct}%→[{z2_str}°C], "
+                f">{split2_pct}%→[{z3_str}°C]"
             )
 
         except Exception as e:
@@ -9128,41 +9142,58 @@ class PerssonModelGUI_V2:
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.15, linewidth=0.8)
                 self.ax_fg_curves.plot(s, g, 'r-', alpha=0.15, linewidth=0.8)
 
-        # Plot split average results
+        # Plot 3-zone split average results
         if self.piecewise_result is not None:
             s = self.piecewise_result['strain']
             f_final = self.piecewise_result['f_avg']
             g_final = self.piecewise_result['g_avg']
-            split_strain = self.piecewise_result.get('split_strain', None)
+            sp1 = self.piecewise_result.get('split_strain', None)
+            sp2 = self.piecewise_result.get('split_strain2', None)
 
-            # 저strain 구간 / 고strain 구간 색 구분
-            if split_strain is not None and split_strain > 0:
-                low_mask = s <= split_strain
-                high_mask = s >= split_strain
+            if sp1 is not None and sp1 > 0:
+                # Zone 마스크
+                z1_mask = s <= sp1
+                if sp2 is not None and sp2 > sp1:
+                    z2_mask = (s >= sp1) & (s <= sp2)
+                    z3_mask = s >= sp2
+                else:
+                    z2_mask = s >= sp1
+                    z3_mask = np.zeros_like(s, dtype=bool)
 
-                # 저strain (전체 온도) - 실선
-                if np.any(low_mask):
-                    self.ax_fg_curves.plot(s[low_mask], f_final[low_mask], 'b-o',
+                # Zone1: 전체 온도 (원형 마커)
+                if np.any(z1_mask):
+                    self.ax_fg_curves.plot(s[z1_mask], f_final[z1_mask], 'b-o',
                                            linewidth=2.5, markersize=4,
-                                           label=f'f(ε) 전체T ({np.sum(low_mask)}pts)')
-                    self.ax_fg_curves.plot(s[low_mask], g_final[low_mask], 'r-o',
+                                           label=f'f Z1 전체T ({np.sum(z1_mask)}pts)')
+                    self.ax_fg_curves.plot(s[z1_mask], g_final[z1_mask], 'r-o',
                                            linewidth=2.5, markersize=4,
-                                           label=f'g(ε) 전체T ({np.sum(low_mask)}pts)')
-                # 고strain (고온만) - 다른 마커
-                if np.any(high_mask):
-                    self.ax_fg_curves.plot(s[high_mask], f_final[high_mask], 'b-s',
+                                           label=f'g Z1 전체T ({np.sum(z1_mask)}pts)')
+                # Zone2: 고온 (사각형 마커)
+                if np.any(z2_mask):
+                    self.ax_fg_curves.plot(s[z2_mask], f_final[z2_mask], 'b-s',
                                            linewidth=2.5, markersize=4,
-                                           label=f'f(ε) 고온T ({np.sum(high_mask)}pts)')
-                    self.ax_fg_curves.plot(s[high_mask], g_final[high_mask], 'r-s',
+                                           label=f'f Z2 고온T ({np.sum(z2_mask)}pts)')
+                    self.ax_fg_curves.plot(s[z2_mask], g_final[z2_mask], 'r-s',
                                            linewidth=2.5, markersize=4,
-                                           label=f'g(ε) 고온T ({np.sum(high_mask)}pts)')
+                                           label=f'g Z2 고온T ({np.sum(z2_mask)}pts)')
+                # Zone3: 최고온 (삼각형 마커)
+                if np.any(z3_mask):
+                    self.ax_fg_curves.plot(s[z3_mask], f_final[z3_mask], 'b-^',
+                                           linewidth=2.5, markersize=4,
+                                           label=f'f Z3 최고온T ({np.sum(z3_mask)}pts)')
+                    self.ax_fg_curves.plot(s[z3_mask], g_final[z3_mask], 'r-^',
+                                           linewidth=2.5, markersize=4,
+                                           label=f'g Z3 최고온T ({np.sum(z3_mask)}pts)')
 
-                # Split point 수직선
-                self.ax_fg_curves.axvline(x=split_strain, color='gray', linestyle='--',
+                # Split 수직선
+                self.ax_fg_curves.axvline(x=sp1, color='gray', linestyle='--',
                                            linewidth=1.5, alpha=0.6,
-                                           label=f'split={split_strain*100:.1f}%')
+                                           label=f'split1={sp1*100:.1f}%')
+                if sp2 is not None and sp2 > sp1:
+                    self.ax_fg_curves.axvline(x=sp2, color='orange', linestyle='--',
+                                               linewidth=1.5, alpha=0.6,
+                                               label=f'split2={sp2*100:.1f}%')
             else:
-                # split 없는 경우 (호환)
                 self.ax_fg_curves.plot(s, f_final, 'b-o', linewidth=2.5, markersize=4,
                                        label=f'f(ε) ({len(s)}pts)')
                 self.ax_fg_curves.plot(s, g_final, 'r-o', linewidth=2.5, markersize=4,
@@ -9378,45 +9409,54 @@ class PerssonModelGUI_V2:
             traceback.print_exc()
 
     def _update_temp_checkboxes(self, temps):
-        """온도별 체크박스를 동적으로 생성/갱신. 최저 온도는 기본 해제.
-        고온 체크박스도 함께 생성 (상위 2개 온도 기본 선택)."""
-        # 기존 위젯 제거
+        """온도별 체크박스를 3개 Zone(전체/고온/최고온)으로 생성/갱신."""
+        sorted_temps = sorted(temps)
+        min_temp = sorted_temps[0] if sorted_temps else None
+        n = len(sorted_temps)
+
+        def _get_npts(T):
+            return len(self.fg_by_T[T]['strain']) if self.fg_by_T and T in self.fg_by_T else 0
+
+        # Zone1: 전체 온도 (최저온 기본 해제)
         for widget in self._temp_check_frame.winfo_children():
             widget.destroy()
         self._temp_check_vars.clear()
-
-        sorted_temps = sorted(temps)
-        min_temp = sorted_temps[0] if sorted_temps else None
-
         for T in sorted_temps:
-            # 가장 낮은 온도는 기본 해제
             var = tk.BooleanVar(value=(T != min_temp))
             self._temp_check_vars[T] = var
-            n_pts = len(self.fg_by_T[T]['strain']) if self.fg_by_T and T in self.fg_by_T else 0
-            cb = ttk.Checkbutton(
+            ttk.Checkbutton(
                 self._temp_check_frame,
-                text=f"{T:.2f} °C  ({n_pts}pts)",
+                text=f"{T:.2f} °C  ({_get_npts(T)}pts)",
                 variable=var
-            )
-            cb.pack(anchor=tk.W, padx=2)
+            ).pack(anchor=tk.W, padx=2)
 
-        # 고온 체크박스 영역도 갱신
+        # Zone2: 고온 (상위 2개 기본 선택)
         for widget in self._highT_check_frame.winfo_children():
             widget.destroy()
         self._highT_check_vars.clear()
-
-        # 상위 2개 온도를 기본 선택 (고온)
-        top2_temps = set(sorted_temps[-2:]) if len(sorted_temps) >= 2 else set(sorted_temps)
+        top2 = set(sorted_temps[-2:]) if n >= 2 else set(sorted_temps)
         for T in sorted_temps:
-            var = tk.BooleanVar(value=(T in top2_temps))
+            var = tk.BooleanVar(value=(T in top2))
             self._highT_check_vars[T] = var
-            n_pts = len(self.fg_by_T[T]['strain']) if self.fg_by_T and T in self.fg_by_T else 0
-            cb = ttk.Checkbutton(
+            ttk.Checkbutton(
                 self._highT_check_frame,
-                text=f"{T:.2f} °C  ({n_pts}pts)",
+                text=f"{T:.2f} °C  ({_get_npts(T)}pts)",
                 variable=var
-            )
-            cb.pack(anchor=tk.W, padx=2)
+            ).pack(anchor=tk.W, padx=2)
+
+        # Zone3: 최고온 (최상위 1개 기본 선택)
+        for widget in self._topT_check_frame.winfo_children():
+            widget.destroy()
+        self._topT_check_vars.clear()
+        top1 = set(sorted_temps[-1:]) if n >= 1 else set()
+        for T in sorted_temps:
+            var = tk.BooleanVar(value=(T in top1))
+            self._topT_check_vars[T] = var
+            ttk.Checkbutton(
+                self._topT_check_frame,
+                text=f"{T:.2f} °C  ({_get_npts(T)}pts)",
+                variable=var
+            ).pack(anchor=tk.W, padx=2)
 
     def _extrapolate_fg_curves(self):
         """f,g 외삽: 각 온도 데이터를 전체 strain 범위(global max)까지 외삽.
