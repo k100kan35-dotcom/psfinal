@@ -241,6 +241,11 @@ def _build_pyinstaller():
     if os.path.isfile(ICON_PATH):
         args.extend(['--icon', ICON_PATH])
 
+    # DPI-aware manifest (Windows 고해상도 디스플레이에서 UI 스케일링 문제 방지)
+    manifest_path = os.path.join(PROJECT_DIR, 'assets', 'app.manifest')
+    if os.path.isfile(manifest_path):
+        args.extend(['--manifest', manifest_path])
+
     # Hidden imports
     for mod in HIDDEN_IMPORTS:
         args.extend(['--hidden-import', mod])

@@ -197,6 +197,11 @@ def build():
     if os.path.isfile(icon_path):
         args.extend(['--icon', icon_path])
 
+    # DPI-aware manifest (Windows 고해상도 디스플레이에서 UI 스케일링 문제 방지)
+    manifest_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets', 'app.manifest')
+    if os.path.isfile(manifest_path):
+        args.extend(['--manifest', manifest_path])
+
     # 제외 모듈 추가
     for exc in EXCLUDES + EXCLUDE_MPL + EXCLUDE_MISC:
         args.extend(['--exclude-module', exc])
