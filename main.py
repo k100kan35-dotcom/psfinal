@@ -4853,15 +4853,20 @@ class PerssonModelGUI_V2:
     def _create_log_panel(self):
         """Create an activity log panel at the top of the main window."""
         C = self.COLORS
-        log_container = tk.Frame(self.root, bg=C['sidebar'], height=170)
+        _scale = getattr(self, '_gui_scale', 1.0)
+        _collapsed_h = max(36, round(36 * _scale))
+        _expanded_h = max(170, round(170 * _scale))
+
+        log_container = tk.Frame(self.root, bg=C['sidebar'], height=_expanded_h)
         log_container.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4, 0))
         log_container.pack_propagate(False)
 
         # Title bar
-        title_bar = tk.Frame(log_container, bg=C['sidebar'], height=22)
+        _title_bar_h = _collapsed_h
+        title_bar = tk.Frame(log_container, bg=C['sidebar'], height=_title_bar_h)
         title_bar.pack(fill=tk.X, side=tk.TOP)
         title_bar.pack_propagate(False)
-        _log_title_size = max(9, round(14 * getattr(self, '_gui_scale', 1.0)))
+        _log_title_size = max(11, round(16 * _scale))
         tk.Label(title_bar, text="\u25A0 \uc791\uc5c5 \ub85c\uadf8",
                  bg=C['sidebar'], fg='#94A3B8',
                  font=('Segoe UI', _log_title_size, 'bold')).pack(side=tk.LEFT, padx=6)
@@ -4869,20 +4874,23 @@ class PerssonModelGUI_V2:
         # Toggle button to expand/collapse (기본: 접힘)
         self._log_expanded = False
         self._log_container = log_container
-        log_container.config(height=22)  # 시작 시 접힌 상태
+        self._log_collapsed_h = _collapsed_h
+        self._log_expanded_h = _expanded_h
+        log_container.config(height=_collapsed_h)  # 시작 시 접힌 상태
 
         def _toggle_log():
             if self._log_expanded:
-                log_container.config(height=22)
+                log_container.config(height=self._log_collapsed_h)
                 toggle_btn.config(text="\u25BC")
                 self._log_expanded = False
             else:
-                log_container.config(height=130)
+                log_container.config(height=self._log_expanded_h)
                 toggle_btn.config(text="\u25B2")
                 self._log_expanded = True
 
+        _toggle_font_size = max(10, round(14 * _scale))
         toggle_btn = tk.Button(title_bar, text="\u25BC", bg=C['sidebar'], fg='#94A3B8',
-                               font=('Segoe UI', 10), bd=0, command=_toggle_log,
+                               font=('Segoe UI', _toggle_font_size), bd=0, command=_toggle_log,
                                activebackground=C['sidebar'], activeforeground='#E2E8F0',
                                cursor='hand2')
         toggle_btn.pack(side=tk.RIGHT, padx=6)
@@ -4893,8 +4901,9 @@ class PerssonModelGUI_V2:
             self._log_text.delete('1.0', tk.END)
             self._log_text.config(state='disabled')
 
+        _clear_font_size = max(10, round(14 * _scale))
         clear_btn = tk.Button(title_bar, text="\uc9c0\uc6b0\uae30", bg=C['sidebar'], fg='#94A3B8',
-                              font=('Segoe UI', 12), bd=0, command=_clear_log,
+                              font=('Segoe UI', _clear_font_size), bd=0, command=_clear_log,
                               activebackground=C['sidebar'], activeforeground='#E2E8F0',
                               cursor='hand2')
         clear_btn.pack(side=tk.RIGHT, padx=4)
@@ -4903,7 +4912,7 @@ class PerssonModelGUI_V2:
         log_frame = tk.Frame(log_container, bg=C['sidebar'])
         log_frame.pack(fill=tk.BOTH, expand=True, padx=4, pady=(0, 4))
 
-        _log_font_size = max(9, round(14 * getattr(self, '_gui_scale', 1.0)))
+        _log_font_size = max(11, round(15 * _scale))
         self._log_text = tk.Text(log_frame, bg='#0F172A', fg='#CBD5E1',
                                  font=('Consolas', _log_font_size), wrap=tk.WORD,
                                  bd=0, highlightthickness=0,
@@ -4955,25 +4964,28 @@ class PerssonModelGUI_V2:
                 self._append_log(msg, 'info')
         self.status_var.trace_add('write', _on_status_var_write)
 
-        status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=36)
+        _scale = getattr(self, '_gui_scale', 1.0)
+        _sb_height = max(36, round(40 * _scale))
+        status_frame = tk.Frame(self.root, bg=C['statusbar_bg'], height=_sb_height)
         status_frame.pack(side=tk.BOTTOM, fill=tk.X)
         status_frame.pack_propagate(False)
 
         # Status indicator dot (color changes by level)
+        _dot_size = max(12, round(16 * _scale))
         self._status_dot = tk.Label(status_frame, text="\u25CF", bg=C['statusbar_bg'],
-                 fg=C['success'], font=('Segoe UI', 16))
+                 fg=C['success'], font=('Segoe UI', _dot_size))
         self._status_dot.pack(side=tk.LEFT, padx=(12, 4))
 
         # Status text (color changes by level)
         self._status_label = tk.Label(status_frame, textvariable=self.status_var,
                  bg=C['statusbar_bg'], fg=C['statusbar_fg'],
-                 font=self.FONTS['small'], anchor=tk.W)
+                 font=self.FONTS['body'], anchor=tk.W)
         self._status_label.pack(side=tk.LEFT, fill=tk.X, expand=True)
 
         # Version badge
         tk.Label(status_frame, text="Persson Model v3.0",
                  bg=C['statusbar_bg'], fg='#475569',
-                 font=self.FONTS['tiny']).pack(side=tk.RIGHT, padx=12)
+                 font=self.FONTS['small']).pack(side=tk.RIGHT, padx=12)
 
     def _show_status(self, message, level='info', duration=8000):
         """Show a status message in the status bar and activity log.
