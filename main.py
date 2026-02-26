@@ -162,8 +162,8 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     """
     fgnew 로직: 각 온도의 f,g를 개별 스플라인 보간 → 공통 그리드에서 평균 → log-spaced 출력.
 
-    데이터 수집 후 strain을 /100하여 fraction 스케일로 변환한 뒤 보간을 진행한다.
-    보간 범위는 전체 데이터의 min~max strain(fraction)으로 자동 결정된다.
+    fg_by_T의 strain은 compute_fg_from_strain_sweep에서 이미 fraction으로 변환된 상태.
+    보간 범위는 전체 데이터의 min~max strain으로 자동 결정된다.
 
     Parameters
     ----------
@@ -179,15 +179,13 @@ def spline_average_fg(fg_by_T, selected_temps, n_final=20):
     dict with 'strain', 'f_avg', 'g_avg', 'common_x', 'common_f', 'common_g', 'Ts_used'
     or None if failed.
     """
-    # 1) 활성 데이터셋 수집 — strain을 /100 하여 fraction으로 변환
+    # 1) 활성 데이터셋 수집 (fg_by_T의 strain은 이미 fraction 스케일)
     datasets = []
     for T in selected_temps:
         if T not in fg_by_T:
             continue
         data = fg_by_T[T]
         x, f, g = data['strain'].copy(), data['f'], data['g']
-        # strain /100: 입력(%) → fraction
-        x = x / 100.0
         # strain > 0 이고 최소 3개 점 필요
         mask = x > 0
         x, f, g = x[mask], f[mask], g[mask]
@@ -417,13 +415,10 @@ class PerssonModelGUI_V2:
         # ── 화면 해상도 감지 → 윈도우 크기 + 폰트 스케일링 ──
         screen_w = root.winfo_screenwidth()
         screen_h = root.winfo_screenheight()
-        # 화면의 85% 크기로 윈도우 설정 (최대 1600x1000)
-        win_w = min(1600, int(screen_w * 0.85))
-        win_h = min(1000, int(screen_h * 0.85))
-        # 중앙 배치
-        x = max(0, (screen_w - win_w) // 2)
-        y = max(0, (screen_h - win_h) // 2)
-        self.root.geometry(f"{win_w}x{win_h}+{x}+{y}")
+        # 전체 화면으로 시작
+        win_w = screen_w
+        win_h = screen_h
+        self.root.state('zoomed')  # Windows 전체 화면 (최대화)
 
         # GUI 폰트 스케일 (1600px 기준)
         gui_scale = max(0.65, min(1.0, win_w / 1600))
@@ -4857,8 +4852,8 @@ class PerssonModelGUI_V2:
         """Create an activity log panel at the top of the main window."""
         C = self.COLORS
         _scale = getattr(self, '_gui_scale', 1.0)
-        _collapsed_h = max(48, round(48 * _scale))
-        _expanded_h = max(200, round(200 * _scale))
+        _collapsed_h = max(60, round(60 * _scale))
+        _expanded_h = max(220, round(220 * _scale))
 
         log_container = tk.Frame(self.root, bg=C['sidebar'], height=_expanded_h)
         log_container.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4, 0))
@@ -4869,17 +4864,17 @@ class PerssonModelGUI_V2:
         title_bar = tk.Frame(log_container, bg=C['sidebar'], height=_title_bar_h)
         title_bar.pack(fill=tk.X, side=tk.TOP)
         title_bar.pack_propagate(False)
-        _log_title_size = max(11, round(16 * _scale))
+        _log_title_size = max(13, round(18 * _scale))
         tk.Label(title_bar, text="\u25A0 \uc791\uc5c5 \ub85c\uadf8",
                  bg=C['sidebar'], fg='#94A3B8',
                  font=('Segoe UI', _log_title_size, 'bold')).pack(side=tk.LEFT, padx=6)
 
-        # Toggle button to expand/collapse (기본: 접힘)
-        self._log_expanded = False
+        # Toggle button to expand/collapse (기본: 펼침)
+        self._log_expanded = True
         self._log_container = log_container
         self._log_collapsed_h = _collapsed_h
         self._log_expanded_h = _expanded_h
-        log_container.config(height=_collapsed_h)  # 시작 시 접힌 상태
+        log_container.config(height=_expanded_h)  # 시작 시 펼쳐진 상태
 
         def _toggle_log():
             if self._log_expanded:
@@ -4892,7 +4887,7 @@ class PerssonModelGUI_V2:
                 self._log_expanded = True
 
         _toggle_font_size = max(10, round(14 * _scale))
-        toggle_btn = tk.Button(title_bar, text="\u25BC", bg=C['sidebar'], fg='#94A3B8',
+        toggle_btn = tk.Button(title_bar, text="\u25B2", bg=C['sidebar'], fg='#94A3B8',
                                font=('Segoe UI', _toggle_font_size), bd=0, command=_toggle_log,
                                activebackground=C['sidebar'], activeforeground='#E2E8F0',
                                cursor='hand2')
@@ -8538,7 +8533,7 @@ class PerssonModelGUI_V2:
         ttk.Label(row1, text="N pts:", font=self.FONTS['body']).pack(side=tk.LEFT)
         self.n_final_pts_var = tk.StringVar(value="20")
         ttk.Entry(row1, textvariable=self.n_final_pts_var, width=5, font=self.FONTS['body']).pack(side=tk.LEFT, padx=2)
-        ttk.Label(row1, text="(strain /100 → fraction 자동변환)", font=self.FONTS['small'],
+        ttk.Label(row1, text="(strain 범위 자동 결정)", font=self.FONTS['small'],
                   foreground='#64748B').pack(side=tk.LEFT, padx=(8, 0))
 
         # Method description
@@ -8867,7 +8862,7 @@ class PerssonModelGUI_V2:
             else:
                 all_temps = list(self.fg_by_T.keys())
 
-            # Step 3: fgnew 로직 - strain /100 → 스플라인 보간 → 평균 → log-spaced
+            # Step 3: fgnew 로직 - 스플라인 보간 → 평균 → log-spaced
             result = spline_average_fg(
                 self.fg_by_T,
                 all_temps,
@@ -8946,10 +8941,9 @@ class PerssonModelGUI_V2:
         self.ax_fg_curves.grid(True, alpha=0.3)
 
         # Plot individual temperature curves (thin, low alpha)
-        # strain /100 하여 fraction 스케일로 표시
         if self.fg_by_T is not None:
             for T, data in self.fg_by_T.items():
-                s = data['strain'] / 100.0
+                s = data['strain']
                 f = data['f']
                 g = data['g']
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.15, linewidth=0.8)
@@ -9268,7 +9262,7 @@ class PerssonModelGUI_V2:
             temps = sorted(self.fg_by_T.keys())
             selected_temps = [temps[i] for i in selections]
 
-            # fgnew 로직: strain /100 → 스플라인 보간 → 평균 → log-spaced
+            # fgnew 로직: 스플라인 보간 → 평균 → log-spaced
             n_final = int(self.n_final_pts_var.get()) if hasattr(self, 'n_final_pts_var') else 20
 
             result = spline_average_fg(
@@ -9316,10 +9310,9 @@ class PerssonModelGUI_V2:
         self.ax_fg_curves.grid(True, alpha=0.3)
 
         # Plot individual temperature curves
-        # strain /100 하여 fraction 스케일로 표시
         if self.fg_by_T is not None:
             for T, data in self.fg_by_T.items():
-                s = data['strain'] / 100.0
+                s = data['strain']
                 f = data['f']
                 g = data['g']
                 self.ax_fg_curves.plot(s, f, 'b-', alpha=0.3, linewidth=1)
