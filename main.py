@@ -8882,11 +8882,13 @@ class PerssonModelGUI_V2:
             else:
                 all_temps = list(self.fg_by_T.keys())
 
-            # Step 3: 외삽 데이터가 있으면 사용, 없으면 원본 사용
-            # 외삽 데이터가 없으면 자동 생성
+            # Step 3: 선택된 온도에 맞게 외삽 데이터 생성 (항상 재생성)
+            self._extrapolate_fg_curves()
             if self.fg_by_T_extrap is None:
-                self._extrapolate_fg_curves()
-            fg_source = self.fg_by_T_extrap if self.fg_by_T_extrap else self.fg_by_T
+                # 외삽 실패 시 원본으로 폴백
+                fg_source = self.fg_by_T
+            else:
+                fg_source = self.fg_by_T_extrap
 
             result = spline_average_fg(
                 fg_source,
